@@ -121,6 +121,7 @@ class GptBytePairEncoding implements Encoding {
 
     @Override
     public int countTokens(String text) {
+//		return encode(text).size();
         if (text == null) {
             return 0;
         } else {
@@ -307,11 +308,7 @@ class GptBytePairEncoding implements Encoding {
         return result;
     }
 
-    private int getRank(
-            ImmutableByteArray piece,
-            List<PieceIndexToRank> parts,
-            int startIndex
-    ) {
+    private int getRank(ImmutableByteArray piece, List<PieceIndexToRank> parts, int startIndex) {
         var endIndex = startIndex + 3;
         return endIndex >= parts.size()
                 ? Integer.MAX_VALUE
@@ -366,8 +363,8 @@ class GptBytePairEncoding implements Encoding {
 
     private static class PieceIndexToRank {
         private final int index;
-        private int rank;
         boolean isActive;
+        private int rank;
 
         PieceIndexToRank(int index, int rank) {
             this.index = index;
