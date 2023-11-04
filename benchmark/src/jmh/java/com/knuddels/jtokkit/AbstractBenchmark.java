@@ -1,38 +1,52 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.Encoding;
-import java.util.List;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.infra.Blackhole;
+
+import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 public abstract class AbstractBenchmark {
 
-	@Benchmark
-	public void benchmarkP50kBase(final BenchmarkingState state, final Blackhole blackhole) {
-		blackhole.consume(encodeAll(state.p50kBase, state.fileContents));
-	}
+//    @Benchmark
+    public int benchmarkCl100kBaseTokenCountReference(BenchmarkingState state) {
+        var result = encodeAll(state.cl100kBase, state.fileContents).stream().mapToInt(List::size).sum();
+        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
+            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
+        }
+        return result;
+    }
 
-	@Benchmark
-	public void benchmarkR50kBase(final BenchmarkingState state, final Blackhole blackhole) {
-		blackhole.consume(encodeAll(state.r50kBase, state.fileContents));
-	}
 
-	@Benchmark
-	public void benchmarkP50kEdit(final BenchmarkingState state, final Blackhole blackhole) {
-		blackhole.consume(encodeAll(state.p50kEdit, state.fileContents));
-	}
+    @Benchmark
+    public int benchmarkCl100kBaseTokenCount(BenchmarkingState state) {
+        var result = countTokens(state.cl100kBase, state.fileContents);
+        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
+            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
+        }
+        return result;
+    }
 
-	@Benchmark
-	public void benchmarkCl100kBase(final BenchmarkingState state, final Blackhole blackhole) {
-		blackhole.consume(encodeAll(state.cl100kBase, state.fileContents));
-	}
+//    @Benchmark
+    public int benchmarkCl100kBaseTokenCountWithInit(BenchmarkingState state) {
+        var encoding = EncodingFactory.cl100kBase();
+        var result = countTokens(encoding, state.fileContents);
+        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
+            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
+        }
+        return result;
+    }
 
-	/**
-	 * Encodes all file contents with the given encoding.
-	 *
-	 * @param encoding the encoding to use
-	 * @param fileContents the file contents to encode
-	 * @return a list of encoded token lists
-	 */
-	protected abstract List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents);
+    protected int countTokens(Encoding encoding, List<String> fileContents) {
+        return fileContents.stream()
+                .mapToInt(encoding::countTokens)
+                .sum();
+    }
+
+    protected List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents) {
+        return fileContents.stream()
+                .map(encoding::encode)
+                .collect(toList());
+    }
 }

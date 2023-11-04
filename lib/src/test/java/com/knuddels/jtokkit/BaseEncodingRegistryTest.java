@@ -18,7 +18,8 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
     protected final Consumer<T> initializer;
 
     public BaseEncodingRegistryTest(final T registry) {
-        this(registry, __ -> {});
+        this(registry, __ -> {
+        });
     }
 
     public BaseEncodingRegistryTest(final T registry, final Consumer<T> initializer) {
