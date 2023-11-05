@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-final class EncodingFactory {
+public final class EncodingFactory {
     private static final String ENDOFTEXT = "<|endoftext|>";
     private static final String FIM_PREFIX = "<|fim_prefix|>";
     private static final String FIM_MIDDLE = "<|fim_middle|>";

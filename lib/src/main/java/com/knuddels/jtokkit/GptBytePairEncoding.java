@@ -5,7 +5,10 @@ import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,8 +30,8 @@ class GptBytePairEncoding implements Encoding {
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
-        this.encoder = new TokenEncoder<>(params.getEncoder(), ImmutableByteArray::from);
-        this.specialTokensEncoder = new TokenEncoder<>(params.getSpecialTokensEncoder());
+        this.encoder = new TokenEncoder<>(params.getEncoder(), ImmutableByteArray::length, ImmutableByteArray::from);
+        this.specialTokensEncoder = new TokenEncoder<>(params.getSpecialTokensEncoder(), String::length);
     }
 
     @Override
@@ -129,7 +132,7 @@ class GptBytePairEncoding implements Encoding {
             int tokenCount = 0;
             for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
                 ImmutableByteArray match = ImmutableByteArray.from(matcher.group());
-                if (encoder.containsDecodedToken(match)) { // TODO
+                if (encoder.containsDecodedToken(match)) {
                     tokenCount++;
                 } else {
                     tokenCount += bytePairMerge2(match);
@@ -214,7 +217,7 @@ class GptBytePairEncoding implements Encoding {
      * Note that we do not actually modify the piece, but only the parts list. The above visualization is just for
      * illustration purposes.
      */
-    private List<Integer> bytePairMerge(ImmutableByteArray piece) {
+    List<Integer> bytePairMerge(ImmutableByteArray piece) {
         /*
          * piece:  v   e   c   t   o   r
          * index:  0   1   2   3   4   5   6
@@ -278,7 +281,7 @@ class GptBytePairEncoding implements Encoding {
     }
 
     private List<PieceIndexToRank> initializeParts(ImmutableByteArray piece) {
-        List<PieceIndexToRank> parts = new LinkedList<>();
+        List<PieceIndexToRank> parts = new ArrayList<>(piece.length() + 1);
         for (int i = 0; i < piece.length() + 1; i++) {
             int rank = i < piece.length() - 1
                     ? encoder.encodeOrDefault(piece.getBytesBetween(i, i + 2), Integer.MAX_VALUE)
@@ -288,14 +291,20 @@ class GptBytePairEncoding implements Encoding {
         return parts;
     }
 
-    private int bytePairMerge2(ImmutableByteArray piece) {
+    int bytePairMerge2(ImmutableByteArray piece) {
         var parts = initializeParts(piece);
-
         int result = parts.size() - 1;
         while (parts.size() > 1) {
+//            var out = IntStream.range(0, parts.size() - 1)
+//                    .mapToObj(i -> "%s(%d)".formatted(new String(piece.getBytesBetween(parts.get(i).index, parts.get(i + 1).index).getRawArray()), parts.get(i).rank))
+//                    .collect(joining("\t"));
+//            System.out.println(out);
+
             int minRankIndex = findMinRankIndex(parts);
             var minRandPart = parts.get(minRankIndex);
-            if (minRandPart.rank == Integer.MAX_VALUE) break;
+            if (minRandPart.rank == Integer.MAX_VALUE) {
+                break;
+            }
 
             minRandPart.rank = getRank(piece, parts, minRankIndex);
             if (minRankIndex > 0) {
@@ -327,12 +336,10 @@ class GptBytePairEncoding implements Encoding {
         int minRank = Integer.MAX_VALUE;
         for (int i = 0; i < parts.size() - 1; i++) {
             var part = parts.get(i);
-            if (part.isActive) {
-                int rank = part.rank;
-                if (rank < minRank) {
-                    minRank = rank;
-                    minRankIndex = i;
-                }
+            int rank = part.rank;
+            if (rank < minRank) {
+                minRank = rank;
+                minRankIndex = i;
             }
         }
         return minRankIndex;
@@ -363,18 +370,16 @@ class GptBytePairEncoding implements Encoding {
 
     private static class PieceIndexToRank {
         private final int index;
-        boolean isActive;
         private int rank;
 
         PieceIndexToRank(int index, int rank) {
             this.index = index;
             this.rank = rank;
-            this.isActive = true;
         }
 
         @Override
         public String toString() {
-            return "PieceIndexToRank{index=" + index + ", rank=" + rank + ", isActive=" + isActive + '}';
+            return "PieceIndexToRank{index=" + index + ", rank=" + rank + '}';
         }
     }
 }

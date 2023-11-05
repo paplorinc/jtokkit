@@ -1,11 +1,14 @@
 package com.knuddels.jtokkit;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.IntStream;
+
+import static java.util.stream.Collectors.toSet;
 
 /**
  * A TokenEncoder is used to encode and decode tokens. It is initialized with a map
@@ -17,8 +20,9 @@ import java.util.function.Function;
  */
 final class TokenEncoder<K, V> {
 
-    private final Map<K, V> decodedToEncoded = new ConcurrentHashMap<>();
-    private final Map<V, K> encodedToDecoded = new ConcurrentHashMap<>();
+    private final Map<K, V>[] groupedEncoder;
+    private final Function<K, Integer> keyToIndex;
+    private final Map<V, K> encodedToDecoded;
 
     /**
      * Creates a new TokenEncoder with the given input map. The keys of the map are
@@ -26,8 +30,8 @@ final class TokenEncoder<K, V> {
      *
      * @param input the input map
      */
-    public TokenEncoder(final Map<K, V> input) {
-        this(input, Function.identity());
+    public TokenEncoder(Map<K, V> input, Function<K, Integer> keyToIndex) {
+        this(input, keyToIndex, Function.identity());
     }
 
     /**
@@ -36,16 +40,35 @@ final class TokenEncoder<K, V> {
      * applied to the keys of the input map before they are added to the internal
      * maps.
      *
-     * @param input     the input map
+     * @param encoder   the input map
      * @param keyMapper the key mapper
      */
-    public <T> TokenEncoder(final Map<T, V> input, final Function<T, K> keyMapper) {
-        for (final Map.Entry<T, V> entry : input.entrySet()) {
-            final K key = keyMapper.apply(entry.getKey());
-            final V value = entry.getValue();
-            decodedToEncoded.put(key, value);
+    public <T> TokenEncoder(Map<T, V> encoder, Function<K, Integer> keyToLength, Function<T, K> keyMapper) {
+        var maxMapCount = 20;
+        this.keyToIndex = keyToLength.andThen(integer -> Math.min(integer, maxMapCount) - 1);
+        //noinspection unchecked
+        this.groupedEncoder = (Map<K, V>[]) IntStream.range(0, maxMapCount)
+                .mapToObj(i -> new ConcurrentHashMap<K, V>())
+                .toArray(Map[]::new);
+        this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
+
+        for (Map.Entry<T, V> entry : encoder.entrySet()) {
+            K key = keyMapper.apply(entry.getKey());
+            int keyLength = keyToIndex.apply(key);
+            V value = entry.getValue();
+
+            groupedEncoder[keyLength].put(key, value);
             encodedToDecoded.put(value, key);
         }
+        var UNSIGNED_BYTE_MAX = Byte.MAX_VALUE - Byte.MIN_VALUE + 1;
+        var firstMap = groupedEncoder[0];
+        if (firstMap.size() == UNSIGNED_BYTE_MAX) {
+            int[] array = new int[UNSIGNED_BYTE_MAX];
+            firstMap.forEach((k, v) -> array[((ImmutableByteArray) k).getFirstByte() - Byte.MIN_VALUE] = (Integer) v);
+            groupedEncoder[0] = (Map<K, V>) new ReadOnlyByteArrayMap(array);
+            System.out.println();
+        }
+        System.out.println();
     }
 
     /**
@@ -54,8 +77,8 @@ final class TokenEncoder<K, V> {
      * @param decodedToken the decoded token
      * @return true if the decoded token is contained in this encoder, false otherwise
      */
-    public boolean containsDecodedToken(final K decodedToken) {
-        return decodedToEncoded.containsKey(decodedToken);
+    public boolean containsDecodedToken(K decodedToken) {
+        return groupedEncoder[keyToIndex.apply(decodedToken)].containsKey(decodedToken);
     }
 
     /**
@@ -66,7 +89,7 @@ final class TokenEncoder<K, V> {
      * @throws IllegalArgumentException if the decoded token is not contained in this encoder
      */
     public V encode(final K decodedToken) {
-        final V encoded = decodedToEncoded.get(decodedToken);
+        V encoded = groupedEncoder[keyToIndex.apply(decodedToken)].get(decodedToken);
         if (encoded == null) {
             throw new IllegalArgumentException("Unknown token for encoding: " + decodedToken);
         }
@@ -82,7 +105,7 @@ final class TokenEncoder<K, V> {
      * @return the encoded token or an empty optional
      */
     public V encodeOrDefault(K decodedToken, V defaultValue) {
-        V result = decodedToEncoded.get(decodedToken);
+        V result = groupedEncoder[keyToIndex.apply(decodedToken)].get(decodedToken);
         return result != null ? result : defaultValue;
     }
 
@@ -98,11 +121,11 @@ final class TokenEncoder<K, V> {
     }
 
     /**
-     * Returns an unmodifiable set of all decoded tokens contained in this encoder.
+     * Returns a set of all decoded tokens contained in this encoder.
      *
-     * @return an unmodifiable set of all decoded tokens
+     * @return a set of all decoded tokens
      */
     public Set<K> getDecodedTokens() {
-        return Collections.unmodifiableSet(decodedToEncoded.keySet());
+        return Arrays.stream(groupedEncoder).flatMap(x -> x.keySet().stream()).collect(toSet()); // TODO slow
     }
 }

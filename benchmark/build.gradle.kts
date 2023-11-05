@@ -22,4 +22,5 @@ jmh {
     iterations.set(5)
     fork.set(2)
     benchmarkMode.set(listOf("ss"))
+    // profilers.set(listOf("stack"))
 }

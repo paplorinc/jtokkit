@@ -1,8 +1,7 @@
 package com.knuddels.jtokkit.reference;
 
-import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.api.Encoding;
-import com.knuddels.jtokkit.api.EncodingType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -19,18 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Cl100kBaseTestTest {
 
-    private static final Encoding ENCODING = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
     public static final List<String> TEXTS = loadData("../benchmark/data");
-
-    @Test
-    public void xxx() {
-        var actual = 0;
-        for (var fileContent : TEXTS) {
-            actual += ENCODING.countTokens(fileContent);
-        }
-        assertEquals(17815362, actual);
-    }
-
+    private static final Encoding ENCODING = EncodingFactory.cl100kBase();
 
     public static List<String> loadData(final String folder) {
         try {
@@ -54,6 +43,14 @@ public class Cl100kBaseTestTest {
         }
     }
 
+    @Test
+    public void xxx() {
+        var actual = 0;
+        for (var fileContent : TEXTS) {
+            actual += ENCODING.countTokens(fileContent);
+        }
+        assertEquals(17815362, actual);
+    }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
