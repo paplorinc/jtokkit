@@ -167,7 +167,12 @@ final class TokenEncoder {
         if (payload instanceof Number) {
             result = longEncoders.get((Number) payload);
         } else {
-            result = byteArrayEncoders.get((ImmutableByteArray) payload);
+            var immutableByteArray = (ImmutableByteArray) payload;
+            if (immutableByteArray.length() <= Long.BYTES) {
+                result = encodeOrDefault(of(immutableByteArray.getRawArray()), defaultValue); // TODO
+            } else {
+                result = byteArrayEncoders.get(immutableByteArray);
+            }
         }
         return result != null
                 ? result
