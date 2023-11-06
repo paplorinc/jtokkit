@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit.reference;
 
 import com.knuddels.jtokkit.EncodingFactory;
+import com.knuddels.jtokkit.GptBytePairEncoding;
 import com.knuddels.jtokkit.api.Encoding;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,11 +49,19 @@ public class Cl100kBaseTestTest {
 
     @Test
     public void xxx() {
-        var actual = 0;
-        for (var fileContent : TEXTS) {
-            actual += ENCODING.countTokens(fileContent);
-        }
+        var encoding = (GptBytePairEncoding) ENCODING;
+        var actual = TEXTS.stream().mapToInt(encoding::countTokens).sum();
         assertEquals(17815362, actual);
+
+        var actual1 = TEXTS.stream()
+                .flatMap(x -> encoding.encode(x).stream().map(y -> encoding.decodeToken(y).length))
+                .collect(groupingBy(identity(), counting()));
+
+        System.out.println(actual1);
+        System.out.println(214495 + 110470 + 43433 + 20046 + 8473 + 2596 + 785 + 158 + 49 + 215 + 35 + 34 + 53 + 42 + 44 + 25 + 41 + 73 + 29 + 36 + 26 + 26 + 47 + 33 + 18 + 11 + 7 + 10 + 13 + 15 + 15 + 11 + 6 + 12 + 12 + 14 + 16 + 8 + 9 + 10 + 4 + 6 + 3 + 8 + 4 + 30 + 1 + 6 + 5 + 1 + 1 + 1 + 25 + 1);
+
+
+        //params.getEncoder
     }
 
     @ParameterizedTest

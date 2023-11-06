@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 /**
  * Implementation of the byte pair encoding algorithm as used by the OpenAI tiktoken tokenizer.
  */
-class GptBytePairEncoding implements Encoding {
+public class GptBytePairEncoding implements Encoding {
 
     private final String name;
     private final Pattern pattern;
@@ -354,7 +354,7 @@ class GptBytePairEncoding implements Encoding {
         return !maxTokenCountReached(maxTokenCount, tokenCount);
     }
 
-    private byte[] decodeToken(int token) {
+    public byte[] decodeToken(int token) {
         Optional<ImmutableByteArray> decodedToken = encoder.decodeIfPresent(token);
         if (decodedToken.isPresent()) {
             return decodedToken.get().getRawArray();

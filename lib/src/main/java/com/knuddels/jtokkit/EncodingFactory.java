@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public final class EncodingFactory {
@@ -125,25 +122,28 @@ public final class EncodingFactory {
             final String fileName,
             final Map<String, Integer> specialTokens
     ) {
-        Pattern regex;
-        try {
-            regex = Pattern.compile(patternString, Pattern.UNICODE_CHARACTER_CLASS);
-        } catch (final IllegalArgumentException exception) {
-            // Workaround for Android where an IllegalArgumentException is thrown when using UNICODE_CHARACTER_CLASS
-            regex = Pattern.compile(patternString);
-        }
-
-        final GptBytePairEncodingParams params = new GptBytePairEncodingParams(name, regex, loadMergeableRanks(fileName), specialTokens);
+        Pattern regex = compileRegex(patternString);
+        Map<byte[], Integer> mergeableRanks = loadMergeableRanks(fileName);
+        final GptBytePairEncodingParams params = new GptBytePairEncodingParams(name, regex, mergeableRanks, specialTokens);
         return fromParameters(params);
     }
 
-    private static Map<byte[], Integer> loadMergeableRanks(final String fileName) {
-        try (final InputStream in = EncodingFactory.class.getResourceAsStream(fileName)) {
-            if (in == null) {
-                throw new IllegalStateException("Could not find " + fileName + " in resources");
-            }
+    private static Pattern compileRegex(String patternString) {
+        try {
+            return Pattern.compile(patternString, Pattern.UNICODE_CHARACTER_CLASS);
+        } catch (final IllegalArgumentException exception) {
+            // Workaround for Android where an IllegalArgumentException is thrown when using UNICODE_CHARACTER_CLASS
+            return Pattern.compile(patternString);
+        }
+    }
 
-            final Map<byte[], Integer> mergeableRanks = new HashMap<>();
+    static Map<byte[], Integer> loadMergeableRanks(final String fileName) {
+		try (final InputStream in = EncodingFactory.class.getResourceAsStream(fileName)) {
+			if (in == null) {
+				throw new IllegalStateException("Could not find " + fileName + " in resources");
+			}
+
+            final Map<byte[], Integer> mergeableRanks = new LinkedHashMap<>();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
