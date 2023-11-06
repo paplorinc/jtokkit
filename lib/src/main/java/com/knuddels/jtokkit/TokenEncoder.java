@@ -1,9 +1,6 @@
 package com.knuddels.jtokkit;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -29,9 +26,9 @@ final class TokenEncoder {
 
     public static int byteSize(Object payload) {
         if (payload instanceof Integer) {
-            return Integer.BYTES - Integer.numberOfLeadingZeros((Integer) payload) / Byte.SIZE;
+            return 1 + (Integer.SIZE - Integer.numberOfLeadingZeros((Integer) payload) - 1) / Byte.SIZE;
         } else if (payload instanceof Long) {
-            return Long.BYTES - Long.numberOfLeadingZeros((Long) payload) / Byte.SIZE;
+            return 1 + (Long.SIZE - Long.numberOfLeadingZeros((Long) payload) - 1) / Byte.SIZE;
         } else {
             return ((ImmutableByteArray) payload).length();
         }
@@ -40,13 +37,10 @@ final class TokenEncoder {
     public static Object of(String payload) {
         byte[] bytes = payload.getBytes(UTF_8);
         Object result = of(bytes);
-        assertEquals(bytes.length, byteSize(result));
-        assertEquals(payload, asString(result));
+        assert Objects.equals(bytes.length, byteSize(result));
+        assert Arrays.equals(bytes, asRawArray(result));
+        assert Objects.equals(payload, asString(result));
         return result;
-    }
-
-    private static void assertEquals(Object a, Object b) {
-        assert Objects.equals(a, b) : "Invalid tokenization: " + a + " != " + b;
     }
 
     private static Object of(byte[] bytes) {
@@ -102,9 +96,8 @@ final class TokenEncoder {
 
     // TODO specialize
     public static Object getBytesBetween(Object payload, int startIndex, int endIndex) {
-        var rawArray = asRawArray(payload);
-        var from = ImmutableByteArray.from(rawArray);
-        return from.getBytesBetween(startIndex, endIndex);
+        return ImmutableByteArray.from(asRawArray(payload))
+                .getBytesBetween(startIndex, endIndex);
     }
 
     public static byte[] asRawArray(Object payload) {
