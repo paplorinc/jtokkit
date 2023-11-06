@@ -35,6 +35,7 @@ class GptBytePairEncodingTest {
             var key = entry.getKey();
             var stringToken = new String(key, UTF_8);
             if (Arrays.equals(key, stringToken.getBytes(UTF_8))) {
+                System.out.println("Testing: " + stringToken);
                 var intToken = entry.getValue();
 
                 // Ensure countTokens returns the expected count

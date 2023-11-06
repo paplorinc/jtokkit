@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,7 +29,7 @@ public class GptBytePairEncoding implements Encoding {
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
-        this.encoder = new TokenEncoder(params.getEncoder(), ImmutableByteArray::length, ImmutableByteArray::from);
+        this.encoder = new TokenEncoder(params.getEncoder());
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
     }
 
@@ -81,9 +80,9 @@ public class GptBytePairEncoding implements Encoding {
         Matcher matcher = pattern.matcher(text);
         int tokenCount = 0;
         while (matcher.find() && maxTokenCountNotReached(maxTokens, tokenCount)) {
-            ImmutableByteArray match = ImmutableByteArray.from(matcher.group());
+            Object match = TokenEncoder.of(matcher.group());
             if (encoder.containsDecodedToken(match)) {
-                out.add(encoder.encode(match));
+                out.add(encoder.encodeOrDefault(match, null));
                 tokenCount++;
             } else {
                 List<Integer> tokensToAdd = bytePairMerge(match);
@@ -122,6 +121,7 @@ public class GptBytePairEncoding implements Encoding {
         return tokensToAdd.size();
     }
 
+    // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
 //		return encode(text).size();
@@ -131,7 +131,7 @@ public class GptBytePairEncoding implements Encoding {
             checkForSpecialTokens(text);
             int tokenCount = 0;
             for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
-                ImmutableByteArray match = ImmutableByteArray.from(matcher.group());
+                Object match = TokenEncoder.of(matcher.group());
                 if (encoder.containsDecodedToken(match)) {
                     tokenCount++;
                 } else {
@@ -217,13 +217,13 @@ public class GptBytePairEncoding implements Encoding {
      * Note that we do not actually modify the piece, but only the parts list. The above visualization is just for
      * illustration purposes.
      */
-    List<Integer> bytePairMerge(ImmutableByteArray piece) {
+    List<Integer> bytePairMerge(Object piece) {
         /*
          * piece:  v   e   c   t   o   r
          * index:  0   1   2   3   4   5   6
          * ranks:  4   3   7   2   13  inf inf
          */
-        var parts = initializeParts(piece);
+        List<PieceIndexToRank> parts = encoder.initializeParts(piece);
 
 
         while (parts.size() > 1) {
@@ -275,24 +275,14 @@ public class GptBytePairEncoding implements Encoding {
          */
         List<Integer> out = new ArrayList<>();
         for (int i = 0; i < parts.size() - 1; i++) {
-            out.add(encoder.encode(piece.getBytesBetween(parts.get(i).index, parts.get(i + 1).index)));
+            var bytesBetween = TokenEncoder.getBytesBetween(piece, parts.get(i).index, parts.get(i + 1).index);
+            out.add(encoder.encodeOrDefault(bytesBetween, null));
         }
         return out;
     }
 
-    private List<PieceIndexToRank> initializeParts(ImmutableByteArray piece) {
-        List<PieceIndexToRank> parts = new ArrayList<>(piece.length() + 1);
-        for (int i = 0; i < piece.length() + 1; i++) {
-            int rank = i < piece.length() - 1
-                    ? encoder.encodeOrDefault(piece.getBytesBetween(i, i + 2), Integer.MAX_VALUE)
-                    : Integer.MAX_VALUE;
-            parts.add(new PieceIndexToRank(i, rank));
-        }
-        return parts;
-    }
-
-    int bytePairMerge2(ImmutableByteArray piece) {
-        var parts = initializeParts(piece);
+    int bytePairMerge2(Object piece) {
+        List<PieceIndexToRank> parts = encoder.initializeParts(piece);
         int result = parts.size() - 1;
         while (parts.size() > 1) {
 //            var out = IntStream.range(0, parts.size() - 1)
@@ -301,7 +291,7 @@ public class GptBytePairEncoding implements Encoding {
 //            System.out.println(out);
 
             int minRankIndex = findMinRankIndex(parts);
-            var minRandPart = parts.get(minRankIndex);
+            PieceIndexToRank minRandPart = parts.get(minRankIndex);
             if (minRandPart.rank == Integer.MAX_VALUE) {
                 break;
             }
@@ -317,17 +307,17 @@ public class GptBytePairEncoding implements Encoding {
         return result;
     }
 
-    private int getRank(ImmutableByteArray piece, List<PieceIndexToRank> parts, int startIndex) {
-        var endIndex = startIndex + 3;
+    private int getRank(Object piece, List<PieceIndexToRank> parts, int startIndex) {
+        int endIndex = startIndex + 3;
         return endIndex >= parts.size()
                 ? Integer.MAX_VALUE
                 : doGetRank(piece, parts, startIndex, endIndex);
     }
 
-    private int doGetRank(ImmutableByteArray piece, List<PieceIndexToRank> parts, int startIndex, int endIndex) {
+    private int doGetRank(Object piece, List<PieceIndexToRank> parts, int startIndex, int endIndex) {
         int pieceStartIndex = parts.get(startIndex).index;
         int pieceEndIndex = parts.get(endIndex).index;
-        ImmutableByteArray encoderIndex = piece.getBytesBetween(pieceStartIndex, pieceEndIndex);
+        Object encoderIndex = TokenEncoder.getBytesBetween(piece, pieceStartIndex, pieceEndIndex);
         return encoder.encodeOrDefault(encoderIndex, Integer.MAX_VALUE);
     }
 
@@ -335,7 +325,7 @@ public class GptBytePairEncoding implements Encoding {
         int minRankIndex = 0;
         int minRank = Integer.MAX_VALUE;
         for (int i = 0; i < parts.size() - 1; i++) {
-            var part = parts.get(i);
+            PieceIndexToRank part = parts.get(i);
             int rank = part.rank;
             if (rank < minRank) {
                 minRank = rank;
@@ -354,21 +344,21 @@ public class GptBytePairEncoding implements Encoding {
         return !maxTokenCountReached(maxTokenCount, tokenCount);
     }
 
-    public byte[] decodeToken(int token) {
-        Optional<ImmutableByteArray> decodedToken = encoder.decodeIfPresent(token);
-        if (decodedToken.isPresent()) {
-            return decodedToken.get().getRawArray();
+    public byte[] decodeToken(Integer token) {
+        byte[] decodedToken = encoder.decodeIfPresent(token);
+        if (decodedToken != null) {
+            return decodedToken;
         }
 
-        Optional<String> decodedSpecialToken = specialTokensEncoder.decodeIfPresent(token);
-        if (decodedSpecialToken.isPresent()) {
-            return decodedSpecialToken.get().getBytes(StandardCharsets.UTF_8);
+        String decodedSpecialToken = specialTokensEncoder.decodeIfPresent(token);
+        if (decodedSpecialToken != null) {
+            return decodedSpecialToken.getBytes(StandardCharsets.UTF_8);
         }
 
         throw new IllegalArgumentException("Unknown token for decoding: " + token);
     }
 
-    private static class PieceIndexToRank {
+    static class PieceIndexToRank {
         private final int index;
         private int rank;
 

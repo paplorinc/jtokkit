@@ -2,7 +2,6 @@ package com.knuddels.jtokkit;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 final class StringEncoder {
@@ -20,8 +19,8 @@ final class StringEncoder {
     }
 
 
-    public Optional<String> decodeIfPresent(final Integer encodedToken) {
-        return Optional.ofNullable(encodedToDecoded.get(encodedToken));
+    public String decodeIfPresent(final Integer encodedToken) {
+        return encodedToDecoded.get(encodedToken);
     }
 
     public Collection<String> getDecodedTokens() {

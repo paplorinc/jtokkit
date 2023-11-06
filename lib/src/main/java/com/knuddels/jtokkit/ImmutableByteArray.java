@@ -17,7 +17,7 @@ final class ImmutableByteArray {
      * construction methods already create new arrays, we do not want to copy here in this
      * constructor again.
      */
-    private ImmutableByteArray(final byte[] array, final int start, final int end) {
+    ImmutableByteArray(final byte[] array, final int start, final int end) {
         this.array = array;
         this.start = start;
         this.end = end;

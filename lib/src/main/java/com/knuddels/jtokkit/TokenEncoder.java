@@ -1,64 +1,183 @@
 package com.knuddels.jtokkit;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.IntStream;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
-    private final Map<ImmutableByteArray, Integer>[] groupedEncoder;
-    private final Function<ImmutableByteArray, Integer> keyToIndex;
-    private final Map<Integer, ImmutableByteArray> encodedToDecoded;
+    private final Map<Number, Integer> longEncoders = new ConcurrentHashMap<>(); // TODO ImmutableLongIntMap
+    private final Map<ImmutableByteArray, Integer> byteArrayEncoders = new ConcurrentHashMap<>();
+    private final Map<Integer, byte[]> encodedToDecoded;
 
-    public TokenEncoder(Map<byte[], Integer> encoder, Function<com.knuddels.jtokkit.ImmutableByteArray, java.lang.Integer> keyToLength, Function<byte[], com.knuddels.jtokkit.ImmutableByteArray> keyMapper) {
-        var maxMapCount = 20;
-        this.keyToIndex = keyToLength.andThen(integer -> Math.min(integer, maxMapCount) - 1);
-        //noinspection unchecked
-        this.groupedEncoder = (Map<com.knuddels.jtokkit.ImmutableByteArray, Integer>[]) IntStream.range(0, maxMapCount)
-                .mapToObj(i -> new ConcurrentHashMap<com.knuddels.jtokkit.ImmutableByteArray, Integer>())
-                .toArray(Map[]::new);
+    public TokenEncoder(Map<byte[], Integer> encoder) {
+        this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
 
-        this.encodedToDecoded = new ConcurrentHashMap<>();
+        encoder.forEach((k, v) -> {
+            Object key = of(k);
+            if (key instanceof Number) {
+                longEncoders.put((Number) key, v);
+            } else {
+                byteArrayEncoders.put((ImmutableByteArray) key, v);
+            }
+            encodedToDecoded.put(v, k);
+        });
+    }
 
-        for (Map.Entry<byte[], Integer> entry : encoder.entrySet()) {
-            com.knuddels.jtokkit.ImmutableByteArray key = keyMapper.apply(entry.getKey());
-            int keyLength = keyToIndex.apply(key);
-            Integer value = entry.getValue();
-
-            groupedEncoder[keyLength].put(key, value);
-            encodedToDecoded.put(value, key);
+    public static int byteSize(Object payload) {
+        if (payload instanceof Integer) {
+            return Integer.BYTES - Integer.numberOfLeadingZeros((Integer) payload) / Byte.SIZE;
+        } else if (payload instanceof Long) {
+            return Long.BYTES - Long.numberOfLeadingZeros((Long) payload) / Byte.SIZE;
+        } else {
+            return ((ImmutableByteArray) payload).length();
         }
-        var UNSIGNED_BYTE_MAX = Byte.MAX_VALUE - Byte.MIN_VALUE + 1;
-        var firstMap = groupedEncoder[0];
-        if (firstMap.size() == UNSIGNED_BYTE_MAX) {
-            int[] array = new int[UNSIGNED_BYTE_MAX];
-            firstMap.forEach((immutableByteArray, integer) -> array[immutableByteArray.getFirstByte() - Byte.MIN_VALUE] = integer);
-            groupedEncoder[0] = new ReadOnlyByteArrayMap(array);
-            System.out.println();
+    }
+
+    public static Object of(String payload) {
+        byte[] bytes = payload.getBytes(UTF_8);
+        Object result = of(bytes);
+        assertEquals(bytes.length, byteSize(result));
+        assertEquals(payload, asString(result));
+        return result;
+    }
+
+    private static void assertEquals(Object a, Object b) {
+        assert Objects.equals(a, b) : "Invalid tokenization: " + a + " != " + b;
+    }
+
+    private static Object of(byte[] bytes) {
+        switch (bytes.length) {
+            case 1:
+                return bytes[0] & 0xFF;
+            case 2:
+                return ((bytes[0] & 0xFF) << 8) |
+                        (bytes[1] & 0xFF);
+            case 3:
+                return ((bytes[0] & 0xFF) << 16) |
+                        ((bytes[1] & 0xFF) << 8) |
+                        (bytes[2] & 0xFF);
+            case 4:
+                return ((bytes[0] & 0xFF) << 24) |
+                        ((bytes[1] & 0xFF) << 16) |
+                        ((bytes[2] & 0xFF) << 8) |
+                        (bytes[3] & 0xFF);
+            case 5:
+                return ((long) (bytes[0] & 0xFF) << 32) |
+                        ((long) (bytes[1] & 0xFF) << 24) |
+                        ((long) (bytes[2] & 0xFF) << 16) |
+                        ((long) (bytes[3] & 0xFF) << 8) |
+                        ((long) (bytes[4] & 0xFF));
+            case 6:
+                return ((long) (bytes[0] & 0xFF) << 40) |
+                        ((long) (bytes[1] & 0xFF) << 32) |
+                        ((long) (bytes[2] & 0xFF) << 24) |
+                        ((long) (bytes[3] & 0xFF) << 16) |
+                        ((long) (bytes[4] & 0xFF) << 8) |
+                        ((long) (bytes[5] & 0xFF));
+            case 7:
+                return ((long) (bytes[0] & 0xFF) << 48) |
+                        ((long) (bytes[1] & 0xFF) << 40) |
+                        ((long) (bytes[2] & 0xFF) << 32) |
+                        ((long) (bytes[3] & 0xFF) << 24) |
+                        ((long) (bytes[4] & 0xFF) << 16) |
+                        ((long) (bytes[5] & 0xFF) << 8) |
+                        ((long) (bytes[6] & 0xFF));
+            case 8:
+                return ((long) (bytes[0] & 0xFF) << 56) |
+                        ((long) (bytes[1] & 0xFF) << 48) |
+                        ((long) (bytes[2] & 0xFF) << 40) |
+                        ((long) (bytes[3] & 0xFF) << 32) |
+                        ((long) (bytes[4] & 0xFF) << 24) |
+                        ((long) (bytes[5] & 0xFF) << 16) |
+                        ((long) (bytes[6] & 0xFF) << 8) |
+                        ((long) (bytes[7] & 0xFF));
+            default:
+                return new ImmutableByteArray(bytes, 0, bytes.length);
         }
-        System.out.println();
     }
 
-    public boolean containsDecodedToken(ImmutableByteArray decodedToken) {
-        return groupedEncoder[keyToIndex.apply(decodedToken)].containsKey(decodedToken);
+    // TODO specialize
+    public static Object getBytesBetween(Object payload, int startIndex, int endIndex) {
+        var rawArray = asRawArray(payload);
+        var from = ImmutableByteArray.from(rawArray);
+        return from.getBytesBetween(startIndex, endIndex);
     }
 
-    public Integer encode(final ImmutableByteArray decodedToken) {
-        Integer encoded = groupedEncoder[keyToIndex.apply(decodedToken)].get(decodedToken);
-        if (encoded == null) {
-            throw new IllegalArgumentException("Unknown token for encoding: " + decodedToken);
+    public static byte[] asRawArray(Object payload) {
+        return asRawArray(payload, TokenEncoder.byteSize(payload));
+    }
+
+    private static byte[] asRawArray(Object payload, int length) {
+        switch (length) {
+            case 1:
+            case 2:
+            case 3:
+            case 4: {
+                byte[] bytes = new byte[length];
+                for (int value = (Integer) payload; length > 0; ) {
+                    bytes[--length] = (byte) (value & 0xFF);
+                    value >>>= Byte.SIZE;
+                }
+                return bytes;
+            }
+            case 5:
+            case 6:
+            case 7:
+            case 8: {
+                byte[] bytes = new byte[length];
+                for (long value = (Long) payload; length > 0; ) {
+                    bytes[--length] = (byte) (value & 0xFF);
+                    value >>>= Byte.SIZE;
+                }
+                return bytes;
+            }
+            default:
+                return ((ImmutableByteArray) payload).getRawArray();
         }
-
-        return encoded;
     }
 
-    public Integer encodeOrDefault(ImmutableByteArray decodedToken, Integer defaultValue) {
-        Integer result = groupedEncoder[keyToIndex.apply(decodedToken)].get(decodedToken);
-        return result != null ? result : defaultValue;
+    public static String asString(Object payload) {
+        return new String(asRawArray(payload), UTF_8);
     }
 
-    public Optional<ImmutableByteArray> decodeIfPresent(final Integer encodedToken) {
-        return Optional.ofNullable(encodedToDecoded.get(encodedToken));
+    public List<GptBytePairEncoding.PieceIndexToRank> initializeParts(Object payload) {
+        // TODO specialize
+        int length = TokenEncoder.byteSize(payload);
+        List<GptBytePairEncoding.PieceIndexToRank> parts = new ArrayList<>(length + 1);
+        for (int i = 0; i < length + 1; i++) {
+            int rank = i < length - 1
+                    ? encodeOrDefault(TokenEncoder.getBytesBetween(payload, i, i + 2), Integer.MAX_VALUE)
+                    : Integer.MAX_VALUE;
+            parts.add(new GptBytePairEncoding.PieceIndexToRank(i, rank));
+        }
+        return parts;
+    }
+
+    public byte[] decodeIfPresent(Integer encodedToken) {
+        return encodedToDecoded.get(encodedToken);
+    }
+
+    public boolean containsDecodedToken(Object payload) {
+        if (payload instanceof Number) {
+            return longEncoders.containsKey((Number) payload);
+        } else {
+            return byteArrayEncoders.containsKey((ImmutableByteArray) payload);
+        }
+    }
+
+    public Integer encodeOrDefault(Object payload, Integer defaultValue) {
+        Integer result;
+        if (payload instanceof Number) {
+            result = longEncoders.get((Number) payload);
+        } else {
+            result = byteArrayEncoders.get((ImmutableByteArray) payload);
+        }
+        return result != null
+                ? result
+                : Objects.requireNonNull(defaultValue, () -> "Unknown token for encoding: " + payload);
     }
 }
