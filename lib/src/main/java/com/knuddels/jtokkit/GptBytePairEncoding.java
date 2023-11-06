@@ -19,8 +19,9 @@ public class GptBytePairEncoding implements Encoding {
 
     private final String name;
     private final Pattern pattern;
-    private final TokenEncoder<ImmutableByteArray, Integer> encoder;
-    private final TokenEncoder<String, Integer> specialTokensEncoder;
+    private final TokenEncoder encoder;
+    private final StringEncoder decoder;
+    private final StringEncoder specialTokensEncoder;
 
     /**
      * Creates a new instance of {@link GptBytePairEncoding}.
@@ -30,8 +31,9 @@ public class GptBytePairEncoding implements Encoding {
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
-        this.encoder = new TokenEncoder<>(params.getEncoder(), ImmutableByteArray::length, ImmutableByteArray::from);
-        this.specialTokensEncoder = new TokenEncoder<>(params.getSpecialTokensEncoder(), String::length);
+        this.encoder = new TokenEncoder(params.getEncoder(), ImmutableByteArray::length, ImmutableByteArray::from);
+        this.decoder = new StringEncoder(params.getEncoder());
+        this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
     }
 
     @Override
