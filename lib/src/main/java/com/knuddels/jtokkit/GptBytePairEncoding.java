@@ -20,7 +20,6 @@ public class GptBytePairEncoding implements Encoding {
     private final String name;
     private final Pattern pattern;
     private final TokenEncoder encoder;
-    private final StringEncoder decoder;
     private final StringEncoder specialTokensEncoder;
 
     /**
@@ -32,7 +31,6 @@ public class GptBytePairEncoding implements Encoding {
         this.name = params.getName();
         this.pattern = params.getPattern();
         this.encoder = new TokenEncoder(params.getEncoder(), ImmutableByteArray::length, ImmutableByteArray::from);
-        this.decoder = new StringEncoder(params.getEncoder());
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
     }
 

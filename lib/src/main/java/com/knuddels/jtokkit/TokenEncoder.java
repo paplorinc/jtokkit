@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -8,25 +9,25 @@ import java.util.stream.IntStream;
 final class TokenEncoder {
     private final Map<ImmutableByteArray, Integer>[] groupedEncoder;
     private final Function<ImmutableByteArray, Integer> keyToIndex;
+    private final Map<Integer, ImmutableByteArray> encodedToDecoded;
 
-    public TokenEncoder(Map<ImmutableByteArray, Integer> input, Function<ImmutableByteArray, Integer> keyToIndex) {
-        this(input, keyToIndex, Function.identity());
-    }
-
-    public TokenEncoder(Map<ImmutableByteArray, Integer> encoder, Function<ImmutableByteArray, Integer> keyToLength, Function<ImmutableByteArray, ImmutableByteArray> keyMapper) {
+    public TokenEncoder(Map<byte[], Integer> encoder, Function<com.knuddels.jtokkit.ImmutableByteArray, java.lang.Integer> keyToLength, Function<byte[], com.knuddels.jtokkit.ImmutableByteArray> keyMapper) {
         var maxMapCount = 20;
         this.keyToIndex = keyToLength.andThen(integer -> Math.min(integer, maxMapCount) - 1);
         //noinspection unchecked
-        this.groupedEncoder = (Map<ImmutableByteArray, Integer>[]) IntStream.range(0, maxMapCount)
-                .mapToObj(i -> new ConcurrentHashMap<ImmutableByteArray, Integer>())
+        this.groupedEncoder = (Map<com.knuddels.jtokkit.ImmutableByteArray, Integer>[]) IntStream.range(0, maxMapCount)
+                .mapToObj(i -> new ConcurrentHashMap<com.knuddels.jtokkit.ImmutableByteArray, Integer>())
                 .toArray(Map[]::new);
 
-        for (Map.Entry<ImmutableByteArray, Integer> entry : encoder.entrySet()) {
-            ImmutableByteArray key = keyMapper.apply(entry.getKey());
+        this.encodedToDecoded = new ConcurrentHashMap<>();
+
+        for (Map.Entry<byte[], Integer> entry : encoder.entrySet()) {
+            com.knuddels.jtokkit.ImmutableByteArray key = keyMapper.apply(entry.getKey());
             int keyLength = keyToIndex.apply(key);
             Integer value = entry.getValue();
 
             groupedEncoder[keyLength].put(key, value);
+            encodedToDecoded.put(value, key);
         }
         var UNSIGNED_BYTE_MAX = Byte.MAX_VALUE - Byte.MIN_VALUE + 1;
         var firstMap = groupedEncoder[0];
@@ -55,5 +56,9 @@ final class TokenEncoder {
     public Integer encodeOrDefault(ImmutableByteArray decodedToken, Integer defaultValue) {
         Integer result = groupedEncoder[keyToIndex.apply(decodedToken)].get(decodedToken);
         return result != null ? result : defaultValue;
+    }
+
+    public Optional<ImmutableByteArray> decodeIfPresent(final Integer encodedToken) {
+        return Optional.ofNullable(encodedToDecoded.get(encodedToken));
     }
 }
