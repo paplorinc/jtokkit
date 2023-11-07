@@ -6,9 +6,6 @@ import java.util.Objects;
 
 final class ImmutableByteArray {
     private final byte[] array;
-    private final int start;
-    private final int end;
-
 
     /*
      * Creates a new instance of ImmutableByteArray from the given array.
@@ -17,10 +14,8 @@ final class ImmutableByteArray {
      * construction methods already create new arrays, we do not want to copy here in this
      * constructor again.
      */
-    ImmutableByteArray(final byte[] array, final int start, final int end) {
+    ImmutableByteArray(final byte[] array) {
         this.array = array;
-        this.start = start;
-        this.end = end;
     }
 
     /**
@@ -31,8 +26,7 @@ final class ImmutableByteArray {
      */
     public static ImmutableByteArray from(final String string) {
         Objects.requireNonNull(string, "String must not be null");
-        final byte[] array = string.getBytes(StandardCharsets.UTF_8);
-        return new ImmutableByteArray(array, 0, array.length);
+        return new ImmutableByteArray(string.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -43,7 +37,7 @@ final class ImmutableByteArray {
      */
     public static ImmutableByteArray from(final byte[] array) {
         Objects.requireNonNull(array, "Byte array must not be null");
-        return new ImmutableByteArray(array.clone(), 0, array.length);
+        return new ImmutableByteArray(array.clone());
     }
 
     /**
@@ -52,7 +46,7 @@ final class ImmutableByteArray {
      * @return the length of this array.
      */
     public int length() {
-        return end - start;
+        return array.length;
     }
 
     /**
@@ -66,9 +60,9 @@ final class ImmutableByteArray {
      *                                  startIndex
      */
     public ImmutableByteArray getBytesBetween(final int startIndex, final int endIndex) {
-        if (startIndex < 0 || startIndex >= length()) {
+        if (startIndex < 0 || startIndex >= array.length) {
             throw new IndexOutOfBoundsException("startIndex out of bounds: " + startIndex + " (" + this + ")");
-        } else if (endIndex < 0 || endIndex > length()) {
+        } else if (endIndex < 0 || endIndex > array.length) {
             throw new IndexOutOfBoundsException("endIndex out of bounds: " + endIndex + " (" + this + ")");
         } else if (startIndex >= endIndex) {
             throw new IllegalArgumentException("startIndex must be less than endIndex: " + startIndex + " >= " + endIndex);
@@ -76,27 +70,24 @@ final class ImmutableByteArray {
         if (length() == endIndex - startIndex) {
             return this;
         } else {
-            return new ImmutableByteArray(array, start + startIndex, start + endIndex);
+            final int length = endIndex - startIndex;
+            final byte[] result = new byte[length];
+            System.arraycopy(array, startIndex, result, 0, length);
+            return new ImmutableByteArray(result);
         }
     }
 
     /**
-     * Returns a copy of the raw array backing this {@link ImmutableByteArray}.
+     * Returns the raw array backing this {@link ImmutableByteArray}.
      *
-     * @return a copy of the raw array backing this {@link ImmutableByteArray}
+     * @return the raw array backing this {@link ImmutableByteArray}
      */
-    public byte[] getRawArray() {
-        final byte[] result = new byte[length()];
-        System.arraycopy(array, start, result, 0, length());
-        return result;
-    }
-
-    public byte getFirstByte() {
-        return array[start];
+    public byte[] getRawArrayUnsafe() {
+        return array;
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
         if (this == other) {
             return true;
         } else if (other == null || getClass() != other.getClass()) {
@@ -104,20 +95,16 @@ final class ImmutableByteArray {
         }
 
         final ImmutableByteArray that = (ImmutableByteArray) other;
-        return Arrays.equals(this.array, this.start, this.end, that.array, that.start, that.end);
+        return Arrays.equals(array, that.array);
     }
 
     @Override
     public int hashCode() {
-        int result = array[start];
-        for (int i = start + 1; i < end; i++) {
-            result = 31 * result + array[i];
-        }
-        return result;
+        return Arrays.hashCode(array);
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(Arrays.copyOfRange(array, start, end));
+        return Arrays.toString(array);
     }
 }

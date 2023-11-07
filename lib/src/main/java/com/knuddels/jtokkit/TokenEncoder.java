@@ -88,7 +88,7 @@ final class TokenEncoder {
                         (long) (bytes[6] & 0xFF) << 8 |
                         (long) (bytes[7] & 0xFF);
             default:
-                return new ImmutableByteArray(bytes, 0, bytes.length);
+                return new ImmutableByteArray(bytes);
         }
     }
 
@@ -100,14 +100,14 @@ final class TokenEncoder {
             return payload;
         } else if (newLength <= Long.BYTES) {
             if (payload instanceof ImmutableByteArray) {
-                return of(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArray()); // TODO optimize
+                return of(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()); // TODO optimize
             } else {
                 long result = (Long) payload;
                 result &= -1L >>> (Long.BYTES - length + startIndex) * Byte.SIZE;
                 result >>>= (length - endIndex) * Byte.SIZE;
 
                 var rawArray = asRawArray(result);
-                var rawArray1 = getImmutableByteArray(payload, startIndex, endIndex, length).getRawArray();
+                var rawArray1 = getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe();
                 assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
                 assert Arrays.equals(rawArray, rawArray1) : "Expected raw array: " + Arrays.toString(rawArray1) + ", but got: " + Arrays.toString(rawArray) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
 
@@ -151,7 +151,7 @@ final class TokenEncoder {
                 return bytes;
             }
             default:
-                return ((ImmutableByteArray) payload).getRawArray();
+                return ((ImmutableByteArray) payload).getRawArrayUnsafe();
         }
     }
 
@@ -191,7 +191,7 @@ final class TokenEncoder {
         } else {
             var immutableByteArray = (ImmutableByteArray) payload;
             if (immutableByteArray.length() <= Long.BYTES) {
-                result = encodeOrDefault(of(immutableByteArray.getRawArray()), defaultValue); // TODO
+                result = encodeOrDefault(of(immutableByteArray.getRawArrayUnsafe()), defaultValue); // TODO
             } else {
                 result = byteArrayEncoders.get(immutableByteArray);
             }
