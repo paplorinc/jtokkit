@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -237,7 +238,7 @@ public class GptBytePairEncoding implements Encoding {
              * minRank = 2
              */
             int minRankIndex = 0;
-            int minRank = Integer.MAX_VALUE;
+            int minRank = MAX_RANK;
             for (int i = 0; i < parts.size() - 1; i++) {
                 int rank = parts.get(i).rank;
                 if (rank < minRank) {
@@ -251,7 +252,7 @@ public class GptBytePairEncoding implements Encoding {
              * index:  0   1   2   3    5   6
              * ranks:  4   3   5   9    inf inf
              */
-            if (minRank != Integer.MAX_VALUE) {
+            if (minRank != MAX_RANK) {
                 // Note that we calculate the rank of the byte pairs at minRankIndex and minRankIndex - 1 before removing
                 // the merged byte pair. We use the skip parameter of the getRank function to calculate the rank of, in our
                 // example, "t" + "o" + "r" and "c" + "t" + "o". The assumption made in the OpenAI implementation is that
@@ -293,7 +294,7 @@ public class GptBytePairEncoding implements Encoding {
 
             int minRankIndex = findMinRankIndex(parts);
             PieceIndexToRank minRandPart = parts.get(minRankIndex);
-            if (minRandPart.rank == Integer.MAX_VALUE) {
+            if (minRandPart.rank == MAX_RANK) {
                 break;
             }
 
@@ -311,18 +312,18 @@ public class GptBytePairEncoding implements Encoding {
     private int getRank(Object piece, List<PieceIndexToRank> parts, int startIndex) {
         int endIndex = startIndex + 3;
         if (endIndex >= parts.size()) {
-            return Integer.MAX_VALUE;
+            return MAX_RANK;
         } else {
             int pieceStartIndex = parts.get(startIndex).index;
             int pieceEndIndex = parts.get(endIndex).index;
             Object encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
-            return encoder.encodeOrDefault(encoderIndex, Integer.MAX_VALUE);
+            return encoder.encodeOrDefault(encoderIndex, MAX_RANK);
         }
     }
 
     private int findMinRankIndex(List<PieceIndexToRank> parts) {
         int minRankIndex = 0;
-        int minRank = Integer.MAX_VALUE;
+        int minRank = MAX_RANK;
         for (int i = 0; i < parts.size() - 2; i++) {
             PieceIndexToRank part = parts.get(i);
             int rank = part.rank;

@@ -91,9 +91,9 @@ final class TokenEncoder {
     }
 
     private static long subTokenLong(long payload, int startIndex, int endIndex, int length, int newLength) {
-        long mask = -1L >>> (Long.BYTES - length + startIndex) * Byte.SIZE;
         int shift = (length - endIndex) * Byte.SIZE;
-        long result = (payload & mask) >>> shift;
+        long mask = -1L >>> -(newLength * Byte.SIZE);
+        long result = (payload >>> shift) & mask;
 
         assert Arrays.equals(asRawArray(result, newLength), getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) : "Expected raw array: " + Arrays.toString(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) + ", but got: " + Arrays.toString(asRawArray(result, newLength)) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
         assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
