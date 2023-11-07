@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
-    private final Map<Long, Integer> longEncoders = new ConcurrentHashMap<>(); // TODO ImmutableLongIntMap
-    private final Map<ImmutableByteArray, Integer> byteArrayEncoders = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> longEncoders = new HashMap<>(); // TODO ImmutableLongIntMap
+    private final Map<ImmutableByteArray, Integer> immutableByteArrayEncoders = new HashMap<>();
     private final Map<Integer, byte[]> encodedToDecoded;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
@@ -18,7 +18,7 @@ final class TokenEncoder {
             if (key instanceof Long) {
                 longEncoders.put((Long) key, v);
             } else {
-                byteArrayEncoders.put((ImmutableByteArray) key, v);
+                immutableByteArrayEncoders.put((ImmutableByteArray) key, v);
             }
             encodedToDecoded.put(v, k);
         });
@@ -56,7 +56,7 @@ final class TokenEncoder {
 
     // TODO specialize
     public static Object getSubToken(Object payload, int startIndex, int endIndex) {
-        var length = TokenEncoder.byteSize(payload);
+        var length = byteSize(payload);
         var newLength = endIndex - startIndex;
         if (length == newLength) {
             return payload;
@@ -68,10 +68,8 @@ final class TokenEncoder {
                 result &= -1L >>> (Long.BYTES - length + startIndex) * Byte.SIZE;
                 result >>>= (length - endIndex) * Byte.SIZE;
 
-                var rawArray = asRawArray(result);
-                var rawArray1 = getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe();
                 assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
-                assert Arrays.equals(rawArray, rawArray1) : "Expected raw array: " + Arrays.toString(rawArray1) + ", but got: " + Arrays.toString(rawArray) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
+                assert Arrays.equals(asRawArray(result, newLength), getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) : "Expected raw array: " + Arrays.toString(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) + ", but got: " + Arrays.toString(asRawArray(result, newLength)) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
 
                 return result;
             }
@@ -91,29 +89,20 @@ final class TokenEncoder {
     }
 
     public static byte[] asRawArray(Object payload) {
-        return asRawArray(payload, TokenEncoder.byteSize(payload));
+        return asRawArray(payload, byteSize(payload));
     }
 
     private static byte[] asRawArray(Object payload, int length) {
-        switch (length) {
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 8: {
-                // TODO specialize
-                byte[] bytes = new byte[length];
-                for (long value = (Long) payload; length > 0; ) {
-                    bytes[--length] = (byte) (value & 0xFF);
-                    value >>>= Byte.SIZE;
-                }
-                return bytes;
+        if (length <= Long.BYTES) {
+            // TODO specialize
+            byte[] bytes = new byte[length];
+            for (long value = (Long) payload; length > 0; ) {
+                bytes[--length] = (byte) (value & 0xFF);
+                value >>>= Byte.SIZE;
             }
-            default:
-                return ((ImmutableByteArray) payload).getRawArrayUnsafe();
+            return bytes;
+        } else {
+            return ((ImmutableByteArray) payload).getRawArrayUnsafe();
         }
     }
 
@@ -123,11 +112,11 @@ final class TokenEncoder {
 
     public List<GptBytePairEncoding.PieceIndexToRank> initializeParts(Object payload) {
         // TODO specialize
-        int length = TokenEncoder.byteSize(payload);
+        int length = byteSize(payload);
         List<GptBytePairEncoding.PieceIndexToRank> parts = new ArrayList<>(length + 1);
         for (int i = 0; i < length + 1; i++) {
             int rank = i < length - 1
-                    ? encodeOrDefault(TokenEncoder.getSubToken(payload, i, i + 2), Integer.MAX_VALUE)
+                    ? encodeOrDefault(getSubToken(payload, i, i + 2), Integer.MAX_VALUE)
                     : Integer.MAX_VALUE;
             parts.add(new GptBytePairEncoding.PieceIndexToRank(i, rank));
         }
@@ -142,7 +131,7 @@ final class TokenEncoder {
         if (payload instanceof Long) {
             return longEncoders.containsKey((Long) payload);
         } else {
-            return byteArrayEncoders.containsKey((ImmutableByteArray) payload);
+            return immutableByteArrayEncoders.containsKey((ImmutableByteArray) payload);
         }
     }
 
@@ -155,7 +144,7 @@ final class TokenEncoder {
             if (immutableByteArray.length() <= Long.BYTES) {
                 result = encodeOrDefault(of(immutableByteArray.getRawArrayUnsafe()), defaultValue); // TODO
             } else {
-                result = byteArrayEncoders.get(immutableByteArray);
+                result = immutableByteArrayEncoders.get(immutableByteArray);
             }
         }
         return result != null
