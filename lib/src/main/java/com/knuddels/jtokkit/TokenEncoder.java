@@ -42,53 +42,15 @@ final class TokenEncoder {
     }
 
     private static Object of(byte[] bytes) {
-        switch (bytes.length) {
-            case 1:
-                return (long) (bytes[0] & 0xFF);
-            case 2:
-                return (long) (bytes[0] & 0xFF) << 8 |
-                        (long) (bytes[1] & 0xFF);
-            case 3:
-                return (long) (bytes[0] & 0xFF) << 16 |
-                        (long) (bytes[1] & 0xFF) << 8 |
-                        (long) (bytes[2] & 0xFF);
-            case 4:
-                return (long) (bytes[0] & 0xFF) << 24 |
-                        (long) (bytes[1] & 0xFF) << 16 |
-                        (long) (bytes[2] & 0xFF) << 8 |
-                        (long) (bytes[3] & 0xFF);
-            case 5:
-                return (long) (bytes[0] & 0xFF) << 32 |
-                        (long) (bytes[1] & 0xFF) << 24 |
-                        (long) (bytes[2] & 0xFF) << 16 |
-                        (long) (bytes[3] & 0xFF) << 8 |
-                        (long) (bytes[4] & 0xFF);
-            case 6:
-                return (long) (bytes[0] & 0xFF) << 40 |
-                        (long) (bytes[1] & 0xFF) << 32 |
-                        (long) (bytes[2] & 0xFF) << 24 |
-                        (long) (bytes[3] & 0xFF) << 16 |
-                        (long) (bytes[4] & 0xFF) << 8 |
-                        (long) (bytes[5] & 0xFF);
-            case 7:
-                return (long) (bytes[0] & 0xFF) << 48 |
-                        (long) (bytes[1] & 0xFF) << 40 |
-                        (long) (bytes[2] & 0xFF) << 32 |
-                        (long) (bytes[3] & 0xFF) << 24 |
-                        (long) (bytes[4] & 0xFF) << 16 |
-                        (long) (bytes[5] & 0xFF) << 8 |
-                        (long) (bytes[6] & 0xFF);
-            case 8:
-                return (long) (bytes[0] & 0xFF) << 56 |
-                        (long) (bytes[1] & 0xFF) << 48 |
-                        (long) (bytes[2] & 0xFF) << 40 |
-                        (long) (bytes[3] & 0xFF) << 32 |
-                        (long) (bytes[4] & 0xFF) << 24 |
-                        (long) (bytes[5] & 0xFF) << 16 |
-                        (long) (bytes[6] & 0xFF) << 8 |
-                        (long) (bytes[7] & 0xFF);
-            default:
-                return new ImmutableByteArray(bytes);
+        if (bytes.length <= Byte.SIZE) {
+            long result = bytes[0] & 0xFFL;
+            for (int i = 1; i < bytes.length; i++) {
+                result <<= Byte.SIZE;
+                result |= (bytes[i] & 0xFFL);
+            }
+            return result;
+        } else {
+            return new ImmutableByteArray(bytes);
         }
     }
 
