@@ -310,22 +310,20 @@ public class GptBytePairEncoding implements Encoding {
 
     private int getRank(Object piece, List<PieceIndexToRank> parts, int startIndex) {
         int endIndex = startIndex + 3;
-        return endIndex >= parts.size()
-                ? Integer.MAX_VALUE
-                : doGetRank(piece, parts, startIndex, endIndex);
-    }
-
-    private int doGetRank(Object piece, List<PieceIndexToRank> parts, int startIndex, int endIndex) {
-        int pieceStartIndex = parts.get(startIndex).index;
-        int pieceEndIndex = parts.get(endIndex).index;
-        Object encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
-        return encoder.encodeOrDefault(encoderIndex, Integer.MAX_VALUE);
+        if (endIndex >= parts.size()) {
+            return Integer.MAX_VALUE;
+        } else {
+            int pieceStartIndex = parts.get(startIndex).index;
+            int pieceEndIndex = parts.get(endIndex).index;
+            Object encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
+            return encoder.encodeOrDefault(encoderIndex, Integer.MAX_VALUE);
+        }
     }
 
     private int findMinRankIndex(List<PieceIndexToRank> parts) {
         int minRankIndex = 0;
         int minRank = Integer.MAX_VALUE;
-        for (int i = 0; i < parts.size() - 1; i++) {
+        for (int i = 0; i < parts.size() - 2; i++) {
             PieceIndexToRank part = parts.get(i);
             int rank = part.rank;
             if (rank < minRank) {
@@ -360,8 +358,8 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     static class PieceIndexToRank {
-        private final int index;
-        private int rank;
+        final int index;
+        int rank;
 
         PieceIndexToRank(int index, int rank) {
             this.index = index;

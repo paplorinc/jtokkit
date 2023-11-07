@@ -1,32 +1,39 @@
 package com.knuddels.jtokkit;
 
+import org.eclipse.collections.api.factory.primitive.LongIntMaps;
+import org.eclipse.collections.api.map.primitive.ImmutableLongIntMap;
+import org.eclipse.collections.api.map.primitive.MutableLongIntMap;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.knuddels.jtokkit.GptBytePairEncoding.PieceIndexToRank;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
-    private final Map<Long, Integer> longEncoders = new HashMap<>(); // TODO ImmutableLongIntMap
+    private final ImmutableLongIntMap longEncoders;
     private final Map<ImmutableByteArray, Integer> immutableByteArrayEncoders = new HashMap<>();
     private final Map<Integer, byte[]> encodedToDecoded;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
         this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
 
+        MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
         encoder.forEach((k, v) -> {
             Object key = of(k);
             if (key instanceof Long) {
-                longEncoders.put((Long) key, v);
+                tempLongEncoders.put((Long) key, v);
             } else {
                 immutableByteArrayEncoders.put((ImmutableByteArray) key, v);
             }
             encodedToDecoded.put(v, k);
         });
+        this.longEncoders = tempLongEncoders.toImmutable();
     }
 
     public static int byteSize(Object payload) {
         if (payload instanceof Long) {
-            return 1 + (Long.SIZE - Long.numberOfLeadingZeros((Long) payload) - 1) / Byte.SIZE;
+            return 1 + (64 - Long.numberOfLeadingZeros((Long) payload) - 1) / 8;
         } else {
             return ((ImmutableByteArray) payload).length();
         }
@@ -42,10 +49,10 @@ final class TokenEncoder {
     }
 
     private static Object of(byte[] bytes) {
-        if (bytes.length <= Byte.SIZE) {
+        if (bytes.length <= 8) {
             long result = bytes[0] & 0xFFL;
             for (int i = 1; i < bytes.length; i++) {
-                result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
+                result = (result << 8) | (bytes[i] & 0xFFL);
             }
             return result;
         } else {
@@ -54,18 +61,18 @@ final class TokenEncoder {
     }
 
     public static Object getSubToken(Object payload, int startIndex, int endIndex) {
-        var length = byteSize(payload);
-        var newLength = endIndex - startIndex;
+        int length = byteSize(payload);
+        int newLength = endIndex - startIndex;
         if (length == newLength) {
             return payload;
-        } else if (newLength <= Long.BYTES) {
+        } else if (newLength <= 8) {
             if (payload instanceof ImmutableByteArray) {
                 return getLongSubTokenForImmutableByteArray((ImmutableByteArray) payload, startIndex, endIndex);
             } else {
                 return getLongSubToken(payload, startIndex, endIndex, length, newLength);
             }
         } else {
-            var immutableByteArray = getImmutableByteArray(payload, startIndex, endIndex, length);
+            ImmutableByteArray immutableByteArray = getImmutableByteArray(payload, startIndex, endIndex, length);
             assert immutableByteArray.length() == newLength :
                     "Expected length: " + newLength + ", but got: " + immutableByteArray.length() + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
             return immutableByteArray;
@@ -76,15 +83,13 @@ final class TokenEncoder {
         byte[] rawArray = payload.getRawArrayUnsafe();
         long result = rawArray[startIndex] & 0xFFL;
         for (int i = startIndex + 1; i < endIndex; i++) {
-            result = (result << Byte.SIZE) | (rawArray[i] & 0xFFL);
+            result = (result << 8) | (rawArray[i] & 0xFFL);
         }
         return result;
     }
 
     private static long getLongSubToken(Object payload, int startIndex, int endIndex, int length, int newLength) {
-        var mask = -1L >>> (((Long.BYTES - length) + startIndex) * Byte.SIZE);
-        var shift = (length - endIndex) * Byte.SIZE;
-        long result = ((Long) payload & mask) >>> shift;
+        var result = subToken((Long) payload, startIndex, endIndex, length);
 
         assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
         assert Arrays.equals(asRawArray(result, newLength), getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) : "Expected raw array: " + Arrays.toString(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) + ", but got: " + Arrays.toString(asRawArray(result, newLength)) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
@@ -92,9 +97,15 @@ final class TokenEncoder {
         return result;
     }
 
+    private static long subToken(long payload, int startIndex, int endIndex, int length) {
+        long mask = -1L >>> (Long.BYTES - length + startIndex) * Byte.SIZE;
+        int shift = (length - endIndex) * Byte.SIZE;
+        return (payload & mask) >>> shift;
+    }
+
     private static ImmutableByteArray getImmutableByteArray(Object payload, int startIndex, int endIndex, int length) {
-        var rawArray = asRawArray(payload, length);
-        var from = ImmutableByteArray.from(rawArray);
+        byte[] rawArray = asRawArray(payload, length);
+        ImmutableByteArray from = ImmutableByteArray.from(rawArray);
         return from.getBytesBetween(startIndex, endIndex);
     }
 
@@ -103,12 +114,11 @@ final class TokenEncoder {
     }
 
     private static byte[] asRawArray(Object payload, int length) {
-        if (length <= Long.BYTES) {
-            // TODO specialize
+        if (length <= 8) {
             byte[] bytes = new byte[length];
             for (long value = (Long) payload; length > 0; ) {
                 bytes[--length] = (byte) (value & 0xFF);
-                value >>>= Byte.SIZE;
+                value >>>= 8;
             }
             return bytes;
         } else {
@@ -120,16 +130,25 @@ final class TokenEncoder {
         return new String(asRawArray(payload), UTF_8);
     }
 
-    public List<GptBytePairEncoding.PieceIndexToRank> initializeParts(Object payload) {
-        // TODO specialize
+    public List<PieceIndexToRank> initializeParts(Object payload) {
         int length = byteSize(payload);
-        List<GptBytePairEncoding.PieceIndexToRank> parts = new ArrayList<>(length + 1);
-        for (int i = 0; i < length + 1; i++) {
-            int rank = i < length - 1
-                    ? encodeOrDefault(getSubToken(payload, i, i + 2), Integer.MAX_VALUE)
-                    : Integer.MAX_VALUE;
-            parts.add(new GptBytePairEncoding.PieceIndexToRank(i, rank));
+        List<PieceIndexToRank> parts = new ArrayList<>(length + 1);
+        assert length > 1 : "Already filtered out";
+        if (length == 2) {
+            parts.add(new PieceIndexToRank(0, encodeOrDefault(payload, Integer.MAX_VALUE)));
+        } else if (length <= Long.BYTES) {
+            for (int i = 0; i < length - 1; i++) {
+                var result = subToken((Long) payload, i, i + 2, length);
+                parts.add(new PieceIndexToRank(i, encodeOrDefault(result, Integer.MAX_VALUE)));
+            }
+        } else {
+            for (int i = 0; i < length - 1; i++) {
+                var subToken = getSubToken(payload, i, i + 2);
+                parts.add(new PieceIndexToRank(i, encodeOrDefault(subToken, Integer.MAX_VALUE)));
+            }
         }
+        parts.add(new PieceIndexToRank(length - 1, Integer.MAX_VALUE));
+        parts.add(new PieceIndexToRank(length, Integer.MAX_VALUE));
         return parts;
     }
 
@@ -146,19 +165,18 @@ final class TokenEncoder {
     }
 
     public Integer encodeOrDefault(Object payload, Integer defaultValue) {
-        Integer result;
         if (payload instanceof Long) {
-            result = longEncoders.get((Long) payload);
+            long value = (Long) payload;
+            return defaultValue == null
+                    ? longEncoders.getOrThrow(value)
+                    : longEncoders.getIfAbsent(value, defaultValue);
         } else {
-            var immutableByteArray = (ImmutableByteArray) payload;
-            if (immutableByteArray.length() <= Long.BYTES) {
-                result = encodeOrDefault(of(immutableByteArray.getRawArrayUnsafe()), defaultValue); // TODO
-            } else {
-                result = immutableByteArrayEncoders.get(immutableByteArray);
-            }
+            ImmutableByteArray value = (ImmutableByteArray) payload;
+            assert (value.length() > 8);
+            Integer result = immutableByteArrayEncoders.get(value);
+            return result != null
+                    ? result
+                    : Objects.requireNonNull(defaultValue, () -> "Unknown token for encoding: " + payload);
         }
-        return result != null
-                ? result
-                : Objects.requireNonNull(defaultValue, () -> "Unknown token for encoding: " + payload);
     }
 }

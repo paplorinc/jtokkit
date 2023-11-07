@@ -16,25 +16,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class GptBytePairEncodingTest {
 
     @Test
-    void bytePairMerge() {
-        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-        var result = gptBytePairEncoding.bytePairMerge(ImmutableByteArray.from(" GUTENBERG"));
-        assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
-    }
-
-    @Test
-    void bytePairMerge2() {
-        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-        var result = gptBytePairEncoding.bytePairMerge2(ImmutableByteArray.from(" GUTENBERG"));
-        assertEquals(result, 5);
-    }
-
-    @Test
     void bytePairMerge3() {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        assertEquals(17815362, TEXTS.stream().mapToInt(encoding::countTokens).sum());
-        assertEquals(17815362, TEXTS.stream().mapToInt(x -> encoding.encode(x).size()).sum());
+        var sum = 0;
+        for (String TEXT : TEXTS) {
+            int i = encoding.countTokens(TEXT);
+            sum += i;
+        }
+        System.out.println(sum);
+        assertEquals(17815362, sum);
+
+        var sum1 = 0;
+        for (String x : TEXTS) {
+            int size = encoding.encode(x).size();
+            sum1 += size;
+        }
+        System.out.println(sum1);
+        assertEquals(17815362, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 
@@ -68,5 +67,19 @@ class GptBytePairEncodingTest {
             }
         }
         System.out.println("Skipped " + skipped); // can these work with regexes?
+    }
+
+    @Test
+    void bytePairMerge() {
+        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+        var result = gptBytePairEncoding.bytePairMerge(ImmutableByteArray.from(" GUTENBERG"));
+        assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
+    }
+
+    @Test
+    void bytePairMerge2() {
+        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+        var result = gptBytePairEncoding.bytePairMerge2(ImmutableByteArray.from(" GUTENBERG"));
+        assertEquals(result, 5);
     }
 }

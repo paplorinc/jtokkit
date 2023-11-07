@@ -13,7 +13,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 
     withSourcesJar()
@@ -21,11 +21,15 @@ java {
 }
 
 dependencies {
+    // Existing dependencies
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-}
 
+    // Eclipse Collections dependency
+    implementation("org.eclipse.collections:eclipse-collections:11.1.0")
+    implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
+}
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
