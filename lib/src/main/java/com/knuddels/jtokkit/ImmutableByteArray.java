@@ -73,8 +73,11 @@ final class ImmutableByteArray {
         } else if (startIndex >= endIndex) {
             throw new IllegalArgumentException("startIndex must be less than endIndex: " + startIndex + " >= " + endIndex);
         }
-
-        return new ImmutableByteArray(array, start + startIndex, start + endIndex);
+        if (length() == endIndex - startIndex) {
+            return this;
+        } else {
+            return new ImmutableByteArray(array, start + startIndex, start + endIndex);
+        }
     }
 
     /**

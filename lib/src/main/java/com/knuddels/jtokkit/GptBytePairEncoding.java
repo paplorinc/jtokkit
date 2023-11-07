@@ -4,12 +4,13 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Implementation of the byte pair encoding algorithm as used by the OpenAI tiktoken tokenizer.
@@ -150,7 +151,7 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public String decode(List<Integer> tokens) {
-        return new String(decodeBytes(tokens), StandardCharsets.UTF_8);
+        return new String(decodeBytes(tokens), UTF_8);
     }
 
     @Override
@@ -275,7 +276,7 @@ public class GptBytePairEncoding implements Encoding {
          */
         List<Integer> out = new ArrayList<>();
         for (int i = 0; i < parts.size() - 1; i++) {
-            var bytesBetween = TokenEncoder.getBytesBetween(piece, parts.get(i).index, parts.get(i + 1).index);
+            var bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
             out.add(encoder.encodeOrDefault(bytesBetween, null));
         }
         return out;
@@ -317,7 +318,7 @@ public class GptBytePairEncoding implements Encoding {
     private int doGetRank(Object piece, List<PieceIndexToRank> parts, int startIndex, int endIndex) {
         int pieceStartIndex = parts.get(startIndex).index;
         int pieceEndIndex = parts.get(endIndex).index;
-        Object encoderIndex = TokenEncoder.getBytesBetween(piece, pieceStartIndex, pieceEndIndex);
+        Object encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
         return encoder.encodeOrDefault(encoderIndex, Integer.MAX_VALUE);
     }
 
@@ -352,7 +353,7 @@ public class GptBytePairEncoding implements Encoding {
 
         String decodedSpecialToken = specialTokensEncoder.decodeIfPresent(token);
         if (decodedSpecialToken != null) {
-            return decodedSpecialToken.getBytes(StandardCharsets.UTF_8);
+            return decodedSpecialToken.getBytes(UTF_8);
         }
 
         throw new IllegalArgumentException("Unknown token for decoding: " + token);

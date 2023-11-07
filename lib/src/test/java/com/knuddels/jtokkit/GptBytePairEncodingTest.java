@@ -31,9 +31,13 @@ class GptBytePairEncodingTest {
 
     @Test
     void bytePairMerge3() {
+        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        assertEquals(17815362, TEXTS.stream().mapToInt(encoding::countTokens).sum());
+        assertEquals(17815362, TEXTS.stream().mapToInt(x -> encoding.encode(x).size()).sum());
+
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 
-        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
         var skipped = new ArrayList<>();
         var sizes = 0;
         var collect = ranks.entrySet().stream().sorted(comparingInt(a -> a.getKey().length)).collect(toList());
@@ -64,9 +68,5 @@ class GptBytePairEncodingTest {
             }
         }
         System.out.println("Skipped " + skipped); // can these work with regexes?
-
-
-        assertEquals(17815362, TEXTS.stream().mapToInt(encoding::countTokens).sum());
-        assertEquals(17815362, TEXTS.stream().mapToInt(x -> encoding.encode(x).size()).sum());
     }
 }

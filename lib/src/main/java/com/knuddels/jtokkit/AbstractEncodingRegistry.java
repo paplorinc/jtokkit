@@ -1,10 +1,6 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.api.Encoding;
-import com.knuddels.jtokkit.api.EncodingRegistry;
-import com.knuddels.jtokkit.api.EncodingType;
-import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
-import com.knuddels.jtokkit.api.ModelType;
+import com.knuddels.jtokkit.api.*;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -12,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 abstract class AbstractEncodingRegistry implements EncodingRegistry {
     private final ConcurrentHashMap<String, Encoding> encodings = new ConcurrentHashMap<>();
-    
+
     @Override
     public Optional<Encoding> getEncoding(final String encodingName) {
         return Optional.ofNullable(encodings.get(encodingName));
