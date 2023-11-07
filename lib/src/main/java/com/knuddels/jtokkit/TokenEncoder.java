@@ -45,8 +45,7 @@ final class TokenEncoder {
         if (bytes.length <= Byte.SIZE) {
             long result = bytes[0] & 0xFFL;
             for (int i = 1; i < bytes.length; i++) {
-                result <<= Byte.SIZE;
-                result |= (bytes[i] & 0xFFL);
+                result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
             }
             return result;
         } else {
@@ -54,7 +53,6 @@ final class TokenEncoder {
         }
     }
 
-    // TODO specialize
     public static Object getSubToken(Object payload, int startIndex, int endIndex) {
         var length = byteSize(payload);
         var newLength = endIndex - startIndex;
@@ -62,24 +60,36 @@ final class TokenEncoder {
             return payload;
         } else if (newLength <= Long.BYTES) {
             if (payload instanceof ImmutableByteArray) {
-                return of(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()); // TODO optimize
+                return getLongSubTokenForImmutableByteArray((ImmutableByteArray) payload, startIndex, endIndex);
             } else {
-                long result = (Long) payload;
-                result &= -1L >>> (Long.BYTES - length + startIndex) * Byte.SIZE;
-                result >>>= (length - endIndex) * Byte.SIZE;
-
-                assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
-                assert Arrays.equals(asRawArray(result, newLength), getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) : "Expected raw array: " + Arrays.toString(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) + ", but got: " + Arrays.toString(asRawArray(result, newLength)) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
-
-                return result;
+                return getLongSubToken(payload, startIndex, endIndex, length, newLength);
             }
-
         } else {
             var immutableByteArray = getImmutableByteArray(payload, startIndex, endIndex, length);
             assert immutableByteArray.length() == newLength :
                     "Expected length: " + newLength + ", but got: " + immutableByteArray.length() + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
             return immutableByteArray;
         }
+    }
+
+    private static long getLongSubTokenForImmutableByteArray(ImmutableByteArray payload, int startIndex, int endIndex) {
+        byte[] rawArray = payload.getRawArrayUnsafe();
+        long result = rawArray[startIndex] & 0xFFL;
+        for (int i = startIndex + 1; i < endIndex; i++) {
+            result = (result << Byte.SIZE) | (rawArray[i] & 0xFFL);
+        }
+        return result;
+    }
+
+    private static long getLongSubToken(Object payload, int startIndex, int endIndex, int length, int newLength) {
+        var mask = -1L >>> (((Long.BYTES - length) + startIndex) * Byte.SIZE);
+        var shift = (length - endIndex) * Byte.SIZE;
+        long result = ((Long) payload & mask) >>> shift;
+
+        assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
+        assert Arrays.equals(asRawArray(result, newLength), getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) : "Expected raw array: " + Arrays.toString(getImmutableByteArray(payload, startIndex, endIndex, length).getRawArrayUnsafe()) + ", but got: " + Arrays.toString(asRawArray(result, newLength)) + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
+
+        return result;
     }
 
     private static ImmutableByteArray getImmutableByteArray(Object payload, int startIndex, int endIndex, int length) {
