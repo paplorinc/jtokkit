@@ -276,7 +276,7 @@ public class GptBytePairEncoding implements Encoding {
          */
         List<Integer> out = new ArrayList<>();
         for (int i = 0; i < parts.size() - 1; i++) {
-            var bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
+            Object bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
             out.add(encoder.encodeOrDefault(bytesBetween, null));
         }
         return out;
