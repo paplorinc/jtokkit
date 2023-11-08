@@ -37,22 +37,22 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encode(String text) {
-        return encodeInternal(text, null).getTokens();
+        return encodeInternal(text, -1).getTokens();
     }
 
     @Override
-    public EncodingResult encode(String text, int maxTokens) {
-        return encodeInternal(text, maxTokens);
+    public EncodingResult encode(String text, int maxTokenCount) {
+        return encodeInternal(text, maxTokenCount);
     }
 
-    private EncodingResult encodeInternal(String text, Integer maxTokens) {
+    private EncodingResult encodeInternal(String text, int maxTokenCount) {
         if (text == null) {
             return new EncodingResult(Collections.emptyList(), false);
         }
 
         checkForSpecialTokens(text);
 
-        return encodeOrdinaryInternal(text, maxTokens);
+        return encodeOrdinaryInternal(text, maxTokenCount);
     }
 
     private void checkForSpecialTokens(String text) {
@@ -65,15 +65,15 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encodeOrdinary(String text) {
-        return encodeOrdinaryInternal(text, null).getTokens();
+        return encodeOrdinaryInternal(text, -1).getTokens();
     }
 
     @Override
-    public EncodingResult encodeOrdinary(String text, int maxTokens) {
-        return encodeOrdinaryInternal(text, maxTokens);
+    public EncodingResult encodeOrdinary(String text, int maxTokenCount) {
+        return encodeOrdinaryInternal(text, maxTokenCount);
     }
 
-    private EncodingResult encodeOrdinaryInternal(String text, Integer maxTokens) {
+    private EncodingResult encodeOrdinaryInternal(String text, int maxTokenCount) {
         if (text == null) {
             return new EncodingResult(Collections.emptyList(), false);
         }
@@ -81,18 +81,18 @@ public class GptBytePairEncoding implements Encoding {
         List<Integer> out = new ArrayList<>();
         Matcher matcher = pattern.matcher(text);
         int tokenCount = 0;
-        while (matcher.find() && maxTokenCountNotReached(maxTokens, tokenCount)) {
+        while (matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount)) {
             Object match = TokenEncoder.of(matcher.group());
             if (encoder.containsDecodedToken(match)) {
                 out.add(encoder.encodeOrDefault(match, null));
                 tokenCount++;
             } else {
                 List<Integer> tokensToAdd = bytePairMerge(match);
-                tokenCount += addTokens(out, tokensToAdd, maxTokens);
+                tokenCount += addTokens(out, tokensToAdd, maxTokenCount);
             }
         }
 
-        if (maxTokens != null) {
+        if (maxTokenCount >= 0) {
             // Make sure we didn't break the multibyte character
             for (int tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
                 List<Integer> tokens = out.subList(0, out.size() - tokensToRemove);
@@ -108,13 +108,13 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     /**
-     * Adds tokens from 'tokensToAdd' to 'out' until either 'maxTokens' is reached or 'tokensToAdd' is exhausted.
+     * Adds tokens from 'tokensToAdd' to 'out' until either 'maxTokenCount' is reached or 'tokensToAdd' is exhausted.
      *
      * @return the number of tokens added to 'out'
      */
-    private int addTokens(List<Integer> out, List<Integer> tokensToAdd, Integer maxTokens) {
-        if (maxTokens != null) {
-            List<Integer> sublist = tokensToAdd.subList(0, Math.min(maxTokens - out.size(), tokensToAdd.size()));
+    private int addTokens(List<Integer> out, List<Integer> tokensToAdd, int maxTokenCount) {
+        if (maxTokenCount >= 0) {
+            List<Integer> sublist = tokensToAdd.subList(0, Math.min(maxTokenCount - out.size(), tokensToAdd.size()));
             out.addAll(sublist);
             return sublist.size();
         }
@@ -336,12 +336,8 @@ public class GptBytePairEncoding implements Encoding {
     }
 
 
-    private boolean maxTokenCountReached(Integer maxTokenCount, int tokenCount) {
-        return maxTokenCount != null && maxTokenCount.compareTo(tokenCount) <= 0;
-    }
-
-    private boolean maxTokenCountNotReached(Integer maxTokenCount, int tokenCount) {
-        return !maxTokenCountReached(maxTokenCount, tokenCount);
+    private boolean maxTokenCountNotReached(int maxTokenCount, int tokenCount) {
+        return maxTokenCount < 0 || tokenCount < maxTokenCount;
     }
 
     public byte[] decodeToken(Integer token) {
