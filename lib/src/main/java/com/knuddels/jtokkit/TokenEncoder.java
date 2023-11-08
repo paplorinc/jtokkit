@@ -10,14 +10,15 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
     public static final int MAX_RANK = Integer.MAX_VALUE;
-    private final Map<ImmutableByteArray, Integer> immutableByteArrayEncoders = new ConcurrentHashMap<>(); // open addressing for optimal collisions
+    private final Map<ImmutableByteArray, Integer> byteArrayEncoders;
     private final Map<Integer, byte[]> encodedToDecoded;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
+        this.byteArrayEncoders = new ConcurrentHashMap<>(encoder.size()); // open addressing for optimal collisions
         this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
-
         encoder.forEach((k, v) -> {
-            immutableByteArrayEncoders.put(new ImmutableByteArray(k), v);
+            assert v != MAX_RANK;
+            byteArrayEncoders.put(new ImmutableByteArray(k), v);
             encodedToDecoded.put(v, k);
         });
     }
@@ -44,7 +45,6 @@ final class TokenEncoder {
         return payload.getBytesBetween(startIndex, endIndex);
     }
 
-
     public List<PieceIndexToRank> initializeParts(ImmutableByteArray payload) {
         int length = payload.length();
         List<PieceIndexToRank> parts = new ArrayList<>(length + 1);
@@ -66,12 +66,8 @@ final class TokenEncoder {
         return encodedToDecoded.get(encodedToken);
     }
 
-    public boolean containsDecodedToken(ImmutableByteArray payload) {
-        return immutableByteArrayEncoders.containsKey(payload);
-    }
-
     public int encode(ImmutableByteArray payload) {
-        Integer result = immutableByteArrayEncoders.get(payload); // getOrDefault is slower
+        Integer result = byteArrayEncoders.get(payload); // getOrDefault is slower
         return result != null ? result : MAX_RANK;
     }
 }

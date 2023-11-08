@@ -83,8 +83,9 @@ public class GptBytePairEncoding implements Encoding {
         int tokenCount = 0;
         while (matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount)) {
             ImmutableByteArray match = TokenEncoder.of(matcher.group());
-            if (encoder.containsDecodedToken(match)) {
-                out.add(encoder.encode(match));
+            int encoded = encoder.encode(match);
+            if (encoded != MAX_RANK) {
+                out.add(encoded);
                 tokenCount++;
             } else {
                 List<Integer> tokensToAdd = bytePairMerge(match);
@@ -221,30 +222,36 @@ public class GptBytePairEncoding implements Encoding {
              * minRankIndex = 3
              * minRank = 2
              */
-            int minRankIndex = findMinRankIndex(parts);
+            int minRankIndex = 0;
+            int minRank = parts.get(0).rank;
+            for (int i = 1; i < parts.size() - 2; i++) {
+                PieceIndexToRank part = parts.get(i);
+                int rank = part.rank;
+                if (rank < minRank) {
+                    minRank = rank;
+                    minRankIndex = i;
+                }
+            }
+            if (minRank == MAX_RANK) {
+                break;
+            }
 
             /*
              * piece:  v   e   c   to   r
              * index:  0   1   2   3    5   6
              * ranks:  4   3   5   9    inf inf
              */
-            var minRankedPart = parts.get(minRankIndex);
-            if (minRankedPart.rank != MAX_RANK) {
-                // Note that we calculate the rank of the byte pairs at minRankIndex and minRankIndex - 1 before removing
-                // the merged byte pair. We use the skip parameter of the getRank function to calculate the rank of, in our
-                // example, "t" + "o" + "r" and "c" + "t" + "o". The assumption made in the OpenAI implementation is that
-                // removing first thrashes the cache, so it's better to calculate the rank of the byte pairs that are
-                // affected by the merge before removing the merged byte pair. I did not verify, if this is actually the
-                // case in java.
-                minRankedPart.rank = getRank(piece, parts, minRankIndex);
-                if (minRankIndex > 0) {
-                    parts.get(minRankIndex - 1).rank = getRank(piece, parts, minRankIndex - 1);
-                }
-
-                parts.remove(minRankIndex + 1);
-            } else {
-                break;
+            // Note that we calculate the rank of the byte pairs at minRankIndex and minRankIndex - 1 before removing
+            // the merged byte pair. We use the skip parameter of the getRank function to calculate the rank of, in our
+            // example, "t" + "o" + "r" and "c" + "t" + "o". The assumption made in the OpenAI implementation is that
+            // removing first thrashes the cache, so it's better to calculate the rank of the byte pairs that are
+            // affected by the merge before removing the merged byte pair. I did not verify, if this is actually the
+            // case in java.
+            parts.get(minRankIndex).rank = getRank(piece, parts, minRankIndex);
+            if (minRankIndex > 0) {
+                parts.get(minRankIndex - 1).rank = getRank(piece, parts, minRankIndex - 1);
             }
+            parts.remove(minRankIndex + 1);
         }
 
         /*
@@ -270,20 +277,6 @@ public class GptBytePairEncoding implements Encoding {
             ImmutableByteArray encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
             return encoder.encode(encoderIndex);
         }
-    }
-
-    private int findMinRankIndex(List<PieceIndexToRank> parts) {
-        int minRankIndex = 0;
-        int minRank = parts.get(0).rank;
-        for (int i = 1; i < parts.size() - 2; i++) {
-            PieceIndexToRank part = parts.get(i);
-            int rank = part.rank;
-            if (rank < minRank) {
-                minRank = rank;
-                minRankIndex = i;
-            }
-        }
-        return minRankIndex;
     }
 
 
