@@ -82,9 +82,9 @@ public class GptBytePairEncoding implements Encoding {
         Matcher matcher = pattern.matcher(text);
         int tokenCount = 0;
         while (matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount)) {
-            Object match = TokenEncoder.of(matcher.group());
+            ImmutableByteArray match = TokenEncoder.of(matcher.group());
             if (encoder.containsDecodedToken(match)) {
-                out.add(encoder.encodeOrDefault(match, null));
+                out.add(encoder.encode(match));
                 tokenCount++;
             } else {
                 List<Integer> tokensToAdd = bytePairMerge(match);
@@ -126,23 +126,7 @@ public class GptBytePairEncoding implements Encoding {
     // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
-//		return encode(text).size();
-        if (text == null) {
-            return 0;
-        } else {
-            checkForSpecialTokens(text);
-            int tokenCount = 0;
-            for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
-                Object match = TokenEncoder.of(matcher.group());
-                if (encoder.containsDecodedToken(match)) {
-                    tokenCount++;
-                } else {
-                    tokenCount += bytePairMerge2(match);
-                }
-            }
-
-            return tokenCount;
-        }
+        return encode(text).size();
     }
 
     @Override
@@ -219,7 +203,7 @@ public class GptBytePairEncoding implements Encoding {
      * Note that we do not actually modify the piece, but only the parts list. The above visualization is just for
      * illustration purposes.
      */
-    List<Integer> bytePairMerge(Object piece) {
+    List<Integer> bytePairMerge(ImmutableByteArray piece) {
         /*
          * piece:  v   e   c   t   o   r
          * index:  0   1   2   3   4   5   6
@@ -237,29 +221,22 @@ public class GptBytePairEncoding implements Encoding {
              * minRankIndex = 3
              * minRank = 2
              */
-            int minRankIndex = 0;
-            int minRank = MAX_RANK;
-            for (int i = 0; i < parts.size() - 1; i++) {
-                int rank = parts.get(i).rank;
-                if (rank < minRank) {
-                    minRank = rank;
-                    minRankIndex = i;
-                }
-            }
+            int minRankIndex = findMinRankIndex(parts);
 
             /*
              * piece:  v   e   c   to   r
              * index:  0   1   2   3    5   6
              * ranks:  4   3   5   9    inf inf
              */
-            if (minRank != MAX_RANK) {
+            var minRankedPart = parts.get(minRankIndex);
+            if (minRankedPart.rank != MAX_RANK) {
                 // Note that we calculate the rank of the byte pairs at minRankIndex and minRankIndex - 1 before removing
                 // the merged byte pair. We use the skip parameter of the getRank function to calculate the rank of, in our
                 // example, "t" + "o" + "r" and "c" + "t" + "o". The assumption made in the OpenAI implementation is that
                 // removing first thrashes the cache, so it's better to calculate the rank of the byte pairs that are
                 // affected by the merge before removing the merged byte pair. I did not verify, if this is actually the
                 // case in java.
-                parts.get(minRankIndex).rank = getRank(piece, parts, minRankIndex);
+                minRankedPart.rank = getRank(piece, parts, minRankIndex);
                 if (minRankIndex > 0) {
                     parts.get(minRankIndex - 1).rank = getRank(piece, parts, minRankIndex - 1);
                 }
@@ -277,54 +254,28 @@ public class GptBytePairEncoding implements Encoding {
          */
         List<Integer> out = new ArrayList<>();
         for (int i = 0; i < parts.size() - 1; i++) {
-            Object bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
-            out.add(encoder.encodeOrDefault(bytesBetween, null));
+            ImmutableByteArray bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
+            out.add(encoder.encode(bytesBetween));
         }
         return out;
     }
 
-    int bytePairMerge2(Object piece) {
-        List<PieceIndexToRank> parts = encoder.initializeParts(piece);
-        int result = parts.size() - 1;
-        while (parts.size() > 1) {
-//            var out = IntStream.range(0, parts.size() - 1)
-//                    .mapToObj(i -> "%s(%d)".formatted(new String(piece.getBytesBetween(parts.get(i).index, parts.get(i + 1).index).getRawArray()), parts.get(i).rank))
-//                    .collect(joining("\t"));
-//            System.out.println(out);
-
-            int minRankIndex = findMinRankIndex(parts);
-            PieceIndexToRank minRandPart = parts.get(minRankIndex);
-            if (minRandPart.rank == MAX_RANK) {
-                break;
-            }
-
-            minRandPart.rank = getRank(piece, parts, minRankIndex);
-            if (minRankIndex > 0) {
-                parts.get(minRankIndex - 1).rank = getRank(piece, parts, minRankIndex - 1);
-            }
-            parts.remove(minRankIndex + 1);
-            result--;
-        }
-
-        return result;
-    }
-
-    private int getRank(Object piece, List<PieceIndexToRank> parts, int startIndex) {
+    private int getRank(ImmutableByteArray piece, List<PieceIndexToRank> parts, int startIndex) {
         int endIndex = startIndex + 3;
         if (endIndex >= parts.size()) {
             return MAX_RANK;
         } else {
             int pieceStartIndex = parts.get(startIndex).index;
             int pieceEndIndex = parts.get(endIndex).index;
-            Object encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
-            return encoder.encodeOrDefault(encoderIndex, MAX_RANK);
+            ImmutableByteArray encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
+            return encoder.encode(encoderIndex);
         }
     }
 
     private int findMinRankIndex(List<PieceIndexToRank> parts) {
         int minRankIndex = 0;
-        int minRank = MAX_RANK;
-        for (int i = 0; i < parts.size() - 2; i++) {
+        int minRank = parts.get(0).rank;
+        for (int i = 1; i < parts.size() - 2; i++) {
             PieceIndexToRank part = parts.get(i);
             int rank = part.rank;
             if (rank < minRank) {
@@ -340,7 +291,7 @@ public class GptBytePairEncoding implements Encoding {
         return maxTokenCount < 0 || tokenCount < maxTokenCount;
     }
 
-    public byte[] decodeToken(Integer token) {
+    public byte[] decodeToken(int token) {
         byte[] decodedToken = encoder.decodeIfPresent(token);
         if (decodedToken != null) {
             return decodedToken;
