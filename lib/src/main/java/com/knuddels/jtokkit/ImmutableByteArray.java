@@ -1,10 +1,11 @@
 package com.knuddels.jtokkit;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
-final class ImmutableByteArray {
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+public final class ImmutableByteArray {
     private final byte[] array;
 
     /*
@@ -27,7 +28,7 @@ final class ImmutableByteArray {
      */
     public static ImmutableByteArray from(final String string) {
         Objects.requireNonNull(string, "String must not be null");
-        return new ImmutableByteArray(string.getBytes(StandardCharsets.UTF_8));
+        return new ImmutableByteArray(string.getBytes(UTF_8));
     }
 
     /**
@@ -106,6 +107,6 @@ final class ImmutableByteArray {
 
     @Override
     public String toString() {
-        return Arrays.toString(array);
+        return new String(array, UTF_8);
     }
 }

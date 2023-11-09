@@ -19,6 +19,8 @@ class GptBytePairEncodingTest {
     void bytePairMerge3() {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
+        encoding.countTokens(" ");
+
         var sum = 0;
         for (String TEXT : TEXTS) {
             int i = encoding.countTokens(TEXT);

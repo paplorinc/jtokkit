@@ -13,9 +13,6 @@ import java.util.regex.Pattern;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-/**
- * Implementation of the byte pair encoding algorithm as used by the OpenAI tiktoken tokenizer.
- */
 public class GptBytePairEncoding implements Encoding {
 
     private final String name;
@@ -23,16 +20,32 @@ public class GptBytePairEncoding implements Encoding {
     private final TokenEncoder encoder;
     private final StringEncoder specialTokensEncoder;
 
-    /**
-     * Creates a new instance of {@link GptBytePairEncoding}.
-     *
-     * @param params the parameters to use for the encoding
-     */
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
         this.encoder = new TokenEncoder(params.getEncoder());
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
+    }
+
+    private static int getMinRankIndex(long[] indexedRanks, int size) {
+        int minRankIndex = 0;
+        int minRank = rank(indexedRanks[minRankIndex]);
+        for (int i = 1; i < size - 2; i++) {
+            int rank = rank(indexedRanks[i]);
+            if (rank < minRank) {
+                minRankIndex = i;
+                minRank = rank;
+            }
+        }
+        return minRankIndex;
+    }
+
+    private static int index(long indexedRank) {
+        return (int) (indexedRank >>> Integer.SIZE);
+    }
+
+    private static int rank(long indexedRank) {
+        return (int) indexedRank;
     }
 
     @Override
@@ -108,11 +121,6 @@ public class GptBytePairEncoding implements Encoding {
         return new EncodingResult(out, false);
     }
 
-    /**
-     * Adds tokens from 'tokensToAdd' to 'out' until either 'maxTokenCount' is reached or 'tokensToAdd' is exhausted.
-     *
-     * @return the number of tokens added to 'out'
-     */
     private int addTokens(List<Integer> out, List<Integer> tokensToAdd, int maxTokenCount) {
         if (maxTokenCount >= 0) {
             List<Integer> sublist = tokensToAdd.subList(0, Math.min(maxTokenCount - out.size(), tokensToAdd.size()));
@@ -162,123 +170,65 @@ public class GptBytePairEncoding implements Encoding {
         return name;
     }
 
-    /*
-     * We use a custom implementation of the byte pair encoding algorithm as used by the OpenAI tokenizer. The
-     * piece is merged according to the merging rules provided by OpenAI. An example of the algorithm:
-     *
-     * piece:  v   e   c   t   o   r
-     * index:  0   1   2   3   4   5   6
-     * ranks:  4   3   7   2   13  inf inf
-     *
-     * We don't modify piece directly. We instead create a list of tuples (index, rank) where index is the start index
-     * of a byte pair and rank is it's merge rank. We call this list of tuples parts. The lowest rank is the byte pair
-     * that will be merged next. In the example above, the lowest rank is 2, so we merge the byte pair at index 3.
-     * To merge a byte pair at index i, we first update the ranks of the byte pairs that are affected by the merge, in this
-     * case the byte pair at index 2 and the byte pair at index 3. Then we remove the byte pair at index i + 1 from the list.
-     * In this case, this is the byte pair at index 4.
-     *
-     * piece:  v   e   c   to   r
-     * index:  0   1   2   3    5   6
-     * ranks:  4   3   5   9    inf inf
-     *
-     * We then repeat the process until there are no more byte pairs to merge, either because we have merged all byte pairs
-     * and parts.size() is 1, or because there are no more merging rules that apply to our tokens. Let's assume there are merging
-     * rules for "e + c", "to + r" and "v + ec":
-     *
-     * piece:  v   ec  to   r
-     * index:  0   1   3    5   6
-     * ranks:  4   11  12   inf inf
-     *         ^
-     *
-     * piece:  vec to   r
-     * index:  0   3    5   6
-     * ranks:  inf 12   inf inf
-     *             ^
-     *
-     * piece:  vec tor
-     * index:  0   3   6
-     * ranks:  inf inf inf
-     *
-     * We can extract the  tokens by simply taking piece.get(parts[0].index) until piece.get(parts[1].index - 1)
-     * and piece.get(parts[1].index) until piece.get(parts[2].index - 1). Analogously for more than two parts.
-     * Note that we do not actually modify the piece, but only the parts list. The above visualization is just for
-     * illustration purposes.
-     */
     List<Integer> bytePairMerge(ImmutableByteArray piece) {
-        /*
-         * piece:  v   e   c   t   o   r
-         * index:  0   1   2   3   4   5   6
-         * ranks:  4   3   7   2   13  inf inf
-         */
-        List<PieceIndexToRank> parts = encoder.initializeParts(piece);
-
-
-        while (parts.size() > 1) {
-            /*
-             * piece:  v   e   c   t   o   r
-             * index:  0   1   2   3   4   5   6
-             * ranks:  4   3   7   2   13  inf inf
-             *
-             * minRankIndex = 3
-             * minRank = 2
-             */
-            int minRankIndex = 0;
-            int minRank = parts.get(0).rank;
-            for (int i = 1; i < parts.size() - 2; i++) {
-                PieceIndexToRank part = parts.get(i);
-                int rank = part.rank;
-                if (rank < minRank) {
-                    minRank = rank;
-                    minRankIndex = i;
-                }
+        int size = piece.length() + 1;
+        long[] indexedRanks = new long[size];
+        assert size - 1 > 1 : "Already filtered out";
+        if (size - 1 == 2) {
+            indexedRanks[0] = combine(0, encoder.encode(piece));
+        } else {
+            for (int i = 0; i < size - 2; i++) {
+                ImmutableByteArray subToken = TokenEncoder.getSubToken(piece, i, i + 2);
+                indexedRanks[i] = combine(i, encoder.encode(subToken));
             }
+        }
+        indexedRanks[size - 2] = combine(size - 2, MAX_RANK);
+        indexedRanks[size - 1] = combine(size - 1, MAX_RANK);
+
+        while (size > 1) {
+            int minRankIndex = getMinRankIndex(indexedRanks, size); // TODO return indexedRank long
+            int minRank = rank(indexedRanks[minRankIndex]);
             if (minRank == MAX_RANK) {
                 break;
             }
 
-            /*
-             * piece:  v   e   c   to   r
-             * index:  0   1   2   3    5   6
-             * ranks:  4   3   5   9    inf inf
-             */
-            // Note that we calculate the rank of the byte pairs at minRankIndex and minRankIndex - 1 before removing
-            // the merged byte pair. We use the skip parameter of the getRank function to calculate the rank of, in our
-            // example, "t" + "o" + "r" and "c" + "t" + "o". The assumption made in the OpenAI implementation is that
-            // removing first thrashes the cache, so it's better to calculate the rank of the byte pairs that are
-            // affected by the merge before removing the merged byte pair. I did not verify, if this is actually the
-            // case in java.
-            parts.get(minRankIndex).rank = getRank(piece, parts, minRankIndex);
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, size));
             if (minRankIndex > 0) {
-                parts.get(minRankIndex - 1).rank = getRank(piece, parts, minRankIndex - 1);
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, size));
             }
-            parts.remove(minRankIndex + 1);
+            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, size - minRankIndex - 2); // remaining ones will always be MAX_RANK values
+            size--;
         }
 
-        /*
-         * piece:  vec tor
-         * index:  0   3   6
-         * ranks:  inf inf inf
-         */
-        List<Integer> out = new ArrayList<>();
-        for (int i = 0; i < parts.size() - 1; i++) {
-            ImmutableByteArray bytesBetween = TokenEncoder.getSubToken(piece, parts.get(i).index, parts.get(i + 1).index);
+        List<Integer> out = new ArrayList<>(size);
+        for (int i = 0; i < size - 1; i++) {
+            var start = index(indexedRanks[i]);
+            int end = index(indexedRanks[i + 1]);
+            ImmutableByteArray bytesBetween = TokenEncoder.getSubToken(piece, start, end);
             out.add(encoder.encode(bytesBetween));
         }
         return out;
     }
 
-    private int getRank(ImmutableByteArray piece, List<PieceIndexToRank> parts, int startIndex) {
+    private long combine(long index, int rank) {
+        return (index << Integer.SIZE) | rank;
+    }
+
+    private long setRank(long indexedRank, int rank) {
+        return indexedRank & (-1L << Integer.SIZE) | rank;
+    }
+
+    private int getRank(ImmutableByteArray piece, long[] parts, int startIndex, int size) {
         int endIndex = startIndex + 3;
-        if (endIndex >= parts.size()) {
+        if (endIndex >= size) {
             return MAX_RANK;
         } else {
-            int pieceStartIndex = parts.get(startIndex).index;
-            int pieceEndIndex = parts.get(endIndex).index;
+            int pieceStartIndex = index(parts[startIndex]);
+            int pieceEndIndex = index(parts[endIndex]);
             ImmutableByteArray encoderIndex = TokenEncoder.getSubToken(piece, pieceStartIndex, pieceEndIndex);
             return encoder.encode(encoderIndex);
         }
     }
-
 
     private boolean maxTokenCountNotReached(int maxTokenCount, int tokenCount) {
         return maxTokenCount < 0 || tokenCount < maxTokenCount;
@@ -296,20 +246,5 @@ public class GptBytePairEncoding implements Encoding {
         }
 
         throw new IllegalArgumentException("Unknown token for decoding: " + token);
-    }
-
-    static class PieceIndexToRank {
-        final int index;
-        int rank;
-
-        PieceIndexToRank(int index, int rank) {
-            this.index = index;
-            this.rank = rank;
-        }
-
-        @Override
-        public String toString() {
-            return "PieceIndexToRank{index=" + index + ", rank=" + rank + '}';
-        }
     }
 }

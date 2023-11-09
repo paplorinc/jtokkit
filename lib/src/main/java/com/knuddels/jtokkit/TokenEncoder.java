@@ -1,11 +1,8 @@
 package com.knuddels.jtokkit;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.knuddels.jtokkit.GptBytePairEncoding.PieceIndexToRank;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
@@ -43,23 +40,6 @@ final class TokenEncoder {
 
     private static ImmutableByteArray getImmutableByteArray(ImmutableByteArray payload, int startIndex, int endIndex) {
         return payload.getBytesBetween(startIndex, endIndex);
-    }
-
-    public List<PieceIndexToRank> initializeParts(ImmutableByteArray payload) {
-        int length = payload.length();
-        List<PieceIndexToRank> parts = new ArrayList<>(length + 1);
-        assert length > 1 : "Already filtered out";
-        if (length == 2) {
-            parts.add(new PieceIndexToRank(0, encode(payload)));
-        } else {
-            for (int i = 0; i < length - 1; i++) {
-                ImmutableByteArray subToken = getSubToken(payload, i, i + 2);
-                parts.add(new PieceIndexToRank(i, encode(subToken)));
-            }
-        }
-        parts.add(new PieceIndexToRank(length - 1, MAX_RANK));
-        parts.add(new PieceIndexToRank(length, MAX_RANK));
-        return parts;
     }
 
     public byte[] decodeIfPresent(int encodedToken) {
