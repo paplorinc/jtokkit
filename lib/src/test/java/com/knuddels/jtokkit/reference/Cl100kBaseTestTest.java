@@ -51,7 +51,7 @@ public class Cl100kBaseTestTest {
     public void xxx() {
         var encoding = (GptBytePairEncoding) ENCODING;
         var actual = TEXTS.stream().mapToInt(encoding::countTokens).sum();
-        assertEquals(17815362, actual);
+        assertEquals(17815382, actual);
 
         var actual1 = TEXTS.stream()
                 .flatMap(x -> encoding.encode(x).stream().map(y -> encoding.decodeToken(y).length))

@@ -9,7 +9,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 
@@ -22,5 +22,5 @@ jmh {
     iterations.set(5)
     fork.set(2)
     benchmarkMode.set(listOf("ss"))
-   // profilers.set(listOf("stack"))
+    // profilers.set(listOf("stack"))
 }

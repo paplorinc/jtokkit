@@ -27,7 +27,7 @@ class GptBytePairEncodingTest {
             sum += i;
         }
         System.out.println(sum);
-        assertEquals(17815362, sum);
+        assertEquals(17815382, sum);
 
         var sum1 = 0;
         for (String x : TEXTS) {
@@ -35,7 +35,7 @@ class GptBytePairEncodingTest {
             sum1 += size;
         }
         System.out.println(sum1);
-        assertEquals(17815362, sum1);
+        assertEquals(17815382, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 

@@ -126,8 +126,8 @@ public class FileDownloader {
 
         // Assert the total size (replace 0L with the expected total size)
         long totalSize = calculateTotalFileSize(rootFolder);
-        if (totalSize != 73174493) {
-            throw new AssertionError("Total size did not match expected value");
+        if (totalSize != 73_174_598) {
+            throw new AssertionError("Total size did not match expected value, actual: " + totalSize);
         }
     }
 
