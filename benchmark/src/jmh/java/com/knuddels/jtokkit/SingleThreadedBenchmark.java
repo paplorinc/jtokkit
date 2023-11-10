@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 //
 // After:
 //Benchmark                                              (dataFolderPath)  Mode  Cnt  Score   Error  Units
-//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount              data    ss   10  2.864 ± 0.174   s/op
+//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount              data    ss   10  2.515 ± 0.057   s/op
 public class SingleThreadedBenchmark extends AbstractBenchmark {
 
 }

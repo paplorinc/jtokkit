@@ -5,13 +5,13 @@ import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptyList;
 
 public class GptBytePairEncoding implements Encoding {
 
@@ -50,22 +50,22 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encode(String text) {
-        return encodeInternal(text, -1).getTokens();
+        return encodeInternal(text, -1, true).getTokens();
     }
 
     @Override
     public EncodingResult encode(String text, int maxTokenCount) {
-        return encodeInternal(text, maxTokenCount);
+        return encodeInternal(text, maxTokenCount, true);
     }
 
-    private EncodingResult encodeInternal(String text, int maxTokenCount) {
+    private EncodingResult encodeInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(Collections.emptyList(), false);
+            return new EncodingResult(emptyList(), -1, false);
         }
 
         checkForSpecialTokens(text);
 
-        return encodeOrdinaryInternal(text, maxTokenCount);
+        return encodeOrdinaryInternal(text, maxTokenCount, keepEncodings);
     }
 
     private void checkForSpecialTokens(String text) {
@@ -78,31 +78,42 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encodeOrdinary(String text) {
-        return encodeOrdinaryInternal(text, -1).getTokens();
+        return encodeOrdinaryInternal(text, -1, true).getTokens();
     }
 
     @Override
     public EncodingResult encodeOrdinary(String text, int maxTokenCount) {
-        return encodeOrdinaryInternal(text, maxTokenCount);
+        return encodeOrdinaryInternal(text, maxTokenCount, true);
     }
 
-    private EncodingResult encodeOrdinaryInternal(String text, int maxTokenCount) {
+    private EncodingResult encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(Collections.emptyList(), false);
+            return new EncodingResult(emptyList(), -1, false);
         }
 
         List<Integer> out = new ArrayList<>();
         Matcher matcher = pattern.matcher(text);
-        int tokenCount = 0;
-        while (matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount)) {
+        int finalTokenCount = 0;
+        while (matcher.find() && maxTokenCountNotReached(maxTokenCount, finalTokenCount)) {
             ImmutableByteArray match = TokenEncoder.of(matcher.group());
             int encoded = encoder.encode(match);
             if (encoded != MAX_RANK) {
-                out.add(encoded);
-                tokenCount++;
+                if (keepEncodings) {
+                    out.add(encoded);
+                }
+                finalTokenCount++;
             } else {
-                List<Integer> tokensToAdd = bytePairMerge(match);
-                tokenCount += addTokens(out, tokensToAdd, maxTokenCount);
+                // TODO specialize for 2-3 tokens
+                var indexedRanks = getIndexedRanks(match, match.length() + 1);
+                int tokenCount = mergeBytesAndGetTokenCount(match, match.length() + 1, indexedRanks);
+                if (keepEncodings) {
+                    List<Integer> tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
+                    List<Integer> tokens = maxTokenCount >= 0
+                            ? tokensToAdd.subList(0, Math.min(maxTokenCount - out.size(), tokensToAdd.size()))
+                            : tokensToAdd;
+                    out.addAll(tokens);
+                }
+                finalTokenCount += tokenCount;
             }
         }
 
@@ -113,29 +124,18 @@ public class GptBytePairEncoding implements Encoding {
                 String decoded = decode(tokens);
                 if (text.startsWith(decoded)) {
                     // If decoded text is equal to the head of the original text, we can safely return the tokens
-                    return new EncodingResult(tokens, text.length() > decoded.length());
+                    return new EncodingResult(tokens, -1, text.length() > decoded.length());
                 }
             }
         }
 
-        return new EncodingResult(out, false);
-    }
-
-    private int addTokens(List<Integer> out, List<Integer> tokensToAdd, int maxTokenCount) {
-        if (maxTokenCount >= 0) {
-            List<Integer> sublist = tokensToAdd.subList(0, Math.min(maxTokenCount - out.size(), tokensToAdd.size()));
-            out.addAll(sublist);
-            return sublist.size();
-        }
-
-        out.addAll(tokensToAdd);
-        return tokensToAdd.size();
+        return new EncodingResult(out, finalTokenCount, false);
     }
 
     // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
-        return encode(text).size();
+        return encodeInternal(text, -1, false).getTokenCount();
     }
 
     @Override
@@ -170,38 +170,43 @@ public class GptBytePairEncoding implements Encoding {
         return name;
     }
 
-    List<Integer> bytePairMerge(ImmutableByteArray piece) {
-        int size = piece.length() + 1;
-        long[] indexedRanks = new long[size];
-        assert size - 1 > 1 : "Already filtered out";
-        if (size - 1 == 2) {
-            indexedRanks[0] = combine(0, encoder.encode(piece));
-        } else {
-            for (int i = 0; i < size - 2; i++) {
-                ImmutableByteArray subToken = TokenEncoder.getSubToken(piece, i, i + 2);
-                indexedRanks[i] = combine(i, encoder.encode(subToken));
-            }
-        }
-        indexedRanks[size - 2] = combine(size - 2, MAX_RANK);
-        indexedRanks[size - 1] = combine(size - 1, MAX_RANK);
-
-        while (size > 1) {
-            int minRankIndex = getMinRankIndex(indexedRanks, size); // TODO return indexedRank long
+    int mergeBytesAndGetTokenCount(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
+        while (tokenCount > 1) {
+            int minRankIndex = getMinRankIndex(indexedRanks, tokenCount);
             int minRank = rank(indexedRanks[minRankIndex]);
             if (minRank == MAX_RANK) {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, size));
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, tokenCount));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, size));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, tokenCount));
             }
-            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, size - minRankIndex - 2); // remaining ones will always be MAX_RANK values
-            size--;
+            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex - 2); // remaining ones will always be MAX_RANK values
+            tokenCount--;
         }
+        return tokenCount - 1;
+    }
 
-        List<Integer> out = new ArrayList<>(size);
-        for (int i = 0; i < size - 1; i++) {
+    long[] getIndexedRanks(ImmutableByteArray piece, int tokenCount) {
+        long[] indexedRanks = new long[tokenCount];
+        assert tokenCount - 1 > 1 : "Already filtered out";
+        if (tokenCount == 3) {
+            indexedRanks[0] = combine(0, encoder.encode(piece));
+        } else {
+            for (int i = 0; i < tokenCount - 2; i++) {
+                ImmutableByteArray subToken = TokenEncoder.getSubToken(piece, i, i + 2);
+                indexedRanks[i] = combine(i, encoder.encode(subToken));
+            }
+        }
+        indexedRanks[tokenCount - 2] = combine(tokenCount - 2, MAX_RANK);
+        indexedRanks[tokenCount - 1] = combine(tokenCount - 1, MAX_RANK);
+        return indexedRanks;
+    }
+
+    List<Integer> encodeToList(ImmutableByteArray piece, Integer tokenCount, long[] indexedRanks) {
+        List<Integer> out = new ArrayList<>(tokenCount);
+        for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);
             ImmutableByteArray bytesBetween = TokenEncoder.getSubToken(piece, start, end);

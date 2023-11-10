@@ -19,19 +19,19 @@ class GptBytePairEncodingTest {
     void bytePairMerge3() {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        encoding.countTokens(" ");
+        System.out.println(encoding.countTokens(" "));
 
         var sum = 0;
-        for (String TEXT : TEXTS) {
-            int i = encoding.countTokens(TEXT);
+        for (var TEXT : TEXTS) {
+            var i = encoding.countTokens(TEXT);
             sum += i;
         }
         System.out.println(sum);
         assertEquals(17815382, sum);
 
         var sum1 = 0;
-        for (String x : TEXTS) {
-            int size = encoding.encode(x).size();
+        for (var x : TEXTS) {
+            var size = encoding.encode(x).size();
             sum1 += size;
         }
         System.out.println(sum1);
@@ -39,8 +39,8 @@ class GptBytePairEncodingTest {
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 
-        var skipped = new ArrayList<>();
         var sizes = 0;
+        var skipped = new ArrayList<>();
         var collect = ranks.entrySet().stream().sorted(comparingInt(a -> a.getKey().length)).collect(toList());
         for (var entry : collect) {
             var key = entry.getKey();
@@ -74,7 +74,10 @@ class GptBytePairEncodingTest {
     @Test
     void bytePairMerge() {
         var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-        var result = gptBytePairEncoding.bytePairMerge(ImmutableByteArray.from(" GUTENBERG"));
+        var piece = ImmutableByteArray.from(" GUTENBERG");
+        var indexedRanks = gptBytePairEncoding.getIndexedRanks(piece, piece.length() + 1);
+        var tokenCount = gptBytePairEncoding.mergeBytesAndGetTokenCount(piece, piece.length() + 1, indexedRanks);
+        var result = gptBytePairEncoding.encodeToList(piece, tokenCount, indexedRanks);
         assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
     }
 }
