@@ -1,16 +1,14 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.api.Encoding;
-import java.util.List;
-import java.util.stream.Collectors;
-
 // Before:
-//Benchmark                                              (dataFolderPath)  Mode  Cnt  Score   Error  Units
-//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount              data    ss   10  3.828 ± 0.190   s/op
+//Benchmark                                                  (dataFolderPath)  Mode  Cnt  Score   Error  Units
+//SingleThreadedBenchmark.benchmarkCl100kBaseCharacterCount              data    ss   10  1.683 ± 0.050   s/op
+//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount                  data    ss   10  3.828 ± 0.190   s/op
 //
 // After:
-//Benchmark                                              (dataFolderPath)  Mode  Cnt  Score   Error  Units
-//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount              data    ss   10  2.515 ± 0.057   s/op
+//Benchmark                                                  (dataFolderPath)  Mode  Cnt  Score   Error  Units
+//SingleThreadedBenchmark.benchmarkCl100kBaseCharacterCount              data    ss   10  1.110 ± 0.040   s/op
+//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount                  data    ss   10  2.474 ± 0.081   s/op
 public class SingleThreadedBenchmark extends AbstractBenchmark {
 
 }

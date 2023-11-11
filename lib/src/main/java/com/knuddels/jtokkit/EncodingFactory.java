@@ -60,7 +60,8 @@ public final class EncodingFactory {
                 "r50k_base",
                 "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/r50k_base.tiktoken",
-                SPECIAL_TOKENS_X50K_BASE
+                SPECIAL_TOKENS_X50K_BASE,
+                false
         );
     }
 
@@ -74,7 +75,8 @@ public final class EncodingFactory {
                 "p50k_base",
                 "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/p50k_base.tiktoken",
-                SPECIAL_TOKENS_X50K_BASE
+                SPECIAL_TOKENS_X50K_BASE,
+                false
         );
     }
 
@@ -88,7 +90,8 @@ public final class EncodingFactory {
                 "p50k_edit",
                 "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/p50k_base.tiktoken",
-                SPECIAL_TOKENS_P50K_EDIT
+                SPECIAL_TOKENS_P50K_EDIT,
+                false
         );
     }
 
@@ -100,9 +103,10 @@ public final class EncodingFactory {
     public static Encoding cl100kBase() {
         return fromPredefinedParameters(
                 "cl100k_base",
-                "('(?i:s|t|re|ve|m|ll|d))|([^\\r\\n\\p{L}\\p{N}]?\\p{L}+)|(\\p{N}{1,3})|( ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*)|(\\s*[\\r\\n]+)|(\\s+(?!\\S))|(\\s+)",
+                "'(?:s|t|re|ve|m|ll|d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/cl100k_base.tiktoken",
-                SPECIAL_TOKENS_CL100K_BASE
+                SPECIAL_TOKENS_CL100K_BASE,
+                true
         );
     }
 
@@ -120,17 +124,22 @@ public final class EncodingFactory {
             final String name,
             final String patternString,
             final String fileName,
-            final Map<String, Integer> specialTokens
+            final Map<String, Integer> specialTokens,
+            boolean caseInsensitive
     ) {
-        Pattern regex = compileRegex(patternString);
+        Pattern regex = compileRegex(patternString, caseInsensitive);
         Map<byte[], Integer> mergeableRanks = loadMergeableRanks(fileName);
         final GptBytePairEncodingParams params = new GptBytePairEncodingParams(name, regex, mergeableRanks, specialTokens);
         return fromParameters(params);
     }
 
-    private static Pattern compileRegex(String patternString) {
+    private static Pattern compileRegex(String patternString, boolean caseInsensitive) {
         try {
-            return Pattern.compile(patternString, Pattern.UNICODE_CHARACTER_CLASS);
+            var flags = Pattern.UNICODE_CHARACTER_CLASS;
+            if (caseInsensitive) {
+                flags |= Pattern.CASE_INSENSITIVE;
+            }
+            return Pattern.compile(patternString, flags);
         } catch (final IllegalArgumentException exception) {
             // Workaround for Android where an IllegalArgumentException is thrown when using UNICODE_CHARACTER_CLASS
             return Pattern.compile(patternString);

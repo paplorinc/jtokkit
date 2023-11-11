@@ -4,7 +4,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 
 public abstract class AbstractBenchmark {
 
-    @Benchmark
+    //    @Benchmark
     public int benchmarkCl100kBaseTokenCount(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBase;
