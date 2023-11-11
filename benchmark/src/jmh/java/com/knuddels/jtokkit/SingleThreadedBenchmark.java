@@ -7,8 +7,8 @@ package com.knuddels.jtokkit;
 //
 // After:
 //Benchmark                                                  (dataFolderPath)  Mode  Cnt  Score   Error  Units
-//SingleThreadedBenchmark.benchmarkCl100kBaseCharacterCount              data    ss   10  1.044 ± 0.036   s/op
-//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount                  data    ss   10  2.447 ± 0.048   s/op
+//SingleThreadedBenchmark.benchmarkCl100kBaseCharacterCount              data    ss   10  1.046 ± 0.039   s/op
+//SingleThreadedBenchmark.benchmarkCl100kBaseTokenCount                  data    ss   10  2.383 ± 0.044   s/op
 public class SingleThreadedBenchmark extends AbstractBenchmark {
 
 }

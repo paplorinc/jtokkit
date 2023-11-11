@@ -5,13 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
-import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.getBasePromptsKeys;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -19,11 +18,12 @@ class EncodingFactoryTest {
     static final String originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
     static final List<String> expectedOriginal = List.of("", "(?i:'s|'t|'re|'ve|'m|'ll|'d)", "[^\\r\\n\\p{L}\\p{N}]?\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*", "\\s*[\\r\\n]+", "\\s+(?!\\S)", "\\s+");
 
-    static List<? extends List<String>> getEncounters(String text, List<String> actualRegexParts, String expectedRegex, boolean caseInsensitive) {
+    static SortedMap<Integer, List<String>> getEncounters(String text, List<String> actualRegexParts, String expectedRegex, boolean caseInsensitive) {
         assert actualRegexParts.stream().skip(1).collect(joining("|")).equals(expectedRegex) : "Regex mismatch";
         var actualFinalRegex = actualRegexParts.stream().skip(1).map(x -> "(" + x + ")").collect(joining("|"));
         var actualPattern = compileRegex(actualFinalRegex, caseInsensitive);
-        var encounters = actualRegexParts.stream().map(x -> new ArrayList<String>()).collect(toList());
+        var encounters = new TreeMap<Integer, List<String>>();
+
         for (var matcher = actualPattern.matcher(text); matcher.find(); ) {
             var match = matcher.group(0);
             @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -31,37 +31,39 @@ class EncodingFactoryTest {
                     .filter(i -> matcher.group(i) != null).findFirst()
                     .getAsInt();
             assert Objects.equals(match, matcher.group(index)) : "Mismatch between match and group " + index + " for text: " + text;
-            if (encounters.get(index).isEmpty()) {
-                var end = matcher.end();
-                String c;
-                if (end >= text.length()) {
-                    c = "<end>";
-                } else if (end >= text.length() - 1) {
-                    c = text.charAt(end) + "<end>";
-                } else {
-                    c = text.substring(end, end + 2);
-                }
-                System.out.println("Next chars after: `" + matcher.group() + "` for index " + index + ", pattern: `" + actualRegexParts.get(index) + "` is  + `" + c + "`");
-            }
-            encounters.get(index).add(matcher.group());
+            // printExtraInfo(text, actualRegexParts, encounters, index, matcher);
+            encounters.computeIfAbsent(index, k -> new ArrayList<>()).add(match);
         }
         return encounters;
     }
 
-    private static void compareEncounters(String text) {
-        var actual = getEncounters(
-                text,
-                List.of("", "'(?:s|t|re|ve|m|ll|d)", "[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*", "\\s*[\\r\\n]", "\\s+(?!\\S)", "\\s+"),
-                "'(?:s|t|re|ve|m|ll|d)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
-                true
-        );
+    private static void printExtraInfo(String text, List<String> actualRegexParts, Map<Integer, List<String>> encounters, int index, Matcher matcher) {
+        if (!encounters.containsKey(index)) {
+            var end = matcher.end();
+            String c;
+            if (end >= text.length()) {
+                c = "<end>";
+            } else if (end >= text.length() - 1) {
+                c = text.charAt(end) + "<end>";
+            } else {
+                c = text.substring(end, end + 2);
+            }
+            System.out.println("Next chars after: `" + matcher.group() + "` for index " + index + ", pattern: `" + actualRegexParts.get(index) + "` is  + `" + c + "`");
+        }
+    }
+
+    private static Map<String, List<String>> compareEncounters(String text, List<String> actualRegexParts, String expectedRegex) {
+        var actual = getEncounters(text, actualRegexParts, expectedRegex, true);
         var expected = getEncounters(text, expectedOriginal, originalRegex, false);
         if (!Objects.equals(expected, actual)) {
             System.out.println("Expected: " + expected);
             System.out.println("Actual: " + actual);
-            System.out.println();
+            throw new AssertionError("Expected and actual encounters do not match");
         }
-        assertEquals(expected, actual);
+
+        var result = new LinkedHashMap<String, List<String>>();
+        actual.forEach((index, match) -> result.put(actualRegexParts.get(index), match));
+        return result;
     }
 
     private static String permuteText(String text) {
@@ -75,7 +77,7 @@ class EncodingFactoryTest {
                 // Randomly flip case whitespaces
                 if (Character.isWhitespace(modifiedText.charAt(i))) {
                     var newWhitespace = whitespaceChars.get(random.nextInt(whitespaceChars.size()));
-                    for (int j = 0; j < newWhitespace.length(); j++) {
+                    for (var j = 0; j < newWhitespace.length(); j++) {
                         modifiedText.setCharAt(i + j, newWhitespace.charAt(j));
                     }
                 }
@@ -92,7 +94,7 @@ class EncodingFactoryTest {
             // Randomly insert Unicode characters
             if (random.nextInt(20) == 0) {
                 var newChars = Character.toChars(random.nextInt(Character.MAX_CODE_POINT + 1));
-                for (int j = 0; j < newChars.length; j++) {
+                for (var j = 0; j < newChars.length; j++) {
                     modifiedText.setCharAt(i + j, newChars[j]);
                 }
             }
@@ -104,7 +106,7 @@ class EncodingFactoryTest {
 
     private static List<String> getWhitespaces() {
         Set<String> whitespaceChars = new HashSet<>();
-        for (char c = Character.MIN_VALUE; c < Character.MAX_VALUE; c++) {
+        for (var c = Character.MIN_VALUE; c < Character.MAX_VALUE; c++) {
             if (Character.isWhitespace(c)) {
                 whitespaceChars.add(String.valueOf(c));
             }
@@ -115,12 +117,29 @@ class EncodingFactoryTest {
 
     @Test
     void oldRegexMatchesTheSameWayAsTheOptimizedOne() throws Exception {
-        for (var text : getBasePromptsKeys()) {
-            compareEncounters(text);
+        var actualRegexParts = List.of("", "'(?:[sdtm]|ll|ve|re)", "[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*", "\\s*[\\r\\n]", "\\s+(?!\\S)", "\\s+");
+        var expectedRegex = "'(?:[sdtm]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+";
+
+        var collected = new LinkedHashMap<String, List<String>>();
+        actualRegexParts.stream().skip(1).forEach(x -> collected.put(x, new ArrayList<>()));
+        for (var text : TEXTS) {
+            compareEncounters(text, actualRegexParts, expectedRegex)
+                    .forEach((key, value) -> collected.get(key).addAll(value));
 
             var modifiedText = permuteText(text);
-            compareEncounters(modifiedText);
+            compareEncounters(modifiedText, actualRegexParts, expectedRegex)
+                    .forEach((key, value) -> collected.get(key).addAll(value));
         }
+
+        var groupedResults = collected.entrySet().stream()
+                .collect(toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream().collect(groupingBy(String::toLowerCase, LinkedHashMap::new, counting())),
+                        (e1, e2) -> e1,
+                        LinkedHashMap::new
+                ));
+
+        System.out.println(groupedResults.size());
     }
 
     @Disabled

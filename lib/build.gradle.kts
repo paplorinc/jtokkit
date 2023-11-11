@@ -22,9 +22,9 @@ java {
 
 dependencies {
     // Existing dependencies
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
 
     // Eclipse Collections dependency
     implementation("org.eclipse.collections:eclipse-collections:11.1.0")
@@ -32,7 +32,8 @@ dependencies {
 }
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
-    maxParallelForks = 4
+    maxParallelForks = 8
+    jvmArgs("-Xmx4g")
 }
 
 publishing {
