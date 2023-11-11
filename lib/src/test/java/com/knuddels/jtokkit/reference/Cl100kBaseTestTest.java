@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,20 +33,38 @@ public class Cl100kBaseTestTest {
             final var fileContents = new ArrayList<String>();
             try (var files = Files.walk(folderPath)) {
                 files.forEach(file -> {
-                    if (Files.isRegularFile(file) || file.endsWith(".txt")) {
+                    if (Files.isRegularFile(file) && file.toString().endsWith(".txt")) {
                         try {
-                            final var content = String.join("\n", Files.readAllLines(file, UTF_8));
-                            fileContents.add(content);
+                            fileContents.add(Files.readString(file, UTF_8));
                         } catch (IOException exception) {
                             throw new RuntimeException("Error while reading file at " + file, exception);
                         }
                     }
                 });
             }
+
+            fileContents.addAll(getBasePromptsKeys());
+
             return fileContents;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static List<String> getBasePromptsKeys() throws IOException {
+        var result = new ArrayList<String>();
+        Path csvPath = Paths.get("../lib/src/test/resources/base_prompts.csv");
+        try (BufferedReader br = Files.newBufferedReader(csvPath, UTF_8)) {
+            br.readLine(); // Skip header
+
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                // Add only the first column, handling quoted strings
+                result.add(values[0].replaceAll("\"", ""));
+            }
+        }
+        return result;
     }
 
     @Test
