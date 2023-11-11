@@ -17,6 +17,7 @@ public class BenchmarkingState {
     public final Encoding r50kBase = EncodingFactory.r50kBase();
     public List<String> fileContents;
     public int expectedFileContentsCl100kBaseTokenCount;
+    public int expectedFileContentsCl100kBaseCharCount;
     @Param("data")
     public String dataFolderPath;
 
@@ -25,6 +26,9 @@ public class BenchmarkingState {
         fileContents = BenchmarkUtils.loadData(dataFolderPath);
         expectedFileContentsCl100kBaseTokenCount = fileContents.stream()
                 .mapToInt(x -> cl100kBase.encode(x).size())
+                .sum();
+        expectedFileContentsCl100kBaseCharCount = fileContents.stream()
+                .mapToInt(String::length)
                 .sum();
     }
 }

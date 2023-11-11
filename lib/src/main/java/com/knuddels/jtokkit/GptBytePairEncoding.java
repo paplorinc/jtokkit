@@ -92,9 +92,8 @@ public class GptBytePairEncoding implements Encoding {
         }
 
         List<Integer> out = new ArrayList<>();
-        Matcher matcher = pattern.matcher(text);
         int finalTokenCount = 0;
-        while (matcher.find() && maxTokenCountNotReached(maxTokenCount, finalTokenCount)) {
+        for (Matcher matcher = pattern.matcher(text); matcher.find() && maxTokenCountNotReached(maxTokenCount, finalTokenCount); ) {
             ImmutableByteArray match = TokenEncoder.of(matcher.group());
             int encoded = encoder.encode(match);
             if (encoded != MAX_RANK) {
@@ -130,6 +129,15 @@ public class GptBytePairEncoding implements Encoding {
         }
 
         return new EncodingResult(out, finalTokenCount, false);
+    }
+
+    @Override
+    public long countSplitChars(String text) {
+        long matchedCharacterCount = 0;
+        for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
+            matchedCharacterCount += matcher.group().length();
+        }
+        return matchedCharacterCount;
     }
 
     // TODO limit regex to max token size?

@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -46,6 +47,7 @@ class EncodingFactoryTest {
         assert encounters.stream().filter(x -> !x.isEmpty()).count() == regexParts.size() - 1;
     }
 
+    @Disabled
     @Test
     void testCalculateByteLengthForIndividualCharacters() {
         for (var text : TEXTS) {

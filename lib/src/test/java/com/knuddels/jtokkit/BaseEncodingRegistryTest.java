@@ -169,6 +169,11 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
         }
 
         @Override
+        public long countSplitChars(String text) {
+            return 0;
+        }
+
+        @Override
         public int countTokensOrdinary(final String text) {
             return 0;
         }
