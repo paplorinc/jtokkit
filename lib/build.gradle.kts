@@ -32,6 +32,7 @@ dependencies {
 }
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
+    maxParallelForks = 4
 }
 
 publishing {

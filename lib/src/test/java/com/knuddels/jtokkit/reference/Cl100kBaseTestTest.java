@@ -7,13 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.function.Function.identity;
@@ -51,20 +52,46 @@ public class Cl100kBaseTestTest {
         }
     }
 
-    private static List<String> getBasePromptsKeys() throws IOException {
+    public static List<String> getBasePromptsKeys() throws IOException {
         var result = new ArrayList<String>();
-        Path csvPath = Paths.get("../lib/src/test/resources/base_prompts.csv");
-        try (BufferedReader br = Files.newBufferedReader(csvPath, UTF_8)) {
+        var csvPath = Paths.get("../lib/src/test/resources/base_prompts.csv");
+        try (var br = Files.newBufferedReader(csvPath, UTF_8)) {
             br.readLine(); // Skip header
 
             String line;
             while ((line = br.readLine()) != null) {
-                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                var values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
                 // Add only the first column, handling quoted strings
                 result.add(values[0].replaceAll("\"", ""));
             }
         }
         return result;
+    }
+
+    @Test
+    void test() throws IOException {
+        for (var text : TEXTS) {
+            var oldEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBaseOriginal();
+            var encode = oldEncoding.encode(text);
+
+            var newEncoding = (GptBytePairEncoding) ENCODING;
+            var newEncode = newEncoding.encode(text);
+            if (!Objects.equals(encode, newEncode)) {
+                var diff = new HashSet<>(encode);
+                diff.removeAll(newEncode);
+                var collect = diff.stream().map(x -> oldEncoding.decode(List.of(x))).collect(Collectors.toList());
+                System.out.println(collect);
+
+                var diff2 = new HashSet<>(newEncode);
+                diff2.removeAll(encode);
+                var collect2 = diff2.stream().map(x -> newEncoding.decode(List.of(x))).collect(Collectors.toList());
+                System.out.println(collect2);
+
+                System.out.println("Old: " + encode);
+                System.out.println("New: " + newEncode);
+            }
+            assertEquals(encode, newEncode);
+        }
     }
 
     @Test
@@ -115,7 +142,7 @@ public class Cl100kBaseTestTest {
         final var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
         final var encodingResult = ENCODING.encode(input, 10);
 
-        assertEquals(expectedWithMaxTokens, encodingResult.getTokens());
+        assertEquals(expectedWithMaxTokens, encodingResult.getTokens(), "Encoding result does not match expected value for input: " + input);
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
     }
 
