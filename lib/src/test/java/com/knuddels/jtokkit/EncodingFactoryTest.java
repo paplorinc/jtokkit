@@ -19,11 +19,11 @@ class EncodingFactoryTest {
     static final String originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
     static final List<String> expectedOriginal = List.of("", "(?i:'s|'t|'re|'ve|'m|'ll|'d)", "[^\\r\\n\\p{L}\\p{N}]?\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*", "\\s*[\\r\\n]+", "\\s+(?!\\S)", "\\s+");
 
-    static List<HashSet<Object>> getEncounters(String text, List<String> actualRegexParts, String expectedRegex, boolean caseInsensitive) {
+    static List<? extends List<String>> getEncounters(String text, List<String> actualRegexParts, String expectedRegex, boolean caseInsensitive) {
         assert actualRegexParts.stream().skip(1).collect(joining("|")).equals(expectedRegex) : "Regex mismatch";
         var actualFinalRegex = actualRegexParts.stream().skip(1).map(x -> "(" + x + ")").collect(joining("|"));
         var actualPattern = compileRegex(actualFinalRegex, caseInsensitive);
-        var encounters = actualRegexParts.stream().map(x -> new HashSet<>()).collect(toList());
+        var encounters = actualRegexParts.stream().map(x -> new ArrayList<String>()).collect(toList());
         for (var matcher = actualPattern.matcher(text); matcher.find(); ) {
             var match = matcher.group(0);
             @SuppressWarnings("OptionalGetWithoutIsPresent")
