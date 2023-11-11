@@ -3,11 +3,8 @@ package com.knuddels.jtokkit;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
@@ -67,44 +64,61 @@ class EncodingFactoryTest {
         assertEquals(expected, actual);
     }
 
-    private static String permuteText(String text, Pattern newLineMatchesPattern, List<String> newLineTypes) {
+    private static String permuteText(String text) {
         var random = ThreadLocalRandom.current();
+        var modifiedText = new StringBuilder(text);
 
-        var modifiedText = new StringBuilder(text.length());
+        var whitespaceChars = getWhitespaces();
 
-        // flip whitespaces around
-        var lastEnd = 0;
-        for (var matcher = newLineMatchesPattern.matcher(text); matcher.find(); ) {
-            modifiedText.append(text, lastEnd, matcher.start());
-            var replacement = newLineTypes.get(random.nextInt(newLineTypes.size()));
-            assert replacement.length() == matcher.group().length() : "Length mismatch for replacement: " + replacement.length() + " vs " + matcher.group().length();
-            modifiedText.append(replacement);
-            lastEnd = matcher.end();
-        }
-        modifiedText.append(text.substring(lastEnd));
+        for (var i = 0; i < modifiedText.length() - 1; i++) {
+            if (random.nextInt(5) == 0) {
+                // Randomly flip case whitespaces
+                if (Character.isWhitespace(modifiedText.charAt(i))) {
+                    var newWhitespace = whitespaceChars.get(random.nextInt(whitespaceChars.size()));
+                    for (int j = 0; j < newWhitespace.length(); j++) {
+                        modifiedText.setCharAt(i + j, newWhitespace.charAt(j));
+                    }
+                }
+            }
 
-        // flip upper/lowercase randomly
-        for (int i = 0; i < modifiedText.length(); i++) {
+            // Randomly flip case
             if (random.nextInt(10) == 0) {
-                var ch = random.nextBoolean()
-                        ? Character.toUpperCase(modifiedText.charAt(i))
-                        : Character.toLowerCase(modifiedText.charAt(i));
+                var ch = random.nextBoolean() ?
+                        Character.toUpperCase(modifiedText.charAt(i)) :
+                        Character.toLowerCase(modifiedText.charAt(i));
                 modifiedText.setCharAt(i, ch);
             }
+
+            // Randomly insert Unicode characters
+            if (random.nextInt(20) == 0) {
+                var newChars = Character.toChars(random.nextInt(Character.MAX_CODE_POINT + 1));
+                for (int j = 0; j < newChars.length; j++) {
+                    modifiedText.setCharAt(i + j, newChars[j]);
+                }
+            }
         }
+
         assert modifiedText.length() == text.length() : "Length mismatch for text: " + modifiedText.length() + " vs " + text.length();
         return modifiedText.toString();
     }
 
+    private static List<String> getWhitespaces() {
+        Set<String> whitespaceChars = new HashSet<>();
+        for (char c = Character.MIN_VALUE; c < Character.MAX_VALUE; c++) {
+            if (Character.isWhitespace(c)) {
+                whitespaceChars.add(String.valueOf(c));
+            }
+        }
+        whitespaceChars.addAll(List.of(" ", "\n", "\u000B", "\u000C", "\r", "\u0085", "\u2028", "\u2029"));
+        return new ArrayList<>(whitespaceChars);
+    }
+
     @Test
     void oldRegexMatchesTheSameWayAsTheOptimizedOne() throws Exception {
-        var newLineTypes = List.of(" ", " ", "\n", "\u000B", "\u000C", "\r", "\u0085", "\u2028", "\u2029"); // https://docs.oracle.com/javase/9/docs/api/java/util/regex/Pattern.html
-        var newLineMatchesPattern = compileRegex(String.join("|", newLineTypes), true);
-
         for (var text : getBasePromptsKeys()) {
             compareEncounters(text);
 
-            var modifiedText = permuteText(text, newLineMatchesPattern, newLineTypes);
+            var modifiedText = permuteText(text);
             compareEncounters(modifiedText);
         }
     }

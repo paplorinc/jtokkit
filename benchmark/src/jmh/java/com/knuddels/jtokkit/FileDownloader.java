@@ -15,7 +15,8 @@ import static java.util.stream.Collectors.toCollection;
 public class FileDownloader {
 
     public static void main(String[] args) {
-        int[] top100BookIds = {
+        int[] bookIds = {
+                // English
                 10,
                 11,
                 16,
@@ -115,9 +116,30 @@ public class FileDownloader {
                 42324,
                 58585,
                 64317,
-                67098
+                67098,
+
+                // Chinese
+                25328,
+
+                // French
+                18812,
+
+                // Greek
+                39536,
+
+                // Hungarian
+                34759,
+
+                // Japanese
+                1982,
+
+                // Arabic
+                43007,
+
+                // Hebrew
+                61024
         };
-        SortedSet<Integer> uniqueBookIds = Arrays.stream(top100BookIds).boxed().collect(toCollection(TreeSet::new));
+        SortedSet<Integer> uniqueBookIds = Arrays.stream(bookIds).boxed().collect(toCollection(TreeSet::new));
         assert uniqueBookIds.size() == 100; // top 100 books in txt format
 
         Path rootFolder = Paths.get("benchmark/data");
@@ -126,7 +148,7 @@ public class FileDownloader {
 
         // Assert the total size (replace 0L with the expected total size)
         long totalSize = calculateTotalFileSize(rootFolder);
-        if (totalSize != 73_174_598) {
+        if (totalSize != 75_515_819) {
             throw new AssertionError("Total size did not match expected value, actual: " + totalSize);
         }
     }
