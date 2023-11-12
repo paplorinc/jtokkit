@@ -179,6 +179,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     int mergeBytesAndGetTokenCount(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
+        assert tokenCount > 1;
         while (tokenCount > 1) {
             int minRankIndex = getMinRankIndex(indexedRanks, tokenCount);
             int minRank = rank(indexedRanks[minRankIndex]);

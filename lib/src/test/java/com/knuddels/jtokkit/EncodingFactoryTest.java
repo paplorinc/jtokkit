@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
@@ -22,8 +23,25 @@ class EncodingFactoryTest {
         assert actualRegexParts.stream().skip(1).collect(joining("|")).equals(expectedRegex) : "Regex mismatch";
         var actualFinalRegex = actualRegexParts.stream().skip(1).map(x -> "(" + x + ")").collect(joining("|"));
         var actualPattern = compileRegex(actualFinalRegex, caseInsensitive);
-        var encounters = new TreeMap<Integer, List<String>>();
 
+        var encounters = getEncounters(text, actualPattern);
+
+        // TODO try pre-splitting to enable parallel processing
+        if (false) {
+            var encounters2 = new TreeMap<Integer, List<String>>();
+            Pattern.compile("(?<=\\s)(?=\\p{L}|\\p{N})").splitAsStream(text)
+                    .forEach(match -> {
+                        var encounters1 = getEncounters(match, actualPattern);
+                        encounters2.putAll(encounters1);
+                    });
+            assert Objects.equals(encounters, encounters2) : "Encounters mismatch";
+        }
+
+        return encounters;
+    }
+
+    private static TreeMap<Integer, List<String>> getEncounters(String text, Pattern actualPattern) {
+        var encounters = new TreeMap<Integer, List<String>>();
         for (var matcher = actualPattern.matcher(text); matcher.find(); ) {
             var match = matcher.group(0);
             @SuppressWarnings("OptionalGetWithoutIsPresent")
