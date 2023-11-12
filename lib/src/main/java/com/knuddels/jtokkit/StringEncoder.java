@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 final class StringEncoder {
     private final Map<Integer, String> encodedToDecoded;
 
@@ -19,8 +21,9 @@ final class StringEncoder {
     }
 
 
-    public String decodeIfPresent(final Integer encodedToken) {
-        return encodedToDecoded.get(encodedToken);
+    public byte[] decodeIfPresent(Integer encodedToken) {
+        var result = encodedToDecoded.get(encodedToken);
+        return result != null ? result.getBytes(UTF_8) : null;
     }
 
     public Collection<String> getDecodedTokens() {

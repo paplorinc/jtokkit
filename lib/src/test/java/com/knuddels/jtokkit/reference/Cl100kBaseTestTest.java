@@ -200,7 +200,8 @@ public class Cl100kBaseTestTest {
     @Test
     public void cl100kBaseEncodeOrdinaryEncodesSpecialTokensCorrectly() {
         final var input = "Hello<|endoftext|>, <|fim_prefix|> <|fim_middle|> world <|fim_suffix|> ! <|endofprompt|>";
-        final var actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
+        var tokens = ENCODING.encodeOrdinary(input);
+        final var actual = ENCODING.decode(tokens);
 
         assertEquals(input, actual);
     }

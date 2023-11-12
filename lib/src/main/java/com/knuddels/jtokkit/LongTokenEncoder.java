@@ -1,62 +1,73 @@
 package com.knuddels.jtokkit;
 
+import org.eclipse.collections.api.factory.primitive.LongIntMaps;
+import org.eclipse.collections.api.map.primitive.ImmutableLongIntMap;
+import org.eclipse.collections.api.map.primitive.MutableLongIntMap;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
+import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 
-final class TokenEncoder {
-    public static final int MAX_RANK = Integer.MAX_VALUE;
-    private final Map<ImmutableByteArray, Integer> byteArrayEncoders;
+final class LongTokenEncoder {
+    private final ImmutableLongIntMap longEncoders;
     private final Map<Integer, byte[]> encodedToDecoded;
 
-    public TokenEncoder(Map<byte[], Integer> encoder) {
+    public LongTokenEncoder(Map<byte[], Integer> encoder) {
         this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
 
-        this.byteArrayEncoders = new ConcurrentHashMap<>(encoder.size());
+        MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k)) {
-                byteArrayEncoders.put(new ImmutableByteArray(k), v);
+                tempLongEncoders.put(from(k), v);
                 encodedToDecoded.put(v, k);
             }
         });
+        this.longEncoders = tempLongEncoders.toImmutable();
     }
 
-    private static boolean accepts(byte[] bytes) {
-        return !LongTokenEncoder.accepts(bytes);
+    public static boolean accepts(byte[] bytes) {
+        return bytes.length <= Long.BYTES;
     }
 
-    public static int getMinRankIndex(long[] indexedRanks, int size) {
-        int minRankIndex = 0;
-        int minRank = rank(indexedRanks[minRankIndex]);
-        for (int i = 1; i < size - 2; i++) {
-            int r = rank(indexedRanks[i]);
-            if (r < minRank) {
-                minRankIndex = i;
-                minRank = r;
-            }
+    static long from(byte[] bytes) { // TODO ByteBuffer ?
+        assert bytes.length > 0 : "Empty byte array";
+        assert accepts(bytes) : "Too big byte array: " + Arrays.toString(bytes);
+
+        long result = bytes[0] & 0xFFL;
+        for (int i = 1; i < bytes.length; i++) {
+            result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
         }
-        return minRankIndex;
+        return result;
     }
 
-    ImmutableByteArray getSubToken(ImmutableByteArray payload, int startIndex, int endIndex) {
-        int length = payload.length();
+    public static int byteSize(long payload) {
+        return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
+    }
+
+    public static long getSubToken(long payload, int startIndex, int endIndex) {
+        int length = byteSize(payload);
         int newLength = endIndex - startIndex;
         if (length == newLength) {
             return payload;
         } else {
-            // TODO encode as `long`, if applicable
-            ImmutableByteArray immutableByteArray = payload.getBytesBetween(startIndex, endIndex);
-            assert immutableByteArray.length() == newLength : "Expected length: " + newLength + ", but got: " + immutableByteArray.length() + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
-            return immutableByteArray;
+            assert newLength <= Long.BYTES;
+            int shift = (length - endIndex) * Byte.SIZE;
+            long mask = -1L >>> -(newLength * Byte.SIZE);
+            long result = (payload >>> shift) & mask;
+
+            assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
+
+            return result;
         }
     }
 
-    public int encode(ImmutableByteArray payload) {
-        Integer result = byteArrayEncoders.get(payload); // getOrDefault is slower
-        return result != null ? result : MAX_RANK;
+    public int encode(long payload) {
+        return longEncoders.getIfAbsent(payload, MAX_RANK);
     }
 
     public byte[] decodeIfPresent(int encodedToken) {
@@ -64,11 +75,11 @@ final class TokenEncoder {
     }
 
     public int length() {
-        return byteArrayEncoders.size();
+        return longEncoders.size();
     }
 
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
-        ImmutableByteArray match = new ImmutableByteArray(bytes);
+        long match = from(bytes);
         int encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
@@ -76,7 +87,8 @@ final class TokenEncoder {
             }
             return 1;
         } else {
-            int size = match.length() + 1;
+            // TODO specialize for 2-3 tokens
+            int size = byteSize(match) + 1;
             long[] indexedRanks = getIndexedRanks(match, size);
             int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
             if (keepEncodings) {
@@ -90,14 +102,14 @@ final class TokenEncoder {
         }
     }
 
-    long[] getIndexedRanks(ImmutableByteArray piece, int tokenCount) {
+    long[] getIndexedRanks(long piece, int tokenCount) {
         long[] indexedRanks = new long[tokenCount];
         assert tokenCount > 1 : "Already filtered out";
         if (tokenCount == 3) {
             indexedRanks[0] = combine(0, encode(piece));
         } else {
             for (int i = 0; i < tokenCount - 2; i++) {
-                ImmutableByteArray subToken = getSubToken(piece, i, i + 2);
+                long subToken = getSubToken(piece, i, i + 2);
                 indexedRanks[i] = combine(i, encode(subToken));
             }
         }
@@ -106,10 +118,10 @@ final class TokenEncoder {
         return indexedRanks;
     }
 
-    int mergeBytesAndGetTokenCount(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
+    int mergeBytesAndGetTokenCount(long piece, int tokenCount, long[] indexedRanks) {
         assert tokenCount > 1;
         while (tokenCount > 1) {
-            int minRankIndex = getMinRankIndex(indexedRanks, tokenCount);
+            int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, tokenCount);
             int minRank = rank(indexedRanks[minRankIndex]);
             if (minRank == MAX_RANK) {
                 break;
@@ -125,24 +137,24 @@ final class TokenEncoder {
         return tokenCount - 1;
     }
 
-    private int getRank(ImmutableByteArray piece, long[] parts, int startIndex, int size) {
+    private int getRank(long piece, long[] parts, int startIndex, int size) {
         int endIndex = startIndex + 3;
         if (endIndex >= size) {
             return MAX_RANK;
         } else {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
-            ImmutableByteArray encoderIndex = getSubToken(piece, pieceStartIndex, pieceEndIndex);
+            long encoderIndex = getSubToken(piece, pieceStartIndex, pieceEndIndex);
             return encode(encoderIndex);
         }
     }
 
-    List<Integer> encodeToList(ImmutableByteArray piece, Integer tokenCount, long[] indexedRanks) {
+    List<Integer> encodeToList(long piece, Integer tokenCount, long[] indexedRanks) {
         List<Integer> out = new ArrayList<>(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);
-            ImmutableByteArray bytesBetween = getSubToken(piece, start, end);
+            long bytesBetween = getSubToken(piece, start, end);
             out.add(encode(bytesBetween));
         }
         return out;

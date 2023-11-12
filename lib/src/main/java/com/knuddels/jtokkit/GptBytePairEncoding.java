@@ -6,9 +6,11 @@ import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 
@@ -17,13 +19,16 @@ public class GptBytePairEncoding implements Encoding {
     private final String name;
     private final Pattern pattern;
     private final StringEncoder specialTokensEncoder;
+    private final LongTokenEncoder longTokenEncoder;
     private final TokenEncoder tokenEncoder;
 
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
+        this.longTokenEncoder = new LongTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
+        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
     }
 
     public static int index(long indexedRank) {
@@ -90,7 +95,11 @@ public class GptBytePairEncoding implements Encoding {
         for (Matcher matcher = pattern.matcher(text); matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount); ) {
             var group = matcher.group();
             byte[] bytes = group.getBytes(UTF_8);
-            tokenCount += tokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+            if (LongTokenEncoder.accepts(bytes)) {
+                tokenCount += longTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+            } else {
+                tokenCount += tokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+            }
         }
 
         if (maxTokenCount >= 0) {
@@ -160,16 +169,14 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     public byte[] decodeToken(int token) {
-        byte[] decodedToken = tokenEncoder.decodeIfPresent(token);
-        if (decodedToken != null) {
-            return decodedToken;
+        assert token != MAX_RANK;
+        byte[] decodedToken = longTokenEncoder.decodeIfPresent(token);
+        if (decodedToken == null) {
+            decodedToken = tokenEncoder.decodeIfPresent(token);
+            if (decodedToken == null) {
+                decodedToken = specialTokensEncoder.decodeIfPresent(token);
+            }
         }
-
-        String decodedSpecialToken = specialTokensEncoder.decodeIfPresent(token);
-        if (decodedSpecialToken != null) {
-            return decodedSpecialToken.getBytes(UTF_8);
-        }
-
-        throw new IllegalArgumentException("Unknown token for decoding: " + token);
+        return Objects.requireNonNull(decodedToken);
     }
 }
