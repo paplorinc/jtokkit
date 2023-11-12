@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+
 public final class EncodingFactory {
     private static final String ENDOFTEXT = "<|endoftext|>";
     private static final String FIM_PREFIX = "<|fim_prefix|>";
@@ -173,6 +175,7 @@ public final class EncodingFactory {
 
                 final byte[] token = Base64.getDecoder().decode(parts[0].getBytes(StandardCharsets.UTF_8));
                 final int rank = Integer.parseInt(parts[1]);
+                assert rank != MAX_RANK;
 
                 mergeableRanks.put(token, rank);
             }

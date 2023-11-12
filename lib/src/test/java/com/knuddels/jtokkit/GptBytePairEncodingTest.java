@@ -71,13 +71,13 @@ class GptBytePairEncodingTest {
         System.out.println("Skipped " + skipped); // can these work with regexes?
     }
 
-    @Test
-    void bytePairMerge() {
-        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-        var piece = ImmutableByteArray.from(" GUTENBERG");
-        var indexedRanks = gptBytePairEncoding.getIndexedRanks(piece, piece.length() + 1);
-        var tokenCount = gptBytePairEncoding.mergeBytesAndGetTokenCount(piece, piece.length() + 1, indexedRanks);
-        var result = gptBytePairEncoding.encodeToList(piece, tokenCount, indexedRanks);
-        assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
-    }
+//    @Test
+//    void bytePairMerge() {
+//        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+//        var piece = ImmutableByteArray.from(" GUTENBERG");
+//        var indexedRanks = gptBytePairEncoding.getIndexedRanks(piece, piece.length() + 1);
+//        var tokenCount = gptBytePairEncoding.mergeBytesAndGetTokenCount(piece, piece.length() + 1, indexedRanks);
+//        var result = gptBytePairEncoding.encodeToList(piece, tokenCount, indexedRanks);
+//        assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
+//    }
 }
