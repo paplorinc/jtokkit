@@ -10,22 +10,23 @@ import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 final class TokenEncoder {
     public static final int MAX_RANK = Integer.MAX_VALUE;
     private final Map<ImmutableByteArray, Integer> byteArrayEncoders;
-    private final Map<Integer, byte[]> encodedToDecoded;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
-        this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
 
         this.byteArrayEncoders = new ConcurrentHashMap<>(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k)) {
-                byteArrayEncoders.put(new ImmutableByteArray(k), v);
-                encodedToDecoded.put(v, k);
+                byteArrayEncoders.put(from(k), v);
             }
         });
     }
 
-    private static boolean accepts(byte[] bytes) {
-        return !LongTokenEncoder.accepts(bytes);
+    static boolean accepts(byte[] bytes) {
+        return true; // TODO !LongTokenEncoder.accepts(bytes);
+    }
+
+    static ImmutableByteArray from(byte[] bytes) {
+        return new ImmutableByteArray(bytes);
     }
 
     public static int getMinRankIndex(long[] indexedRanks, int size) {
@@ -59,17 +60,14 @@ final class TokenEncoder {
         return result != null ? result : MAX_RANK;
     }
 
-    public byte[] decodeIfPresent(int encodedToken) {
-        return encodedToDecoded.get(encodedToken);
-    }
-
     public int length() {
         return byteArrayEncoders.size();
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
-        ImmutableByteArray match = new ImmutableByteArray(bytes);
+    int addTokensAndGetCount(LongTokenEncoder longTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
+        ImmutableByteArray match = from(bytes);
         int encoded = encode(match);
+//        assert !LongTokenEncoder.accepts(bytes) || encoded == longTokenEncoder.encode(LongTokenEncoder.from(bytes)) : "Expected: " + longTokenEncoder.encode(LongTokenEncoder.from(bytes)) + ", but got: " + encoded;
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
                 out.add(encoded);
@@ -137,7 +135,7 @@ final class TokenEncoder {
         }
     }
 
-    List<Integer> encodeToList(ImmutableByteArray piece, Integer tokenCount, long[] indexedRanks) {
+    List<Integer> encodeToList(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
         List<Integer> out = new ArrayList<>(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);

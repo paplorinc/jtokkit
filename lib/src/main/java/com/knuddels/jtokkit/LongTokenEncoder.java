@@ -8,23 +8,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 
 final class LongTokenEncoder {
     private final ImmutableLongIntMap longEncoders;
-    private final Map<Integer, byte[]> encodedToDecoded;
 
     public LongTokenEncoder(Map<byte[], Integer> encoder) {
-        this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
-
         MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k)) {
                 tempLongEncoders.put(from(k), v);
-                encodedToDecoded.put(v, k);
             }
         });
         this.longEncoders = tempLongEncoders.toImmutable();
@@ -70,17 +65,14 @@ final class LongTokenEncoder {
         return longEncoders.getIfAbsent(payload, MAX_RANK);
     }
 
-    public byte[] decodeIfPresent(int encodedToken) {
-        return encodedToDecoded.get(encodedToken);
-    }
-
     public int length() {
         return longEncoders.size();
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
+    int addTokensAndGetCount(TokenEncoder tokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
         long match = from(bytes);
         int encoded = encode(match);
+//        assert !TokenEncoder.accepts(bytes) || encoded == tokenEncoder.encode(TokenEncoder.from(bytes)) : "Expected: " + tokenEncoder.encode(TokenEncoder.from(bytes)) + ", but got: " + encoded;
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
                 out.add(encoded);
@@ -149,7 +141,7 @@ final class LongTokenEncoder {
         }
     }
 
-    List<Integer> encodeToList(long piece, Integer tokenCount, long[] indexedRanks) {
+    List<Integer> encodeToList(long piece, int tokenCount, long[] indexedRanks) {
         List<Integer> out = new ArrayList<>(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);

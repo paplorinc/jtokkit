@@ -32,7 +32,7 @@ dependencies {
 }
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
-    maxParallelForks = 8
+    maxParallelForks = 4
     jvmArgs("-Xmx4g")
 }
 

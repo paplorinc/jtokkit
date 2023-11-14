@@ -6,13 +6,15 @@ import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNull;
 
 public class GptBytePairEncoding implements Encoding {
 
@@ -22,13 +24,21 @@ public class GptBytePairEncoding implements Encoding {
     private final LongTokenEncoder longTokenEncoder;
     private final TokenEncoder tokenEncoder;
 
+    private final Map<Integer, byte[]> encodedToDecoded;
+
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
+
         this.longTokenEncoder = new LongTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
-        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
+//        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
+
+        this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
+        params.getEncoder().forEach((k, v) -> {
+            encodedToDecoded.put(v, k);
+        });
     }
 
     public static int index(long indexedRank) {
@@ -93,12 +103,15 @@ public class GptBytePairEncoding implements Encoding {
         List<Integer> out = new ArrayList<>();
         int tokenCount = 0;
         for (Matcher matcher = pattern.matcher(text); matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount); ) {
-            var group = matcher.group();
+            String group = matcher.group();
+//            System.out.println("Matching: " + group);
             byte[] bytes = group.getBytes(UTF_8);
             if (LongTokenEncoder.accepts(bytes)) {
-                tokenCount += longTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+                tokenCount += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+            } else if (TokenEncoder.accepts(bytes)) {
+                tokenCount += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
             } else {
-                tokenCount += tokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+                throw new IllegalStateException();
             }
         }
 
@@ -170,13 +183,7 @@ public class GptBytePairEncoding implements Encoding {
 
     public byte[] decodeToken(int token) {
         assert token != MAX_RANK;
-        byte[] decodedToken = longTokenEncoder.decodeIfPresent(token);
-        if (decodedToken == null) {
-            decodedToken = tokenEncoder.decodeIfPresent(token);
-            if (decodedToken == null) {
-                decodedToken = specialTokensEncoder.decodeIfPresent(token);
-            }
-        }
-        return Objects.requireNonNull(decodedToken);
+        byte[] decodedToken = encodedToDecoded.computeIfAbsent(token, specialTokensEncoder::decodeIfPresent);
+        return requireNonNull(decodedToken);
     }
 }
