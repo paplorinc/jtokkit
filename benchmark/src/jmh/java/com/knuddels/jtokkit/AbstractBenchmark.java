@@ -30,5 +30,4 @@ public abstract class AbstractBenchmark {
         }
         return result;
     }
-
 }

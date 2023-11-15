@@ -14,6 +14,26 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GptBytePairEncodingTest {
+    @Test
+    void countSplitChars() {
+        GptBytePairEncoding encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        var expected = 0L;
+        var sum = 0L;
+        var max = 2;
+        for (int i = 0; i < max; i++) {
+            for (var text : TEXTS) {
+                expected += text.length();
+                sum += encoding.countSplitChars(text);
+            }
+        }
+        if (sum != max * 74_157_645) {
+            throw new IllegalStateException();
+        }
+        if (sum != expected) {
+            throw new IllegalStateException();
+        }
+    }
 
     @Test
     void bytePairMerge3() {
@@ -22,8 +42,8 @@ class GptBytePairEncodingTest {
         System.out.println(encoding.countTokens(" "));
 
         var sum = 0;
-        for (var TEXT : TEXTS) {
-            var i = encoding.countTokens(TEXT);
+        for (var text : TEXTS) {
+            var i = encoding.countTokens(text);
             sum += i;
         }
         System.out.println(sum);
