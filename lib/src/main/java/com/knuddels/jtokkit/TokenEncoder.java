@@ -1,7 +1,9 @@
 package com.knuddels.jtokkit;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.impl.factory.primitive.IntLists;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,7 +66,7 @@ final class TokenEncoder {
         return byteArrayEncoders.size();
     }
 
-    int addTokensAndGetCount(LongTokenEncoder longTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
+    int addTokensAndGetCount(LongTokenEncoder longTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
         ImmutableByteArray match = from(bytes);
         int encoded = encode(match);
 //        assert !LongTokenEncoder.accepts(bytes) || encoded == longTokenEncoder.encode(LongTokenEncoder.from(bytes)) : "Expected: " + longTokenEncoder.encode(LongTokenEncoder.from(bytes)) + ", but got: " + encoded;
@@ -78,11 +80,15 @@ final class TokenEncoder {
             long[] indexedRanks = getIndexedRanks(match, size);
             int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
             if (keepEncodings) {
-                List<Integer> tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
-                List<Integer> tokens = maxTokenCount - out.size() < tokensToAdd.size()
-                        ? tokensToAdd.subList(0, maxTokenCount - out.size())
-                        : tokensToAdd;
-                out.addAll(tokens);
+                IntList tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
+                var remaining = maxTokenCount - out.size();
+                if (remaining < tokensToAdd.size()) {
+                    for (int i = 0; i < remaining; i++) {
+                        out.add(tokensToAdd.get(i));
+                    }
+                } else {
+                    out.addAll(tokensToAdd);
+                }
             }
             return tokenCount;
         }
@@ -135,8 +141,8 @@ final class TokenEncoder {
         }
     }
 
-    List<Integer> encodeToList(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
-        List<Integer> out = new ArrayList<>(tokenCount);
+    IntList encodeToList(ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
+        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);

@@ -6,13 +6,17 @@
 [![javadoc](https://javadoc.io/badge2/com.knuddels/jtokkit/javadoc.svg)](https://javadoc.io/doc/com.knuddels/jtokkit)
 
 Welcome to JTokkit, a Java tokenizer library designed for use with OpenAI models.
+
 ```java
 EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
 Encoding enc = registry.getEncoding(EncodingType.CL100K_BASE);
-assertEquals("hello world", enc.decode(enc.encode("hello world")));
+
+assertEquals("hello world",enc.decode(enc.encode("hello world")));
 
 // Or get the tokenizer corresponding to a specific OpenAI model
-enc = registry.getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
+enc =registry.
+
+getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
 ```
 
 ## 💡 Quickstart
@@ -20,6 +24,7 @@ enc = registry.getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
 For a quick getting started, see our [documentation](https://jtokkit.knuddels.de/).
 
 ## 📖 Introduction
+
 JTokkit aims to be a fast and efficient tokenizer designed for use in natural
 language processing tasks using the OpenAI models. It provides an easy-to-use
 interface for tokenizing input text, for example for counting required tokens
@@ -42,7 +47,6 @@ and `cl100k_base`
 
 ✅ Fast and efficient performance
 
-
 🔨 Handling of special tokens during encoding (not started)
 
 ## 📊 Performance
@@ -54,9 +58,11 @@ JTokkit is between 2-3 times faster than a comparable tokenizer.
 For details on the benchmark, see the [benchmark](benchmark) directory.
 
 ## 🛠️ Installation
+
 You can install JTokkit by adding the following dependency to your Maven project:
 
 ```xml
+
 <dependency>
     <groupId>com.knuddels</groupId>
     <artifactId>jtokkit</artifactId>
@@ -73,6 +79,7 @@ dependencies {
 ```
 
 ## 🔰 Getting Started
+
 To use JTokkit, simply create a new `EncodingRegistry` and use `getEncoding` to
 retrieve the encoding you want to use. You can then use the `encode` and
 `decode` methods to encode and decode text.
@@ -80,7 +87,7 @@ retrieve the encoding you want to use. You can then use the `encode` and
 ```java
 EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
 Encoding enc = registry.getEncoding(EncodingType.CL100K_BASE);
-List<Integer> encoded = enc.encode("This is a sample sentence.");
+IntList encoded = enc.encode("This is a sample sentence.");
 // encoded = [2028, 374, 264, 6205, 11914, 13]
         
 String decoded = enc.decode(encoded);
@@ -100,12 +107,17 @@ You may want to extend JTokkit to support custom encodings. To do so, you have t
 options:
 
 1. Implement the `Encoding` interface and register it with the `EncodingRegistry`
+
 ```java
 EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
 Encoding customEncoding = new CustomEncoding();
-registry.registerEncoding(customEncoding);
+registry.
+
+registerEncoding(customEncoding);
 ```
+
 2. Add new parameters for use with the existing BPE algorithm
+
 ```java
 EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
 GptBytePairEncodingParams params = new GptBytePairEncodingParams(
@@ -114,7 +126,9 @@ GptBytePairEncodingParams params = new GptBytePairEncodingParams(
         encodingMap,
         specialTokenEncodingMap
 );
-registry.registerGptBytePairEncoding(params);
+registry.
+
+registerGptBytePairEncoding(params);
 ```
 
 Afterwards you can use the custom encodings alongside the default ones and access
@@ -122,6 +136,7 @@ them by using `registry.getEncoding("custom-name")`. See the JavaDoc for more
 details.
 
 ## 📄 License
+
 JTokkit is licensed under the MIT License. See the
 [LICENSE](https://github.com/knuddelsgmbh/jtokkit/blob/main/LICENSE) file
 for more information.

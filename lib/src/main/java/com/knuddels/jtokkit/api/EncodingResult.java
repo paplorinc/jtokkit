@@ -1,17 +1,17 @@
 package com.knuddels.jtokkit.api;
 
 
-import java.util.List;
+import org.eclipse.collections.api.list.primitive.IntList;
 
 /**
  * The result of encoding operation.
  */
 public final class EncodingResult {
-    private final List<Integer> tokens;
+    private final IntList tokens;
     private final boolean truncated;
     private int tokenCount;
 
-    public EncodingResult(List<Integer> tokens, int tokenCount, boolean truncated) {
+    public EncodingResult(IntList tokens, int tokenCount, boolean truncated) {
         this.tokens = tokens;
         this.tokenCount = tokenCount;
         this.truncated = truncated;
@@ -20,7 +20,7 @@ public final class EncodingResult {
     /**
      * @return the list of token ids
      */
-    public List<Integer> getTokens() {
+    public IntList getTokens() {
         if (tokens.size() != getTokenCount()) {
             throw new IllegalStateException("Token count does not match token list size");
         }

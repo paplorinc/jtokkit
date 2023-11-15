@@ -3,6 +3,7 @@ package com.knuddels.jtokkit.reference;
 import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.GptBytePairEncoding;
 import com.knuddels.jtokkit.api.Encoding;
+import org.eclipse.collections.api.factory.primitive.IntLists;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -72,19 +73,19 @@ public class Cl100kBaseTestTest {
     void test() throws IOException {
         for (var text : TEXTS) {
             var oldEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBaseOriginal();
-            var encode = oldEncoding.encode(text);
+            var encode = oldEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
 
             var newEncoding = (GptBytePairEncoding) ENCODING;
-            var newEncode = newEncoding.encode(text);
+            var newEncode = newEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
             if (!Objects.equals(encode, newEncode)) {
                 var diff = new HashSet<>(encode);
                 diff.removeAll(newEncode);
-                var collect = diff.stream().map(x -> oldEncoding.decode(List.of(x))).collect(Collectors.toList());
+                var collect = diff.stream().map(x -> oldEncoding.decode(IntLists.immutable.of(x))).collect(Collectors.toList());
                 System.out.println(collect);
 
                 var diff2 = new HashSet<>(newEncode);
                 diff2.removeAll(encode);
-                var collect2 = diff2.stream().map(x -> newEncoding.decode(List.of(x))).collect(Collectors.toList());
+                var collect2 = diff2.stream().map(x -> newEncoding.decode(IntLists.immutable.of(x))).collect(Collectors.toList());
                 System.out.println(collect2);
 
                 System.out.println("Old: " + encode);
@@ -101,7 +102,7 @@ public class Cl100kBaseTestTest {
         assertEquals(18760595, actual);
 
         var actual1 = TEXTS.stream()
-                .flatMap(x -> encoding.encode(x).stream().map(y -> encoding.decodeToken(y).length))
+                .flatMap(x -> encoding.encode(x).primitiveStream().mapToObj(y -> encoding.decodeToken(y).length))
                 .collect(groupingBy(identity(), counting()));
 
         System.out.println(actual1);

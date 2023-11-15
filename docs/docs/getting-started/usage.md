@@ -9,9 +9,12 @@ To use JTokkit, first create a new `EncodingRegistry`:
 EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
 ```
 
-Make sure to keep a reference to the registry, as the creation of the registry is expensive. Creating the registry loads the vocabularies from the classpath. The registry itself handles caching of the loaded encodings. It is thread-safe and can safely be used concurrently by multiple components.
+Make sure to keep a reference to the registry, as the creation of the registry is expensive. Creating the registry loads
+the vocabularies from the classpath. The registry itself handles caching of the loaded encodings. It is thread-safe and
+can safely be used concurrently by multiple components.
 
-If you do not want to automatically load all vocabularies of all encodings on registry creation, you can use the following lazy loading registry.
+If you do not want to automatically load all vocabularies of all encodings on registry creation, you can use the
+following lazy loading registry.
 
 ```java
 EncodingRegistry registry = Encodings.newLazyEncodingRegistry();
@@ -45,7 +48,7 @@ Optional<Encoding> encoding = registry.getEncodingForModel("gpt_4");
 You can use an `Encoding` to encode and decode text:
 
 ```java
-List<Integer> encoded = encoding.encode("This is a sample sentence.");
+IntList encoded = encoding.encode("This is a sample sentence.");
 // encoded = [2028, 374, 264, 6205, 11914, 13]
 
 String decoded = encoding.decode(encoded);
@@ -56,7 +59,9 @@ The encoding is also fully thread-safe and can be used concurrently by multiple 
 
 :::info
 
-Note that the library currently does not support encoding of special tokens. Special tokens are artificial tokens used to unlock capabilities from a model, such as fill-in-the-middle. If the `Encoding#encode` method encounters a special token in the input text, it will throw an `UnsupportedOperationException`.
+Note that the library currently does not support encoding of special tokens. Special tokens are artificial tokens used
+to unlock capabilities from a model, such as fill-in-the-middle. If the `Encoding#encode` method encounters a special
+token in the input text, it will throw an `UnsupportedOperationException`.
 
 If you want to encode special tokens as if they were normal text, you can use `Encoding#encodeOrdinary` instead:
 
@@ -64,7 +69,9 @@ If you want to encode special tokens as if they were normal text, you can use `E
 encoding.encode("hello <|endoftext|> world");
 // raises an UnsupportedOperationException
 
-encoding.encodeOrdinary("hello <|endoftext|> world");
+encoding.
+
+encodeOrdinary("hello <|endoftext|> world");
 // returns [15339, 83739, 8862, 728, 428, 91, 29, 1917]
 ```
 
@@ -72,7 +79,8 @@ encoding.encodeOrdinary("hello <|endoftext|> world");
 
 ## Counting tokens
 
-If all you want is the amount of tokens the text encodes to, you can use the shorthand method `Encoding#countTokens` or `Encoding#countTokensOrdinary`:
+If all you want is the amount of tokens the text encodes to, you can use the shorthand method `Encoding#countTokens`
+or `Encoding#countTokensOrdinary`:
 
 ```java
 int tokenCount = encoding.countTokens("This is a sample sentence.");
@@ -84,16 +92,19 @@ int tokenCount = encoding.countTokensOrdinary("hello <|endoftext|> world");
 
 ## Encoding text with truncation
 
-If you want to only encode up until a specified amount of `maxTokens` and truncate after that amount, you can use `Encoding#encode(String, int)` or `Encoding#encodeOrdinary(String, int)`. These methods will truncate the encoded tokens to the specified length. They will automatically handle unicode characters that were split in half by the truncation by removing those tokens from the end of the list.
+If you want to only encode up until a specified amount of `maxTokens` and truncate after that amount, you can
+use `Encoding#encode(String, int)` or `Encoding#encodeOrdinary(String, int)`. These methods will truncate the encoded
+tokens to the specified length. They will automatically handle unicode characters that were split in half by the
+truncation by removing those tokens from the end of the list.
 
 ```java
-List<Integer> encoded = encoding.encode("This is a sample sentence.", 3);
+IntList encoded = encoding.encode("This is a sample sentence.", 3);
 // encoded = [2028, 374, 264]
 
 String decoded = encoding.decode(encoded);
 // decoded = "This is a"
 
-List<Integer> encoded = encoding.encode("I love 🍕", 4);
+IntList encoded = encoding.encode("I love 🍕", 4);
 // encoded = [40, 3021]
 
 String decoded = encoding.decode(encoded);

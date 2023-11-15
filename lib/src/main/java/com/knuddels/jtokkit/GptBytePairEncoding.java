@@ -3,9 +3,12 @@ package com.knuddels.jtokkit;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
+import org.eclipse.collections.api.factory.primitive.ByteLists;
+import org.eclipse.collections.api.factory.primitive.IntLists;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -13,7 +16,6 @@ import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 
 public class GptBytePairEncoding implements Encoding {
@@ -58,7 +60,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     @Override
-    public List<Integer> encode(String text) {
+    public IntList encode(String text) {
         return encode(text, Integer.MAX_VALUE).getTokens();
     }
 
@@ -69,7 +71,7 @@ public class GptBytePairEncoding implements Encoding {
 
     private EncodingResult encodeInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(emptyList(), -1, false);
+            return new EncodingResult(IntLists.immutable.empty(), -1, false);
         }
 
         checkForSpecialTokens(text);
@@ -86,7 +88,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     @Override
-    public List<Integer> encodeOrdinary(String text) {
+    public IntList encodeOrdinary(String text) {
         return encodeOrdinary(text, Integer.MAX_VALUE).getTokens();
     }
 
@@ -97,10 +99,10 @@ public class GptBytePairEncoding implements Encoding {
 
     private EncodingResult encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(emptyList(), -1, false);
+            return new EncodingResult(IntLists.immutable.empty(), -1, false);
         }
 
-        List<Integer> out = new ArrayList<>();
+        MutableIntList out = IntLists.mutable.empty();
         int tokenCount = 0;
         for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
             String group = matcher.group();
@@ -118,7 +120,11 @@ public class GptBytePairEncoding implements Encoding {
         if (maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
             for (int tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
-                List<Integer> tokens = out.subList(0, out.size() - tokensToRemove);
+                MutableIntList tokens = IntLists.mutable.empty();
+                for (int i = 0; i < out.size() - tokensToRemove; i++) {
+                    tokens.add(out.get(i));
+                }
+                // TODO optimize
                 String decoded = decode(tokens);
                 if (text.startsWith(decoded)) {
                     // If decoded text is equal to the head of the original text, we can safely return the tokens
@@ -151,25 +157,20 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     @Override
-    public String decode(List<Integer> tokens) {
+    public String decode(IntList tokens) {
         return new String(decodeBytes(tokens), UTF_8);
     }
 
     @Override
-    public byte[] decodeBytes(List<Integer> tokens) {
-        List<Byte> out = new ArrayList<>();
-        for (int token : tokens) {
+    public byte[] decodeBytes(IntList tokens) { // TODO sized
+        MutableByteList out = ByteLists.mutable.withInitialCapacity(2 * tokens.size());
+        tokens.forEach(token -> {
             byte[] decodedToken = decodeToken(token);
             for (byte b : decodedToken) {
                 out.add(b);
             }
-        }
-
-        byte[] outArray = new byte[out.size()];
-        for (int i = 0; i < out.size(); i++) {
-            outArray[i] = out.get(i);
-        }
-        return outArray;
+        });
+        return out.toArray();
     }
 
     @Override

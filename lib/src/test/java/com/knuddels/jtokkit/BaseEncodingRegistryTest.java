@@ -1,11 +1,11 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.*;
+import org.eclipse.collections.api.list.primitive.IntList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -144,7 +144,7 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
     private static class DummyEncoding implements Encoding {
 
         @Override
-        public List<Integer> encode(final String text) {
+        public IntList encode(final String text) {
             return null;
         }
 
@@ -154,7 +154,7 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
         }
 
         @Override
-        public List<Integer> encodeOrdinary(final String text) {
+        public IntList encodeOrdinary(final String text) {
             return null;
         }
 
@@ -179,12 +179,12 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
         }
 
         @Override
-        public String decode(final List<Integer> tokens) {
+        public String decode(final IntList tokens) {
             return null;
         }
 
         @Override
-        public byte[] decodeBytes(final List<Integer> tokens) {
+        public byte[] decodeBytes(final IntList tokens) {
             return new byte[0];
         }
 

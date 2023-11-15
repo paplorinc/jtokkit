@@ -1,12 +1,13 @@
 package com.knuddels.jtokkit;
 
+import org.eclipse.collections.api.factory.primitive.IntLists;
 import org.eclipse.collections.api.factory.primitive.LongIntMaps;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
 import org.eclipse.collections.api.map.primitive.ImmutableLongIntMap;
 import org.eclipse.collections.api.map.primitive.MutableLongIntMap;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
@@ -69,7 +70,7 @@ final class LongTokenEncoder {
         return longEncoders.size();
     }
 
-    int addTokensAndGetCount(TokenEncoder tokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, List<Integer> out) {
+    int addTokensAndGetCount(TokenEncoder tokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
         long match = from(bytes);
         int encoded = encode(match);
 //        assert !TokenEncoder.accepts(bytes) || encoded == tokenEncoder.encode(TokenEncoder.from(bytes)) : "Expected: " + tokenEncoder.encode(TokenEncoder.from(bytes)) + ", but got: " + encoded;
@@ -84,11 +85,15 @@ final class LongTokenEncoder {
             long[] indexedRanks = getIndexedRanks(match, size);
             int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
             if (keepEncodings) {
-                List<Integer> tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
-                List<Integer> tokens = maxTokenCount - out.size() < tokensToAdd.size()
-                        ? tokensToAdd.subList(0, maxTokenCount - out.size())
-                        : tokensToAdd;
-                out.addAll(tokens);
+                IntList tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
+                var remaining = maxTokenCount - out.size();
+                if (remaining < tokensToAdd.size()) {
+                    for (int i = 0; i < remaining; i++) {
+                        out.add(tokensToAdd.get(i));
+                    }
+                } else {
+                    out.addAll(tokensToAdd);
+                }
             }
             return tokenCount;
         }
@@ -141,8 +146,8 @@ final class LongTokenEncoder {
         }
     }
 
-    List<Integer> encodeToList(long piece, int tokenCount, long[] indexedRanks) {
-        List<Integer> out = new ArrayList<>(tokenCount);
+    IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
+        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);
