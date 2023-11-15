@@ -140,7 +140,7 @@ public class GptBytePairEncoding implements Encoding {
     public long countSplitChars(String text) {
         long matchedCharacterCount = 0;
         for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
-            matchedCharacterCount += matcher.group().length();
+            matchedCharacterCount += matcher.end() - matcher.start();
         }
         return matchedCharacterCount;
     }

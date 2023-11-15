@@ -147,6 +147,12 @@ public class Cl100kBaseTestTest {
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
     }
 
+    @Test
+    void snowman() {
+        var encodingResult = ENCODING.encode("Unicode snowman: ☃️", 10);
+        assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+    }
+
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodesStableWithMaxTokensSet(final String input) {
