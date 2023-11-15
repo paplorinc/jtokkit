@@ -79,8 +79,8 @@ final class TokenEncoder {
             int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
             if (keepEncodings) {
                 List<Integer> tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
-                List<Integer> tokens = maxTokenCount >= 0
-                        ? tokensToAdd.subList(0, Math.min(maxTokenCount - out.size(), tokensToAdd.size()))
+                List<Integer> tokens = maxTokenCount - out.size() < tokensToAdd.size()
+                        ? tokensToAdd.subList(0, maxTokenCount - out.size())
                         : tokensToAdd;
                 out.addAll(tokens);
             }

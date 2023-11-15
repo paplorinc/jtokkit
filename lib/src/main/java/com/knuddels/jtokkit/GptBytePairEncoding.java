@@ -59,7 +59,7 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encode(String text) {
-        return encodeInternal(text, -1, true).getTokens();
+        return encode(text, Integer.MAX_VALUE).getTokens();
     }
 
     @Override
@@ -87,7 +87,7 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public List<Integer> encodeOrdinary(String text) {
-        return encodeOrdinaryInternal(text, -1, true).getTokens();
+        return encodeOrdinary(text, Integer.MAX_VALUE).getTokens();
     }
 
     @Override
@@ -102,7 +102,7 @@ public class GptBytePairEncoding implements Encoding {
 
         List<Integer> out = new ArrayList<>();
         int tokenCount = 0;
-        for (Matcher matcher = pattern.matcher(text); matcher.find() && maxTokenCountNotReached(maxTokenCount, tokenCount); ) {
+        for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
             String group = matcher.group();
 //            System.out.println("Matching: " + group);
             byte[] bytes = group.getBytes(UTF_8);
@@ -115,7 +115,7 @@ public class GptBytePairEncoding implements Encoding {
             }
         }
 
-        if (maxTokenCount >= 0) {
+        if (maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
             for (int tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
                 List<Integer> tokens = out.subList(0, out.size() - tokensToRemove);
@@ -142,7 +142,7 @@ public class GptBytePairEncoding implements Encoding {
     // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
-        return encodeInternal(text, -1, false).getTokenCount();
+        return encodeInternal(text, Integer.MAX_VALUE, false).getTokenCount();
     }
 
     @Override
@@ -175,10 +175,6 @@ public class GptBytePairEncoding implements Encoding {
     @Override
     public String getName() {
         return name;
-    }
-
-    private boolean maxTokenCountNotReached(int maxTokenCount, int tokenCount) {
-        return maxTokenCount < 0 || tokenCount < maxTokenCount;
     }
 
     public byte[] decodeToken(int token) {
