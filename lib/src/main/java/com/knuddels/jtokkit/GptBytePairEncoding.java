@@ -106,7 +106,7 @@ public class GptBytePairEncoding implements Encoding {
         int tokenCount = 0;
         for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
             String group = matcher.group();
-//            System.out.println("Matching: " + group);
+            // System.out.println("Matched: `" + group + "`");
             byte[] bytes = group.getBytes(UTF_8);
             if (LongTokenEncoder.accepts(bytes)) {
                 tokenCount += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);

@@ -105,7 +105,7 @@ public final class EncodingFactory {
     public static Encoding cl100kBase() {
         return fromPredefinedParameters(
                 "cl100k_base",
-                "'(?:[sdtm]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
+                "'(?:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/cl100k_base.tiktoken",
                 SPECIAL_TOKENS_CL100K_BASE,
                 true

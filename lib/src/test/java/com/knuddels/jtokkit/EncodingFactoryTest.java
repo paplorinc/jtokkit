@@ -9,8 +9,10 @@ import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
-import static java.util.stream.Collectors.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.rangeClosed;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EncodingFactoryTest {
     static final String originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
@@ -37,7 +39,7 @@ class EncodingFactoryTest {
         return encounters;
     }
 
-    private static TreeMap<Integer, List<String>> getEncounters(String text, Pattern actualPattern) {
+    public static TreeMap<Integer, List<String>> getEncounters(String text, Pattern actualPattern) {
         var encounters = new TreeMap<Integer, List<String>>();
         for (var matcher = actualPattern.matcher(text); matcher.find(); ) {
             var match = matcher.group(0);
@@ -132,28 +134,193 @@ class EncodingFactoryTest {
 
     @Test
     void oldRegexMatchesTheSameWayAsTheOptimizedOne() throws Exception {
-        var actualRegexParts = List.of("", "'(?:[sdtm]|ll|ve|re)", "[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*", "\\s*[\\r\\n]", "\\s+(?!\\S)", "\\s+");
-        var expectedRegex = "'(?:[sdtm]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+";
+        var actualRegexParts = List.of("", "'(?:[sdmt]|ll|ve|re)", "[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*", "\\s*[\\r\\n]", "\\s+(?!\\S)", "\\s+");
+        var expectedRegex = "'(?:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+";
 
-        var collected = new LinkedHashMap<String, List<String>>();
-        actualRegexParts.stream().skip(1).forEach(x -> collected.put(x, new ArrayList<>()));
+//        var collected = new LinkedHashMap<String, List<String>>();
+//        actualRegexParts.stream().skip(1).forEach(x -> collected.put(x, new ArrayList<>()));
+//        for (var text : TEXTS) {
+//            compareEncounters(text, actualRegexParts, expectedRegex)
+//                    .forEach((key, value) -> collected.get(key).addAll(value));
+//
+//            var modifiedText = permuteText(text);
+//            compareEncounters(modifiedText, actualRegexParts, expectedRegex)
+//                    .forEach((key, value) -> collected.get(key).addAll(value));
+//        }
+//
+//        var groupedResults = collected.entrySet().stream()
+//                .collect(toMap(
+//                        Map.Entry::getKey,
+//                        entry -> entry.getValue().stream().collect(groupingBy(String::toLowerCase, LinkedHashMap::new, counting())),
+//                        (e1, e2) -> e1,
+//                        LinkedHashMap::new
+//                ));
+//
+//        System.out.println(groupedResults.size());
+
+        var encounters = getEncounters("I'm:  0\n", actualRegexParts, expectedRegex, true);
+        System.out.println(encounters);
+        assertEquals(7, encounters.size());
+
+        Map<String, SortedMap<Integer, List<String>>> completeLines = new TreeMap<>();
         for (var text : TEXTS) {
-            compareEncounters(text, actualRegexParts, expectedRegex)
-                    .forEach((key, value) -> collected.get(key).addAll(value));
+//            text.lines().forEach(line -> {
+//                var t = line + "\n";
+            var actual = getEncounters(text, actualRegexParts, expectedRegex, true);
+            if (actual.size() == 7) {
+                completeLines.put(text, actual);
+            }
+//            });
+        }
+        System.out.println(completeLines.entrySet());
+    }
 
-            var modifiedText = permuteText(text);
-            compareEncounters(modifiedText, actualRegexParts, expectedRegex)
-                    .forEach((key, value) -> collected.get(key).addAll(value));
+    @Test
+    public void testParser() {
+        List<String> testStrings = Arrays.asList(
+                "Unicode snowman: ☃️",
+                "I'm:  0\n",
+                "We'll meet at 3 o'clock.",
+                "Hello, world! It's a beautiful day...",
+                "In 2023, I'll be 25 years old.",
+                "Hello \n\n World  !",
+                " It's 2:30pm;\n\n\n\nlet's eat, sleep , and code! \n \n \t"
+        );
+        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+        for (String testString : testStrings) {
+            List<String> expected = matches(testString, originalRegex);
+            var collected = encoding.encode(testString).primitiveStream().mapToObj(token -> new String(encoding.decodeToken(token), UTF_8)).toList();
+            // TODO assertEquals(expected, collected);
+
+            List<String> result = new Parser().parse(testString);
+
+            assertEquals(expected, result, "Parsed result does not match expected for: " + testString);
+            System.out.println("`" + testString + "` matches!");
+        }
+    }
+
+    private List<String> matches(String input, String regex) {
+        List<String> tokens = new ArrayList<>();
+        for (Matcher matcher = compileRegex(regex, false).matcher(input); matcher.find(); ) {
+            var group = matcher.group();
+            assert input.contains(group);
+            tokens.add(group);
+        }
+        return tokens;
+    }
+
+    public static class Parser {
+        private static void addMatch(List<String> tokens, StringBuilder currentToken) {
+            tokens.add(currentToken.toString());
+            currentToken.setLength(0);
         }
 
-        var groupedResults = collected.entrySet().stream()
-                .collect(toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().stream().collect(groupingBy(String::toLowerCase, LinkedHashMap::new, counting())),
-                        (e1, e2) -> e1,
-                        LinkedHashMap::new
-                ));
+        public List<String> parse(String input) {
+            List<String> tokens = new ArrayList<>();
+            StringBuilder currentToken = new StringBuilder();
 
-        System.out.println(groupedResults.size());
+            for (int i = 0; i < input.length(); ) {
+                char c0 = input.charAt(i);
+
+                if (c0 == '\'' && i + 1 < input.length()) {
+                    // 1) `'(?:[sdtm]|ll|ve|re)` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`, `you'll`, `we've`, `they're`
+
+                    var c1 = input.charAt(i);
+                    if ("sdtm".indexOf(c1) >= 0) {
+                        currentToken.append(c0).append(c1);
+                        addMatch(tokens, currentToken);
+                        i += 2;
+                    } else if (i + 2 < input.length()) {
+                        var c2 = input.charAt(i + 1);
+                        if ((c1 == 'l' && c2 == 'l') || (c1 == 'v' && c2 == 'e') || (c1 == 'r' && c2 == 'e')) {
+                            currentToken.append(c1).append(c2);
+                            addMatch(tokens, currentToken);
+                            i += 3;
+                        }
+                    }
+                }
+
+                if (Character.isLetter(c0) ||
+                        (i + 1 < input.length() && !Character.isLetter(c0) && !Character.isDigit(c0) && c0 != '\r' && c0 != '\n' && Character.isLetter(input.charAt(i + 1)))) {
+                    // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
+                    currentToken.append(c0);
+                    i++;
+
+                    while (i < input.length()) {
+                        c0 = input.charAt(i);
+                        if (!Character.isLetter(c0)) {
+                            break;
+                        }
+                        currentToken.append(c0);
+                        i++;
+                    }
+
+                    addMatch(tokens, currentToken);
+                } else if (Character.isDigit(c0)) {
+                    // 3) `\p{N}{1,3}` - numbers, such as `4`, `235`
+                    currentToken.append(c0);
+                    i++;
+                    var c1 = input.charAt(i);
+                    if (Character.isDigit(c1)) {
+                        currentToken.append(c1);
+                        i++;
+                        var c2 = input.charAt(i);
+                        if (Character.isDigit(c2)) {
+                            currentToken.append(c2);
+                            i++;
+                        }
+                    }
+                    addMatch(tokens, currentToken);
+                } else if ((!Character.isWhitespace(c0) && !Character.isLetter(c0) && !Character.isDigit(c0)) ||
+                        (i + 1 < input.length() && !Character.isWhitespace(input.charAt(i + 1)) && !Character.isLetter(input.charAt(i + 1)) && !Character.isDigit(input.charAt(i + 1)))) {
+                    // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, `.`, `"`
+                    currentToken.append(c0);
+                    i++;
+
+                    while (i < input.length()) {
+                        c0 = input.charAt(i);
+                        if (Character.isWhitespace(c0) || Character.isLetter(c0) || Character.isDigit(c0)) {
+                            break;
+                        }
+                        currentToken.append(c0);
+                        i++;
+                    }
+
+                    while (i < input.length()) {
+                        c0 = input.charAt(i);
+                        if (c0 != '\r' && c0 != '\n') {
+                            break;
+                        }
+
+                        currentToken.append(c0);
+                        i++;
+                    }
+
+                    addMatch(tokens, currentToken);
+                } else if (Character.isWhitespace(c0)) {
+                    // 5) `\s*[\r\n]` - line endings such as `\r\n    \r\n`
+                    // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
+                    // 7) `\s+` - unmatched remaining spaces, such as ` `
+                    currentToken.append(c0);
+                    i++;
+
+                    while (i < input.length()) {
+                        c0 = input.charAt(i);
+                        if (!Character.isWhitespace(c0) || (i + 1 < input.length() && !Character.isWhitespace(input.charAt(i + 1)))) {
+                            break;
+                        }
+
+                        currentToken.append(c0);
+                        i++;
+                    }
+                    addMatch(tokens, currentToken);
+                }
+
+                if (!currentToken.isEmpty()) {
+                    addMatch(tokens, currentToken);
+                }
+            }
+            return tokens;
+        }
     }
 }
