@@ -1,14 +1,14 @@
 package com.knuddels.jtokkit;
 
-import java.util.Arrays;
 import java.util.function.Predicate;
 
 import static java.lang.Character.isLetter;
 import static java.lang.Character.toLowerCase;
+import static java.util.Arrays.binarySearch;
 
 public class Parser {
     private static final String SDTM = "sdtmSDTM";
-    private static final int[] UNICODE_WHITESPACE = "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
+    private static final int[] REMAINING_UNICODE_WHITESPACES = "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
     public static void split(String input, Predicate<CharSequence> fragmentConsumer) {
         StringBuilder currentToken = new StringBuilder();
@@ -81,17 +81,21 @@ public class Parser {
                 // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
                 assert isUnicodeWhitespace(c0) : "Unexpected character: " + c0 + " at index " + index + " for text: " + input;
+
                 int j = index;
+                int lastNewLineIndex = -1;
                 do {
                     c0 = input.charAt(j);
-                    if (!isUnicodeWhitespace(c0)) {
+                    if (isNewline(c0)) {
+                        lastNewLineIndex = j - index;
+                    } else if (c0 != ' ' && binarySearch(REMAINING_UNICODE_WHITESPACES, c0) < 0) {
                         break;
                     }
+
                     currentToken.appendCodePoint(c0);
                     j++;
                 } while (j < input.length());
 
-                int lastNewLineIndex = Math.max(currentToken.lastIndexOf("\r"), currentToken.lastIndexOf("\n"));
                 if (lastNewLineIndex >= 0) {
                     var substring = currentToken.subSequence(0, lastNewLineIndex + 1); // TODO get rid of substring
                     var limitReached = fragmentConsumer.test(substring);
@@ -162,7 +166,7 @@ public class Parser {
 
     // https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/lang/Character.java#L11377-L11410
     static boolean isUnicodeWhitespace(int ch) {
-        return ch == ' ' || isNewline(ch) || Arrays.binarySearch(UNICODE_WHITESPACE, ch) >= 0;
+        return ch == ' ' || isNewline(ch) || binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0;
     }
 
     static boolean isNewline(int ch) {
