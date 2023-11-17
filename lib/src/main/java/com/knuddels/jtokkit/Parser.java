@@ -13,7 +13,7 @@ public class Parser {
     public static void split(String input, Predicate<CharSequence> fragmentConsumer) {
         for (int index = 0; index < input.length(); ) {
             var nextIndex = index;
-            var c0 = input.charAt(index);
+            var c0 = input.codePointAt(index);
 
             if (isShortContraction(input, c0, index)) {
                 // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
@@ -25,25 +25,25 @@ public class Parser {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 do {
                     nextIndex++;
-                } while (nextIndex < input.length() && isLetter(input.charAt(nextIndex)));
+                } while (nextIndex < input.length() && isLetter(input.codePointAt(nextIndex)));
             } else if (isNumeric(c0)) {
                 // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
                 nextIndex += 1;
-                for (int i = 0; i < 2 && nextIndex < input.length() && isNumeric(input.charAt(nextIndex)); i++) {
+                for (int i = 0; i < 2 && nextIndex < input.length() && isNumeric(input.codePointAt(nextIndex)); i++) {
                     nextIndex++;
                 }
             } else if (isPunctuation(input, c0, index)) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
                 nextIndex += 1;
                 while (nextIndex < input.length()) {
-                    c0 = input.charAt(nextIndex);
+                    c0 = input.codePointAt(nextIndex);
                     if (isWhitespaceLetterOrNumeric(c0)) {
                         break;
                     }
                     nextIndex++;
                 }
 
-                while (nextIndex < input.length() && isNewline(input.charAt(nextIndex))) {
+                while (nextIndex < input.length() && isNewline(input.codePointAt(nextIndex))) {
                     nextIndex++;
                 }
             } else {
@@ -54,7 +54,7 @@ public class Parser {
 
                 int lastNewLineIndex = -1;
                 do {
-                    c0 = input.charAt(nextIndex);
+                    c0 = input.codePointAt(nextIndex);
                     if (isNewline(c0)) {
                         lastNewLineIndex = nextIndex - index;
                     } else if (c0 != ' ' && binarySearch(REMAINING_UNICODE_WHITESPACES, c0) < 0) {
@@ -93,29 +93,29 @@ public class Parser {
     // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
     private static boolean isPunctuation(String input, int ch, int index) {
         return index + 1 >= input.length()
-                || ch == ' ' && !isWhitespaceLetterOrNumeric(input.charAt(index + 1))
+                || ch == ' ' && !isWhitespaceLetterOrNumeric(input.codePointAt(index + 1))
                 || !isWhitespaceLetterOrNumeric(ch);
     }
 
     // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
     private static boolean isWord(String input, int ch, int index) {
         return isLetter(ch) ||
-                (!isNewline(ch) && !isLetterOrNumeric(ch) && (index + 1 >= input.length() || isLetter(input.charAt(index + 1))));
+                (!isNewline(ch) && !isLetterOrNumeric(ch) && (index + 1 >= input.length() || isLetter(input.codePointAt(index + 1))));
     }
 
     private static boolean isShortContraction(String input, int ch, int index) {
         if (ch != '\'' || index + 1 >= input.length()) {
             return false;
         }
-        return SDTM.indexOf(input.charAt(index + 1)) >= 0;
+        return SDTM.indexOf(input.codePointAt(index + 1)) >= 0;
     }
 
     private static boolean isLongContraction(String input, int ch, int index) {
         if (ch != '\'' || index + 2 >= input.length()) {
             return false;
         }
-        var c1 = toLowerCase(input.charAt(index + 1));
-        var c2 = toLowerCase(input.charAt(index + 2));
+        var c1 = toLowerCase(input.codePointAt(index + 1));
+        var c2 = toLowerCase(input.codePointAt(index + 2));
         return ((c1 == 'l' && c2 == 'l') || (c1 == 'v' && c2 == 'e') || (c1 == 'r' && c2 == 'e'));
     }
 
