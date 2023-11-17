@@ -150,11 +150,12 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public long countSplitChars(String text) {
-        long matchedCharacterCount = 0;
-        for (Matcher matcher = pattern.matcher(text); matcher.find(); ) {
-            matchedCharacterCount += matcher.end() - matcher.start();
-        }
-        return matchedCharacterCount;
+        long[] matchedCharacterCount = {0L};
+        Parser.split(text, group -> {
+            matchedCharacterCount[0] += group.length();
+            return false;
+        });
+        return matchedCharacterCount[0];
     }
 
     // TODO limit regex to max token size?
