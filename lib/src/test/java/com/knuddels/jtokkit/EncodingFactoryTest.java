@@ -211,6 +211,7 @@ class EncodingFactoryTest {
                 "   \n 0",
                 "   \n *",
 
+                "I paid $124,456,789 to 1234567 people!",
                 "Unicode snowman: ☃️",
                 "I'm:  0\n",
                 "We'll meet at 3 o'clock.",

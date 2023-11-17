@@ -11,70 +11,40 @@ public class Parser {
     private static final int[] REMAINING_UNICODE_WHITESPACES = "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
     public static void split(String input, Predicate<CharSequence> fragmentConsumer) {
-        StringBuilder currentToken = new StringBuilder();
-
         for (int index = 0; index < input.length(); ) {
+            var nextIndex = index;
             var c0 = input.charAt(index);
 
             if (isShortContraction(input, c0, index)) {
                 // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
-                var c1 = input.charAt(index + 1);
-                currentToken.appendCodePoint(c0).appendCodePoint(c1);
+                nextIndex += 2;
             } else if (isLongContraction(input, c0, index)) {
                 // 1) `'(?:|ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
-                var c1 = input.charAt(index + 1);
-                var c2 = input.charAt(index + 2);
-                currentToken.appendCodePoint(c0).appendCodePoint(c1).appendCodePoint(c2);
+                nextIndex += 3;
             } else if (isWord(input, c0, index)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
-                currentToken.appendCodePoint(c0);
-                int j = index + 1;
-                while (j < input.length()) {
-                    c0 = input.charAt(j);
-                    if (!isLetter(c0)) {
-                        break;
-                    }
-                    currentToken.appendCodePoint(c0);
-                    j++;
-                }
+                do {
+                    nextIndex++;
+                } while (nextIndex < input.length() && isLetter(input.charAt(nextIndex)));
             } else if (isNumeric(c0)) {
                 // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
-                currentToken.appendCodePoint(c0);
-                var j = index + 1;
-                if (j < input.length()) {
-                    var c1 = input.charAt(j);
-                    if (isNumeric(c1)) {
-                        currentToken.appendCodePoint(c1);
-                        j++;
-                        if (j < input.length()) {
-                            var c2 = input.charAt(j);
-                            if (isNumeric(c2)) {
-                                currentToken.appendCodePoint(c2);
-                            }
-                        }
-                    }
+                nextIndex += 1;
+                for (int i = 0; i < 2 && nextIndex < input.length() && isNumeric(input.charAt(nextIndex)); i++) {
+                    nextIndex++;
                 }
             } else if (isPunctuation(input, c0, index)) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
-                currentToken.appendCodePoint(c0); // space or punctuation
-                var j = index + 1;
-                while (j < input.length()) {
-                    c0 = input.charAt(j);
+                nextIndex += 1;
+                while (nextIndex < input.length()) {
+                    c0 = input.charAt(nextIndex);
                     if (isWhitespaceLetterOrNumeric(c0)) {
                         break;
                     }
-                    currentToken.appendCodePoint(c0);
-                    j++;
+                    nextIndex++;
                 }
 
-                while (j < input.length()) {
-                    c0 = input.charAt(j);
-                    if (!isNewline(c0)) {
-                        break;
-                    }
-
-                    currentToken.appendCodePoint(c0);
-                    j++;
+                while (nextIndex < input.length() && isNewline(input.charAt(nextIndex))) {
+                    nextIndex++;
                 }
             } else {
                 // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
@@ -82,6 +52,7 @@ public class Parser {
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
                 assert isUnicodeWhitespace(c0) : "Unexpected character: " + c0 + " at index " + index + " for text: " + input;
 
+                StringBuilder currentToken = new StringBuilder(); // TODO eliminate it from here as well
                 int j = index;
                 int lastNewLineIndex = -1;
                 do {
@@ -113,16 +84,20 @@ public class Parser {
                         currentToken.setLength(currentToken.length() - 1);
                     }
                 }
+
+                if (!currentToken.isEmpty()) {
+                    index += currentToken.length();
+                    if (fragmentConsumer.test(currentToken)) {
+                        return;
+                    }
+                }
             }
 
-            if (!currentToken.isEmpty()) {
-                index += currentToken.length();
-                boolean limitReached = fragmentConsumer.test(currentToken);
-                if (limitReached) {
+            if (nextIndex > index) {
+                if (fragmentConsumer.test(input.subSequence(index, nextIndex))) {
                     return;
                 }
-
-                currentToken.setLength(0);
+                index = nextIndex;
             }
         }
     }
