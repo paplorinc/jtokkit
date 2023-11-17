@@ -52,43 +52,31 @@ public class Parser {
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
                 assert isUnicodeWhitespace(c0) : "Unexpected character: " + c0 + " at index " + index + " for text: " + input;
 
-                StringBuilder currentToken = new StringBuilder(); // TODO eliminate it from here as well
-                int j = index;
                 int lastNewLineIndex = -1;
                 do {
-                    c0 = input.charAt(j);
+                    c0 = input.charAt(nextIndex);
                     if (isNewline(c0)) {
-                        lastNewLineIndex = j - index;
+                        lastNewLineIndex = nextIndex - index;
                     } else if (c0 != ' ' && binarySearch(REMAINING_UNICODE_WHITESPACES, c0) < 0) {
                         break;
                     }
 
-                    currentToken.appendCodePoint(c0);
-                    j++;
-                } while (j < input.length());
+                    nextIndex++;
+                } while (nextIndex < input.length());
 
                 if (lastNewLineIndex >= 0) {
-                    var substring = currentToken.subSequence(0, lastNewLineIndex + 1); // TODO get rid of substring
-                    var limitReached = fragmentConsumer.test(substring);
-                    if (limitReached) {
+                    var end = index + lastNewLineIndex + 1;
+                    var substring = input.subSequence(index, end);
+                    if (fragmentConsumer.test(substring)) {
                         return;
                     }
-                    currentToken.delete(0, lastNewLineIndex + 1);
-                    index += substring.length();
-                    j = index;
+                    index = end;
+                    nextIndex = index;
                 }
 
-                if (!currentToken.isEmpty()) {
-                    if ((j < input.length() && !isUnicodeWhitespace(c0))
-                            && (lastNewLineIndex >= 0 || currentToken.length() > 1)) {
-                        currentToken.setLength(currentToken.length() - 1);
-                    }
-                }
-
-                if (!currentToken.isEmpty()) {
-                    index += currentToken.length();
-                    if (fragmentConsumer.test(currentToken)) {
-                        return;
+                if (nextIndex > index) {
+                    if (nextIndex < input.length() && !isUnicodeWhitespace(c0) && (nextIndex - index) > 1) {
+                        nextIndex--;
                     }
                 }
             }
