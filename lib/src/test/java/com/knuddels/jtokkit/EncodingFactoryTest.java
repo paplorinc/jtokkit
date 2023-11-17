@@ -186,6 +186,7 @@ class EncodingFactoryTest {
     public void testParser() {
         var testStrings = new ArrayList<>(List.of(
                 "\n",
+                "a : b",
                 " ",
                 "  a",
                 "\n \n ",
@@ -198,14 +199,17 @@ class EncodingFactoryTest {
                 "   !",
                 "   A",
                 "   0",
+                "   *",
 
                 "   \n!",
                 "   \nA",
                 "   \n0",
+                "   \n*",
 
                 "   \n !",
                 "   \n A",
                 "   \n 0",
+                "   \n *",
 
                 "Unicode snowman: ☃️",
                 "I'm:  0\n",
@@ -214,18 +218,22 @@ class EncodingFactoryTest {
                 "In 2023, I'll be 25 years old.",
                 "Hello \n\n World  !",
                 " It's 2:30pm;\n\n\n\nlet's eat, sleep , and code!",
-                "'Thank God, here it is.' But when we took up the trunk..."
+                "'Thank God, here it is.' But when we took up the trunk...",
+                "03½",
+                "* \u05E2"
         ));
         testStrings.addAll(TEXTS);
-        // TODO NBSP?
 
-        var pattern = compileRegex(originalRegex, false);
+        var originalPattern = compileRegex(originalRegex, false);
         for (String testString : testStrings) {
             System.out.println("Matching: `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + "`...");
-            List<String> expected = matches(testString, pattern);
+            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
+
+            List<String> expected = matches(testString, originalPattern);
+
             List<String> actual = Parser.parse(testString);
 
-//            assertEquals(expected.stream().map(EncodingFactoryTest::normalizeString).toList(), actual.stream().map(EncodingFactoryTest::normalizeString).toList());
+            assertEquals(expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
             assertEquals(expected, actual);
         }
     }
@@ -237,133 +245,5 @@ class EncodingFactoryTest {
             tokens.add(group);
         }
         return tokens;
-    }
-
-    public static class Parser {
-
-        public static final String SDTM = "sdtmSDTM";
-
-        public static List<String> parse(String input) {
-            List<String> tokens = new ArrayList<>();
-            StringBuilder currentToken = new StringBuilder();
-
-            for (int index = 0; index < input.length(); ) {
-                char c0 = input.charAt(index);
-
-                // 1) `'(?:[sdtm]|ll|ve|re)` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`, `you'll`, `we've`, `they're`
-                if (isShortContraction(input, c0, index)) {
-                    currentToken.append(c0).append(input.charAt(index + 1));
-                } else if (isLongContraction(input, c0, index)) {
-                    currentToken.append(c0).append(input.charAt(index + 1)).append(input.charAt(index + 2));
-                } else if (isLetter(c0) ||
-                        (!isLetterOrDigit(c0) && "\r\n".indexOf(c0) < 0 && (index + 1 >= input.length() || isLetter(input.charAt(index + 1))))) {
-                    // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
-                    currentToken.append(c0);
-                    int j = index + 1;
-
-                    while (j < input.length()) {
-                        c0 = input.charAt(j);
-                        if (!isLetter(c0)) {
-                            break;
-                        }
-                        currentToken.append(c0);
-                        j++;
-                    }
-                } else if (isDigit(c0)) {
-                    // 3) `\p{N}{1,3}` - numbers, such as `4`, `235`
-                    currentToken.append(c0);
-                    int j = index + 1;
-                    if (j < input.length()) {
-                        var c1 = input.charAt(j);
-                        if (isDigit(c1)) {
-                            currentToken.append(c1);
-                            j++;
-                            if (j < input.length()) {
-                                var c2 = input.charAt(j);
-                                if (isDigit(c2)) {
-                                    currentToken.append(c2);
-                                }
-                            }
-                        }
-                    }
-                } else if ((!isWhitespace(c0) && !isLetterOrDigit(c0)) ||
-                        (index + 1 >= input.length() || (!isWhitespace(input.charAt(index + 1)) && !isLetterOrDigit(input.charAt(index + 1))))) {
-                    // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
-                    currentToken.append(c0);
-                    var j = index + 1;
-                    while (j < input.length()) {
-                        c0 = input.charAt(j);
-                        if (isWhitespace(c0) || isLetterOrDigit(c0)) {
-                            break;
-                        }
-                        currentToken.append(c0);
-                        j++;
-                    }
-
-                    while (j < input.length()) {
-                        c0 = input.charAt(j);
-                        if (c0 != '\r' && c0 != '\n') {
-                            break;
-                        }
-
-                        currentToken.append(c0);
-                        j++;
-                    }
-                } else {
-                    // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
-                    // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
-                    // 7) `\s+` - unmatched remaining spaces, such as ` `
-                    assert isWhitespace(c0);
-                    int j = index;
-                    do {
-                        c0 = input.charAt(j);
-                        if (!isWhitespace(c0)) {
-                            break;
-                        }
-                        currentToken.append(c0);
-                        j++;
-                    } while (j < input.length());
-
-                    int lastNewLineIndex = Math.max(currentToken.lastIndexOf("\r"), currentToken.lastIndexOf("\n"));
-                    if (lastNewLineIndex >= 0) {
-                        tokens.add(currentToken.substring(0, lastNewLineIndex + 1));
-                        currentToken.delete(0, lastNewLineIndex + 1);
-                        index += lastNewLineIndex + 1;
-                        j = index;
-                    }
-
-                    if (!currentToken.isEmpty()) {
-                        if ((j < input.length() && !isWhitespace(c0))
-                                && (lastNewLineIndex >= 0 || currentToken.length() > 1)) {
-                            currentToken.setLength(currentToken.length() - 1);
-                        }
-                    }
-                }
-
-                if (!currentToken.isEmpty()) {
-                    index += currentToken.length();
-                    tokens.add(currentToken.toString());
-                    currentToken.setLength(0);
-                }
-            }
-            return tokens;
-        }
-
-        private static boolean isShortContraction(String input, char c0, int index) {
-            if (c0 != '\'' || index + 1 >= input.length()) {
-                return false;
-            }
-            var c1 = input.charAt(index + 1);
-            return SDTM.indexOf(c1) >= 0;
-        }
-
-        private static boolean isLongContraction(String input, char c0, int index) {
-            if (c0 != '\'' || index + 2 >= input.length()) {
-                return false;
-            }
-            var c1 = toLowerCase(input.charAt(index + 1));
-            var c2 = toLowerCase(input.charAt(index + 2));
-            return ((c1 == 'l' && c2 == 'l') || (c1 == 'v' && c2 == 'e') || (c1 == 'r' && c2 == 'e'));
-        }
     }
 }

@@ -10,6 +10,7 @@ import org.eclipse.collections.api.list.primitive.MutableByteList;
 import org.eclipse.collections.api.list.primitive.MutableIntList;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,10 +103,19 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntLists.immutable.empty(), -1, false);
         }
 
+        boolean isCl100 = "cl100k_base".equals(name);
+        var parsedElementsIterator = isCl100 ? Parser.parse(text).iterator() : null;
+
         MutableIntList out = IntLists.mutable.empty();
         int tokenCount = 0;
         for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
             String group = matcher.group();
+
+            var next = isCl100 ? parsedElementsIterator.next() : null;
+            if (next != null && !Objects.equals(group, next)) {
+                throw new IllegalStateException("Expected: `" + group + "` but was `" + next + "`");
+            }
+
             // System.out.println("Matched: `" + group + "`");
             byte[] bytes = group.getBytes(UTF_8);
             if (LongTokenEncoder.accepts(bytes)) {
