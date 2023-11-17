@@ -71,10 +71,9 @@ public class Cl100kBaseTestTest {
 
     @Test
     void test() throws IOException {
-        for (var text : TEXTS) {
+        TEXTS.parallelStream().forEach(text -> {
             var oldEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBaseOriginal();
             var encode = oldEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
-
             var newEncoding = (GptBytePairEncoding) ENCODING;
             var newEncode = newEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
             if (!Objects.equals(encode, newEncode)) {
@@ -92,7 +91,7 @@ public class Cl100kBaseTestTest {
                 System.out.println("New: " + newEncode);
             }
             assertEquals(encode, newEncode);
-        }
+        });
     }
 
     @Test
@@ -101,12 +100,14 @@ public class Cl100kBaseTestTest {
         var actual = TEXTS.stream().mapToInt(encoding::countTokens).sum();
         assertEquals(18760595, actual);
 
-        var actual1 = TEXTS.stream()
-                .flatMap(x -> encoding.encode(x).primitiveStream().mapToObj(y -> encoding.decodeToken(y).length))
-                .collect(groupingBy(identity(), counting()));
+        if (false) {
+            var actual1 = TEXTS.stream()
+                    .flatMap(x -> encoding.encode(x).primitiveStream().mapToObj(y -> encoding.decodeToken(y).length))
+                    .collect(groupingBy(identity(), counting()));
 
-        System.out.println(actual1);
-        System.out.println(214495 + 110470 + 43433 + 20046 + 8473 + 2596 + 785 + 158 + 49 + 215 + 35 + 34 + 53 + 42 + 44 + 25 + 41 + 73 + 29 + 36 + 26 + 26 + 47 + 33 + 18 + 11 + 7 + 10 + 13 + 15 + 15 + 11 + 6 + 12 + 12 + 14 + 16 + 8 + 9 + 10 + 4 + 6 + 3 + 8 + 4 + 30 + 1 + 6 + 5 + 1 + 1 + 1 + 25 + 1);
+            System.out.println(actual1);
+            System.out.println(214495 + 110470 + 43433 + 20046 + 8473 + 2596 + 785 + 158 + 49 + 215 + 35 + 34 + 53 + 42 + 44 + 25 + 41 + 73 + 29 + 36 + 26 + 26 + 47 + 33 + 18 + 11 + 7 + 10 + 13 + 15 + 15 + 11 + 6 + 12 + 12 + 14 + 16 + 8 + 9 + 10 + 4 + 6 + 3 + 8 + 4 + 30 + 1 + 6 + 5 + 1 + 1 + 1 + 25 + 1);
+        }
 
 
         //params.getEncoder
