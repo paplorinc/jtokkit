@@ -10,7 +10,6 @@ import org.eclipse.collections.api.list.primitive.MutableByteList;
 import org.eclipse.collections.api.list.primitive.MutableIntList;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,27 +102,30 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntLists.immutable.empty(), -1, false);
         }
 
-        boolean isCl100 = "cl100k_base".equals(name);
-        var parsedElementsIterator = isCl100 ? Parser.parse(text).iterator() : null;
-
         MutableIntList out = IntLists.mutable.empty();
-        int tokenCount = 0;
-        for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
-            String group = matcher.group();
-
-            var next = isCl100 ? parsedElementsIterator.next() : null;
-            if (next != null && !Objects.equals(group, next)) {
-                throw new IllegalStateException("Expected: `" + group + "` but was `" + next + "`");
-            }
-
-            // System.out.println("Matched: `" + group + "`");
-            byte[] bytes = group.getBytes(UTF_8);
-            if (LongTokenEncoder.accepts(bytes)) {
-                tokenCount += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-            } else if (TokenEncoder.accepts(bytes)) {
-                tokenCount += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-            } else {
-                throw new IllegalStateException();
+        int[] tokenCount = {0};
+        if ("cl100k_base".equals(name)) {
+            Parser.split(text, group -> {
+                byte[] bytes = group.toString().getBytes(UTF_8);
+                if (LongTokenEncoder.accepts(bytes)) {
+                    tokenCount[0] += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+                } else if (TokenEncoder.accepts(bytes)) {
+                    tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+                } else {
+                    throw new IllegalStateException();
+                }
+                return tokenCount[0] >= maxTokenCount;
+            });
+        } else {
+            for (Matcher matcher = pattern.matcher(text); tokenCount[0] < maxTokenCount && matcher.find(); ) {
+                byte[] bytes = matcher.group().getBytes(UTF_8);
+                if (LongTokenEncoder.accepts(bytes)) {
+                    tokenCount[0] += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+                } else if (TokenEncoder.accepts(bytes)) {
+                    tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+                } else {
+                    throw new IllegalStateException();
+                }
             }
         }
 
@@ -143,7 +145,7 @@ public class GptBytePairEncoding implements Encoding {
             }
         }
 
-        return new EncodingResult(out, tokenCount, false);
+        return new EncodingResult(out, tokenCount[0], false);
     }
 
     @Override

@@ -231,7 +231,11 @@ class EncodingFactoryTest {
 
             List<String> expected = matches(testString, originalPattern);
 
-            List<String> actual = Parser.parse(testString);
+            List<String> actual = new ArrayList<>();
+            Parser.split(testString, charSequence -> {
+                actual.add(charSequence.toString());
+                return false;
+            });
 
             assertEquals(expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
             assertEquals(expected, actual);

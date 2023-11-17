@@ -1,7 +1,6 @@
 package com.knuddels.jtokkit;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.Predicate;
 
 import static java.lang.Character.*;
 
@@ -9,8 +8,7 @@ public class Parser {
     public static final String SDTM = "sdtmSDTM";
     public static final String CRLF = "\r\n";
 
-    public static List<String> parse(String input) {
-        List<String> tokens = new ArrayList<>();
+    public static void split(String input, Predicate<CharSequence> fragmentConsumer) {
         StringBuilder currentToken = new StringBuilder();
 
         for (int index = 0; index < input.length(); ) {
@@ -95,8 +93,11 @@ public class Parser {
 
                 int lastNewLineIndex = Math.max(currentToken.lastIndexOf("\r"), currentToken.lastIndexOf("\n"));
                 if (lastNewLineIndex >= 0) {
-                    var substring = currentToken.substring(0, lastNewLineIndex + 1);
-                    tokens.add(substring);
+                    var substring = currentToken.substring(0, lastNewLineIndex + 1); // TODO get rid of substring
+                    var limitReached = fragmentConsumer.test(substring);
+                    if (limitReached) {
+                        return;
+                    }
                     currentToken.delete(0, lastNewLineIndex + 1);
                     index += substring.codePoints().map(Character::charCount).sum();
                     j = index;
@@ -112,11 +113,14 @@ public class Parser {
 
             if (!currentToken.isEmpty()) {
                 index += currentToken.codePoints().map(Character::charCount).sum();
-                tokens.add(currentToken.toString());
+                boolean limitReached = fragmentConsumer.test(currentToken);
+                if (limitReached) {
+                    return;
+                }
+
                 currentToken.setLength(0);
             }
         }
-        return tokens;
     }
 
     // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
@@ -154,11 +158,9 @@ public class Parser {
 
     // https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/regex/CharPredicates.java#L320-L322
     private static boolean isNumeric(int codePoint) {
-        if (Character.isDigit(codePoint)) {
-            return true;
-        }
         int type = Character.getType(codePoint);
-        return type == Character.LETTER_NUMBER
+        return type == Character.DECIMAL_DIGIT_NUMBER
+                || type == Character.LETTER_NUMBER
                 || type == Character.OTHER_NUMBER;
     }
 
