@@ -31,11 +31,10 @@ final class LongTokenEncoder {
     }
 
     static long from(byte[] bytes, int start, int end) {
-        assert end >= 1;
         assert accepts(end - start) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
 
-        long result = bytes[start] & 0xFFL;
-        for (int i = start + 1; i < end; i++) {
+        long result = 0; // Faster without extracting the first byte
+        for (int i = start; i < end; i++) {
             result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
         }
         return result;
