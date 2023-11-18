@@ -35,12 +35,10 @@ public class GptBytePairEncoding implements Encoding {
 
         this.longTokenEncoder = new LongTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
-//        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
+        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
 
         this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
-        params.getEncoder().forEach((k, v) -> {
-            encodedToDecoded.put(v, k);
-        });
+        params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
     }
 
     public static int index(long indexedRank) {
@@ -107,25 +105,13 @@ public class GptBytePairEncoding implements Encoding {
         if ("cl100k_base".equals(name)) {
             Parser.split(text, group -> {
                 byte[] bytes = group.toString().getBytes(UTF_8);
-                if (LongTokenEncoder.accepts(bytes)) {
-                    tokenCount[0] += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-                } else if (TokenEncoder.accepts(bytes)) {
-                    tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-                } else {
-                    throw new IllegalStateException();
-                }
+                processTokens(maxTokenCount, keepEncodings, bytes, tokenCount, out);
                 return tokenCount[0] >= maxTokenCount;
             });
         } else {
             for (Matcher matcher = pattern.matcher(text); tokenCount[0] < maxTokenCount && matcher.find(); ) {
                 byte[] bytes = matcher.group().getBytes(UTF_8);
-                if (LongTokenEncoder.accepts(bytes)) {
-                    tokenCount[0] += longTokenEncoder.addTokensAndGetCount(tokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-                } else if (TokenEncoder.accepts(bytes)) {
-                    tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
-                } else {
-                    throw new IllegalStateException();
-                }
+                processTokens(maxTokenCount, keepEncodings, bytes, tokenCount, out);
             }
         }
 
@@ -146,6 +132,16 @@ public class GptBytePairEncoding implements Encoding {
         }
 
         return new EncodingResult(out, tokenCount[0], false);
+    }
+
+    private void processTokens(int maxTokenCount, boolean keepEncodings, byte[] bytes, int[] tokenCount, MutableIntList out) {
+        if (LongTokenEncoder.accepts(bytes.length)) {
+            tokenCount[0] += longTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+        } else if (TokenEncoder.accepts(bytes.length)) {
+            tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+        } else {
+            throw new IllegalStateException();
+        }
     }
 
     @Override
@@ -175,7 +171,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     @Override
-    public byte[] decodeBytes(IntList tokens) { // TODO sized
+    public byte[] decodeBytes(IntList tokens) {
         MutableByteList out = ByteLists.mutable.withInitialCapacity(2 * tokens.size());
         tokens.forEach(token -> {
             byte[] decodedToken = decodeToken(token);

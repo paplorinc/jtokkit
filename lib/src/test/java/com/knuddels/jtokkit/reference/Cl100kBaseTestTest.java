@@ -31,8 +31,8 @@ public class Cl100kBaseTestTest {
 
     public static List<String> loadData(final String folder) {
         try {
-            final var folderPath = Paths.get(folder);
-            final var fileContents = new ArrayList<String>();
+            var folderPath = Paths.get(folder);
+            var fileContents = new ArrayList<String>();
             try (var files = Files.walk(folderPath)) {
                 files.forEach(file -> {
                     if (Files.isRegularFile(file) && file.toString().endsWith(".txt")) {
@@ -119,8 +119,8 @@ public class Cl100kBaseTestTest {
             final String input,
             final String output
     ) {
-        final var expected = TestUtils.parseEncodingString(output);
-        final var actual = ENCODING.encode(input);
+        var expected = TestUtils.parseEncodingString(output);
+        var actual = ENCODING.encode(input);
 
         assertEquals(expected, actual);
     }
@@ -128,7 +128,7 @@ public class Cl100kBaseTestTest {
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodesStable(final String input) {
-        final var actual = ENCODING.decode(ENCODING.encode(input));
+        var actual = ENCODING.decode(ENCODING.encode(input));
 
         assertEquals(input, actual);
     }
@@ -140,9 +140,9 @@ public class Cl100kBaseTestTest {
             final String output,
             final String outputMaxTokens10
     ) {
-        final var expected = TestUtils.parseEncodingString(output);
-        final var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
-        final var encodingResult = ENCODING.encode(input, 10);
+        var expected = TestUtils.parseEncodingString(output);
+        var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
+        var encodingResult = ENCODING.encode(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens(), "Encoding result does not match expected value for input: " + input);
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
@@ -163,7 +163,7 @@ public class Cl100kBaseTestTest {
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodesStableWithMaxTokensSet(final String input) {
-        final var actual = ENCODING.decode(ENCODING.encode(input, 10).getTokens());
+        var actual = ENCODING.decode(ENCODING.encode(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
     }
@@ -174,8 +174,8 @@ public class Cl100kBaseTestTest {
             final String input,
             final String output
     ) {
-        final var expected = TestUtils.parseEncodingString(output);
-        final var actual = ENCODING.encodeOrdinary(input);
+        var expected = TestUtils.parseEncodingString(output);
+        var actual = ENCODING.encodeOrdinary(input);
 
         assertEquals(expected, actual);
     }
@@ -187,9 +187,9 @@ public class Cl100kBaseTestTest {
             final String output,
             final String outputMaxTokens10
     ) {
-        final var expected = TestUtils.parseEncodingString(output);
-        final var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
-        final var encodingResult = ENCODING.encodeOrdinary(input, 10);
+        var expected = TestUtils.parseEncodingString(output);
+        var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
+        var encodingResult = ENCODING.encodeOrdinary(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens());
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
@@ -198,7 +198,7 @@ public class Cl100kBaseTestTest {
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodeOrdinaryEncodesStable(final String input) {
-        final var actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
+        var actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
 
         assertEquals(input, actual);
     }
@@ -206,16 +206,16 @@ public class Cl100kBaseTestTest {
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodeOrdinaryEncodesStableWithMaxTokensSet(final String input) {
-        final var actual = ENCODING.decode(ENCODING.encodeOrdinary(input, 10).getTokens());
+        var actual = ENCODING.decode(ENCODING.encodeOrdinary(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
     }
 
     @Test
     public void cl100kBaseEncodeOrdinaryEncodesSpecialTokensCorrectly() {
-        final var input = "Hello<|endoftext|>, <|fim_prefix|> <|fim_middle|> world <|fim_suffix|> ! <|endofprompt|>";
+        var input = "Hello<|endoftext|>, <|fim_prefix|> <|fim_middle|> world <|fim_suffix|> ! <|endofprompt|>";
         var tokens = ENCODING.encodeOrdinary(input);
-        final var actual = ENCODING.decode(tokens);
+        var actual = ENCODING.decode(tokens);
 
         assertEquals(input, actual);
     }

@@ -66,12 +66,10 @@ public class Parser {
 
                 if (lastNewLineIndex >= 0) {
                     var end = index + lastNewLineIndex + 1;
-                    var substring = input.subSequence(index, end);
-                    if (fragmentConsumer.test(substring)) {
+                    if (fragmentConsumer.test(input.subSequence(index, end))) {
                         return;
                     }
-                    index = end;
-                    nextIndex = index;
+                    nextIndex = index = end;
                 }
 
                 if (nextIndex > index) {

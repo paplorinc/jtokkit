@@ -7,35 +7,35 @@ import org.eclipse.collections.api.list.primitive.MutableIntList;
 import org.eclipse.collections.api.map.primitive.ImmutableLongIntMap;
 import org.eclipse.collections.api.map.primitive.MutableLongIntMap;
 
-import java.util.Arrays;
 import java.util.Map;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class LongTokenEncoder {
-    private final ImmutableLongIntMap longEncoders;
+    private final ImmutableLongIntMap encoders;
 
     public LongTokenEncoder(Map<byte[], Integer> encoder) {
         MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
         encoder.forEach((k, v) -> {
-            if (accepts(k)) {
-                tempLongEncoders.put(from(k), v);
+            if (accepts(k.length)) {
+                tempLongEncoders.put(from(k, 0, k.length), v);
             }
         });
-        this.longEncoders = tempLongEncoders.toImmutable();
+        this.encoders = tempLongEncoders.toImmutable();
     }
 
-    public static boolean accepts(byte[] bytes) {
-        return bytes.length <= Long.BYTES;
+    static boolean accepts(int length) {
+        return length <= Long.BYTES;
     }
 
-    static long from(byte[] bytes) { // TODO ByteBuffer ?
-        assert bytes.length > 0 : "Empty byte array";
-        assert accepts(bytes) : "Too big byte array: " + Arrays.toString(bytes);
+    static long from(byte[] bytes, int start, int end) {
+        assert end >= 1;
+        assert accepts(end - start) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
 
-        long result = bytes[0] & 0xFFL;
-        for (int i = 1; i < bytes.length; i++) {
+        long result = bytes[start] & 0xFFL;
+        for (int i = start + 1; i < end; i++) {
             result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
         }
         return result;
@@ -45,33 +45,12 @@ final class LongTokenEncoder {
         return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
     }
 
-    public static long getSubToken(long payload, int startIndex, int endIndex) {
-        int length = byteSize(payload);
-        int newLength = endIndex - startIndex;
-        if (length == newLength) {
-            return payload;
-        } else {
-            assert newLength <= Long.BYTES;
-            int shift = (length - endIndex) * Byte.SIZE;
-            long mask = -1L >>> -(newLength * Byte.SIZE);
-            long result = (payload >>> shift) & mask;
-
-            assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
-
-            return result;
-        }
-    }
-
     public int encode(long payload) {
-        return longEncoders.getIfAbsent(payload, MAX_RANK);
+        return encoders.getIfAbsent(payload, MAX_RANK);
     }
 
-    public int length() {
-        return longEncoders.size();
-    }
-
-    int addTokensAndGetCount(TokenEncoder tokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
-        long match = from(bytes);
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
+        long match = from(bytes, 0, bytes.length);
         int encoded = encode(match);
 //        assert !TokenEncoder.accepts(bytes) || encoded == tokenEncoder.encode(TokenEncoder.from(bytes)) : "Expected: " + tokenEncoder.encode(TokenEncoder.from(bytes)) + ", but got: " + encoded;
         if (encoded != MAX_RANK) {
@@ -134,6 +113,17 @@ final class LongTokenEncoder {
         return tokenCount - 1;
     }
 
+    IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
+        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
+        for (int i = 0; i < tokenCount; i++) {
+            var start = index(indexedRanks[i]);
+            int end = index(indexedRanks[i + 1]);
+            long bytesBetween = getSubToken(piece, start, end);
+            out.add(encode(bytesBetween));
+        }
+        return out;
+    }
+
     private int getRank(long piece, long[] parts, int startIndex, int size) {
         int endIndex = startIndex + 3;
         if (endIndex >= size) {
@@ -146,14 +136,24 @@ final class LongTokenEncoder {
         }
     }
 
-    IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
-        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
-        for (int i = 0; i < tokenCount; i++) {
-            var start = index(indexedRanks[i]);
-            int end = index(indexedRanks[i + 1]);
-            long bytesBetween = getSubToken(piece, start, end);
-            out.add(encode(bytesBetween));
+    long getSubToken(long payload, int startIndex, int endIndex) {
+        int length = byteSize(payload);
+        int newLength = endIndex - startIndex;
+        if (length == newLength) {
+            return payload;
+        } else {
+            assert accepts(newLength);
+            int shift = (length - endIndex) * Byte.SIZE;
+            long mask = -1L >>> -(newLength * Byte.SIZE);
+            long result = (payload >>> shift) & mask;
+
+            assert byteSize(result) == newLength : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
+
+            return result;
         }
-        return out;
+    }
+
+    public int length() {
+        return encoders.size();
     }
 }
