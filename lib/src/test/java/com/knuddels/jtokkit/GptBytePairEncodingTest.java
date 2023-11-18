@@ -14,6 +14,17 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GptBytePairEncodingTest {
+//    public static void main(String[] args) {
+//        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+//        var sum = 0;
+//        for (int i = 0; i < 10; i++) {
+//            for (var text : TEXTS) {
+//                sum += encoding.countTokens(text);
+//            }
+//        }
+//        System.out.println(sum);
+//    }
+
     @Test
     void countSplitChars() {
         GptBytePairEncoding encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();

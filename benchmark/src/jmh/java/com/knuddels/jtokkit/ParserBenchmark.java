@@ -1,6 +1,5 @@
 package com.knuddels.jtokkit;
 
-import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
 
 //Benchmark                                                  (dataFolderPath)  Mode  Cnt  Score   Error  Units
@@ -12,7 +11,7 @@ import org.openjdk.jmh.infra.Blackhole;
 //ParserBenchmark.benchmarkIsUnicodeWhitespace                            N/A    ss   10  0.358 ± 0.008   s/op
 //ParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                  N/A    ss   10  0.352 ± 0.018   s/op
 public class ParserBenchmark {
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsUnicodeWhitespace(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -21,7 +20,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsNumeric(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -30,7 +29,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsUnicodeLetter(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -39,7 +38,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsLetterOrNumeric(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -48,7 +47,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsNewline(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -57,7 +56,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsWhitespaceOrLetterOrNumeric(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -66,7 +65,7 @@ public class ParserBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkIsNewlineOrLetterOrNumeric(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {

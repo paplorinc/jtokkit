@@ -103,8 +103,9 @@ public class GptBytePairEncoding implements Encoding {
         MutableIntList out = IntLists.mutable.empty();
         int[] tokenCount = {0};
         if ("cl100k_base".equals(name)) {
-            Parser.split(text, group -> {
-                byte[] bytes = group.toString().getBytes(UTF_8);
+            var chars = text.toCharArray();
+            Parser.split(chars, (start, end) -> {
+                byte[] bytes = new String(chars, start, end - start).getBytes(UTF_8);
                 processTokens(maxTokenCount, keepEncodings, bytes, tokenCount, out);
                 return tokenCount[0] >= maxTokenCount;
             });
@@ -147,8 +148,8 @@ public class GptBytePairEncoding implements Encoding {
     @Override
     public long countSplitChars(String text) {
         long[] matchedCharacterCount = {0L};
-        Parser.split(text, group -> {
-            matchedCharacterCount[0] += group.length();
+        Parser.split(text.toCharArray(), (start, end) -> {
+            matchedCharacterCount[0] += end - start;
             return false;
         });
         return matchedCharacterCount[0];

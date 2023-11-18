@@ -233,8 +233,9 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            Parser.split(testString, charSequence -> {
-                actual.add(charSequence.toString());
+            var chars = testString.toCharArray();
+            Parser.split(chars, (start, end) -> {
+                actual.add(new String(chars, start, end - start));
                 return false;
             });
 
