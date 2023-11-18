@@ -6,6 +6,29 @@ import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ParserTest {
+    @Test
+    public void testIsNumeric() {
+        var numericPattern = compileRegex("\\p{N}", true);
+        for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
+            var charAsString = new String(Character.toChars(cp));
+            var matchesRegex = numericPattern.matcher(charAsString).matches();
+            var isNumeric = Parser.isNumeric(cp);
+
+            assertEquals(matchesRegex, isNumeric, "Mismatch at code point: " + cp);
+        }
+    }
+
+    @Test
+    public void testIsLetter() {
+        var letterOrNumericPattern = compileRegex("\\p{L}", true);
+        for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
+            var charAsString = new String(Character.toChars(cp));
+            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var isLetterOrNumeric = Parser.isUnicodeLetter(cp);
+
+            assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
+        }
+    }
 
     @Test
     public void testIsUnicodeWhitespace() {
@@ -20,18 +43,6 @@ public class ParserTest {
     }
 
     @Test
-    public void testIsNumeric() {
-        var numericPattern = compileRegex("\\p{N}", true);
-        for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
-            var charAsString = new String(Character.toChars(cp));
-            var matchesRegex = numericPattern.matcher(charAsString).matches();
-            var isNumeric = Parser.isNumeric(cp);
-
-            assertEquals(matchesRegex, isNumeric, "Mismatch at code point: " + cp);
-        }
-    }
-
-    @Test
     public void testIsLetterOrNumeric() {
         var letterOrNumericPattern = compileRegex("[\\p{L}\\p{N}]", true);
         for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
@@ -40,6 +51,18 @@ public class ParserTest {
             var isLetterOrNumeric = Parser.isLetterOrNumeric(cp);
 
             assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
+        }
+    }
+
+    @Test
+    public void testIsWhitespaceLetterOrNumeric() {
+        var letterOrNumericPattern = compileRegex("[\\s\\p{L}\\p{N}]", true);
+        for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
+            var charAsString = new String(Character.toChars(cp));
+            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var isNewline = Parser.isWhitespaceOrLetterOrNumeric(cp);
+
+            assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
         }
     }
 
