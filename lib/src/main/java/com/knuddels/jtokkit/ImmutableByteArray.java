@@ -6,7 +6,7 @@ import java.util.Objects;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class ImmutableByteArray {
-    private final byte[] array;
+    final byte[] array;
 
     /*
      * Creates a new instance of ImmutableByteArray from the given array.
@@ -49,43 +49,6 @@ public final class ImmutableByteArray {
      */
     public int length() {
         return array.length;
-    }
-
-    /**
-     * Returns the bytes of this array from startIndex (inclusive) to endIndex (exclusive). The returned array is a copy
-     * of the original array.
-     *
-     * @param startIndex the index from which to start copying (inclusive)
-     * @param endIndex   the index at which to stop copying (exclusive)
-     * @return a new {@link ImmutableByteArray} containing the bytes from startIndex (inclusive) to endIndex (exclusive)
-     * @throws IllegalArgumentException if startIndex is out of bounds, endIndex is out of bounds or endIndex is less than
-     *                                  startIndex
-     */
-    public ImmutableByteArray getBytesBetween(final int startIndex, final int endIndex) {
-        if (startIndex < 0 || startIndex >= array.length) {
-            throw new IndexOutOfBoundsException("startIndex out of bounds: " + startIndex + " (" + this + ")");
-        } else if (endIndex < 0 || endIndex > array.length) {
-            throw new IndexOutOfBoundsException("endIndex out of bounds: " + endIndex + " (" + this + ")");
-        } else if (startIndex >= endIndex) {
-            throw new IllegalArgumentException("startIndex must be less than endIndex: " + startIndex + " >= " + endIndex);
-        }
-        if (length() == endIndex - startIndex) {
-            return this;
-        } else {
-            final int length = endIndex - startIndex;
-            final byte[] result = new byte[length];
-            System.arraycopy(array, startIndex, result, 0, length);
-            return new ImmutableByteArray(result);
-        }
-    }
-
-    /**
-     * Returns the raw array backing this {@link ImmutableByteArray}.
-     *
-     * @return the raw array backing this {@link ImmutableByteArray}
-     */
-    public byte[] getRawArrayUnsafe() {
-        return array;
     }
 
     @Override

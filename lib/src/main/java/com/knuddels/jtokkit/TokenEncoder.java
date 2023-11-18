@@ -45,15 +45,14 @@ final class TokenEncoder {
     }
 
     ImmutableByteArray getSubToken(ImmutableByteArray payload, int startIndex, int endIndex) {
-        int length = payload.length();
-        int newLength = endIndex - startIndex;
-        if (length == newLength) {
+        int length = endIndex - startIndex;
+        if (length == payload.length()) {
+            assert startIndex == 0;
             return payload;
         } else {
-            // TODO encode as `long`, if applicable
-            ImmutableByteArray immutableByteArray = payload.getBytesBetween(startIndex, endIndex);
-            assert immutableByteArray.length() == newLength : "Expected length: " + newLength + ", but got: " + immutableByteArray.length() + " for payload: `" + payload + "` with indices: [" + startIndex + ", " + endIndex + "]";
-            return immutableByteArray;
+            byte[] result = new byte[length];
+            System.arraycopy(payload.array, startIndex, result, 0, length);
+            return new ImmutableByteArray(result);
         }
     }
 
