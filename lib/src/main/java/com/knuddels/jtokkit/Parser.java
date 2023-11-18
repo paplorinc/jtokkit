@@ -14,13 +14,13 @@ public class Parser {
             var nextIndex = index;
             var c0 = input.codePointAt(index);
 
-            if (isShortContraction(input, c0, index)) {
+            if (c0 == '\'' && isShortContraction(input, index)) {
                 // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
                 nextIndex += 2;
-            } else if (isLongContraction(input, c0, index)) {
+            } else if (c0 == '\'' && isLongContraction(input, index)) {
                 // 1) `'(?:|ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
                 nextIndex += 3;
-            } else if (isWord(input, c0, index)) {
+            } else if (isUnicodeLetter(c0) || isWord(input, c0, index)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 do {
                     nextIndex++;
@@ -31,7 +31,7 @@ public class Parser {
                 for (int i = 0; i < 2 && nextIndex < input.length() && isNumeric(input.codePointAt(nextIndex)); i++) {
                     nextIndex++;
                 }
-            } else if (isPunctuation(input, c0, index)) {
+            } else if (!isWhitespaceOrLetterOrNumeric(c0) || isPunctuation(input, c0, index)) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
                 nextIndex += 1;
                 while (nextIndex < input.length()) {
@@ -87,70 +87,32 @@ public class Parser {
         }
     }
 
-    // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
-    private static boolean isPunctuation(String input, int ch, int index) {
-        return ch == ' ' && !isWhitespaceOrLetterOrNumeric(input.codePointAt(index + 1))
-                || index + 1 >= input.length()
-                || !isWhitespaceOrLetterOrNumeric(ch);
+    private static boolean isShortContraction(String input, int index) {
+        return index + 1 < input.length()
+                && SDTM.indexOf(input.codePointAt(index + 1)) >= 0;
     }
 
-    // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
-    private static boolean isWord(String input, int ch, int index) {
-        return isUnicodeLetter(ch)
-                || !isNewline(ch)
-                && !isLetterOrNumeric(ch)
-                && (index + 1 >= input.length()
-                || isUnicodeLetter(input.codePointAt(index + 1)));
-    }
-
-    private static boolean isShortContraction(String input, int ch, int index) {
-        if (ch != '\'' || index + 1 >= input.length()) {
-            return false;
-        }
-        return SDTM.indexOf(input.codePointAt(index + 1)) >= 0;
-    }
-
-    private static boolean isLongContraction(String input, int ch, int index) {
-        if (ch != '\'' || index + 2 >= input.length()) {
+    private static boolean isLongContraction(String input, int index) {
+        if (index + 2 >= input.length()) {
             return false;
         }
         var c1 = toLowerCase(input.codePointAt(index + 1));
         var c2 = toLowerCase(input.codePointAt(index + 2));
-        return ((c1 == 'l' && c2 == 'l') || (c1 == 'v' && c2 == 'e') || (c1 == 'r' && c2 == 'e'));
+        return ((c1 == 'l' && c2 == 'l')
+                || (c1 == 'v' && c2 == 'e')
+                || (c1 == 'r' && c2 == 'e'));
     }
 
-    static boolean isUnicodeWhitespace(int ch) {
-        switch (ch) {
-            case ' ':
-            case '\n':
-            case '\r':
-                return true;
-        }
-        return isRemainingWhitespace(ch);
+    // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
+    private static boolean isPunctuation(String input, int ch, int index) {
+        return (index + 1 < input.length()) && ch == ' ' && !isWhitespaceOrLetterOrNumeric(input.codePointAt(index + 1));
     }
 
-    private static boolean isRemainingWhitespace(int ch) {
-        return binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0;
+    // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
+    private static boolean isWord(String input, int ch, int index) {
+        return !isNewlineOrLetterOrNumeric(ch) && (index + 1 < input.length()) && isUnicodeLetter(input.codePointAt(index + 1));
     }
 
-    static boolean isNewline(int ch) {
-        return ch == '\n'
-                || ch == '\r';
-    }
-
-    static boolean isNumeric(int ch) {
-        if (ch >= '0' && ch <= '9') {
-            return true;
-        }
-        switch (Character.getType(ch)) {
-            case Character.DECIMAL_DIGIT_NUMBER:
-            case Character.LETTER_NUMBER:
-            case Character.OTHER_NUMBER:
-                return true;
-            default:
-                return false;
-        }
-    }
 
     static boolean isUnicodeLetter(int ch) {
         if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
@@ -168,8 +130,47 @@ public class Parser {
         }
     }
 
-    static boolean isLetterOrNumeric(int ch) {
+    static boolean isNumeric(int ch) {
+        if (ch >= '0' && ch <= '9') {
+            return true;
+        }
         switch (Character.getType(ch)) {
+            case Character.DECIMAL_DIGIT_NUMBER:
+            case Character.LETTER_NUMBER:
+            case Character.OTHER_NUMBER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static boolean isUnicodeWhitespace(int ch) {
+        if (ch == ' ' || isNewline(ch)) {
+            return true;
+        }
+        return isRemainingWhitespace(ch);
+    }
+
+    private static boolean isRemainingWhitespace(int ch) {
+        return binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0;
+    }
+
+    static boolean isNewline(int ch) {
+        return ch == '\n'
+                || ch == '\r';
+    }
+
+    static boolean isLetterOrNumeric(int ch) {
+        return isLetterOrNumericType(Character.getType(ch));
+    }
+
+    static boolean isNewlineOrLetterOrNumeric(int ch) {
+        return isNewline(ch)
+                || isLetterOrNumericType(Character.getType(ch));
+    }
+
+    private static boolean isLetterOrNumericType(int type) {
+        switch (type) {
             case Character.UPPERCASE_LETTER:
             case Character.LOWERCASE_LETTER:
             case Character.TITLECASE_LETTER:
@@ -185,25 +186,14 @@ public class Parser {
     }
 
     static boolean isWhitespaceOrLetterOrNumeric(int ch) {
-        switch (ch) {
-            case ' ':
-            case '\n':
-            case '\r':
-                return true;
+        if (ch == ' ' || isNewline(ch)) {
+            return true;
         }
         var type = Character.getType(ch);
-        switch (type) {
-            case Character.UPPERCASE_LETTER:
-            case Character.LOWERCASE_LETTER:
-            case Character.TITLECASE_LETTER:
-            case Character.MODIFIER_LETTER:
-            case Character.OTHER_LETTER:
-            case Character.DECIMAL_DIGIT_NUMBER:
-            case Character.LETTER_NUMBER:
-            case Character.OTHER_NUMBER:
-                return true;
+        if (isLetterOrNumericType(type)) {
+            return true;
         }
-        var isPotentialWhitespaceType = type - Character.SPACE_SEPARATOR <= Character.CONTROL - Character.SPACE_SEPARATOR;
+        var isPotentialWhitespaceType = type >= Character.SPACE_SEPARATOR && type <= Character.CONTROL;
         return isPotentialWhitespaceType && isRemainingWhitespace(ch);
     }
 }

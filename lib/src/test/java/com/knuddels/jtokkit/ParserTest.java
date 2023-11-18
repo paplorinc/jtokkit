@@ -67,6 +67,18 @@ public class ParserTest {
     }
 
     @Test
+    public void testIsNewlineOrLetterOrNumeric() {
+        var letterOrNumericPattern = compileRegex("[\r\n\\p{L}\\p{N}]", true);
+        for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
+            var charAsString = new String(Character.toChars(cp));
+            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var isNewline = Parser.isNewlineOrLetterOrNumeric(cp);
+
+            assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
+        }
+    }
+
+    @Test
     public void testIsNewline() {
         var letterOrNumericPattern = compileRegex("[\r\n]", true);
         for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
