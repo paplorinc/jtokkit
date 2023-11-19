@@ -155,6 +155,12 @@ public class Cl100kBaseTestTest {
     }
 
     @Test
+    void whitespace() {
+        var encodingResult = ENCODING.encode("\uD856\uDE5E\uDCED", 10);
+        assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+    }
+
+    @Test
     void fullMatch() {
         var encodingResult = ENCODING.encode("I'm:  0\n");
         assertEquals(7, encodingResult.size());

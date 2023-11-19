@@ -24,7 +24,7 @@ final class TokenEncoder {
     }
 
     static boolean accepts(int length) {
-        return !LongTokenEncoder.accepts(length);
+        return length > Long.BYTES;
     }
 
     static ImmutableByteArray from(byte[] bytes) {

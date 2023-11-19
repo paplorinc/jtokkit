@@ -23,6 +23,8 @@ public class GptBytePairEncoding implements Encoding {
     private final String name;
     private final Pattern pattern;
     private final StringEncoder specialTokensEncoder;
+
+    private final IntTokenEncoder intTokenEncoder;
     private final LongTokenEncoder longTokenEncoder;
     private final TokenEncoder tokenEncoder;
 
@@ -33,9 +35,10 @@ public class GptBytePairEncoding implements Encoding {
         this.pattern = params.getPattern();
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
 
+        this.intTokenEncoder = new IntTokenEncoder(params.getEncoder());
         this.longTokenEncoder = new LongTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
-        assert longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
+        assert intTokenEncoder.length() + longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
 
         this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
@@ -136,7 +139,9 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     private void processTokens(int maxTokenCount, boolean keepEncodings, byte[] bytes, int[] tokenCount, MutableIntList out) {
-        if (LongTokenEncoder.accepts(bytes.length)) {
+        if (IntTokenEncoder.accepts(bytes.length)) {
+            tokenCount[0] += intTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+        } else if (LongTokenEncoder.accepts(bytes.length)) {
             tokenCount[0] += longTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
         } else if (TokenEncoder.accepts(bytes.length)) {
             tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
