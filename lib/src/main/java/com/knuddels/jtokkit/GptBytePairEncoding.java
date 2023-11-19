@@ -143,9 +143,9 @@ public class GptBytePairEncoding implements Encoding {
         if (IntTokenEncoder.accepts(bytes.length)) {
             tokenCount[0] += intTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
         } else if (LongTokenEncoder.accepts(bytes.length)) {
-            tokenCount[0] += longTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
+            tokenCount[0] += longTokenEncoder.addTokensAndGetCount(intTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
         } else if (TokenEncoder.accepts(bytes.length)) {
-            tokenCount[0] += tokenEncoder.addTokensAndGetCount(longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+            tokenCount[0] += tokenEncoder.addTokensAndGetCount(intTokenEncoder, longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
         } else {
             throw new IllegalStateException();
         }

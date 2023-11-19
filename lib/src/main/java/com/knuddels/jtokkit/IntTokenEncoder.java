@@ -27,7 +27,7 @@ final class IntTokenEncoder {
     }
 
     static boolean accepts(int length) {
-        return false; //length <= Integer.BYTES;
+        return length <= Integer.BYTES;
     }
 
     static int from(byte[] bytes, int start, int end) {

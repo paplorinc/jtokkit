@@ -27,7 +27,7 @@ final class LongTokenEncoder {
     }
 
     static boolean accepts(int length) {
-        return length <= Long.BYTES;//(length > Integer.BYTES) && length <= Long.BYTES;
+        return (length > Integer.BYTES) && length <= Long.BYTES;
     }
 
     static long from(byte[] bytes, int start, int end) {
@@ -44,11 +44,7 @@ final class LongTokenEncoder {
         return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
     }
 
-    public int encode(long payload) {
-        return encoders.getIfAbsent(payload, MAX_RANK);
-    }
-
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
+    int addTokensAndGetCount(IntTokenEncoder intTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
         long match = from(bytes, 0, bytes.length);
         int encoded = encode(match);
 //        assert !TokenEncoder.accepts(bytes) || encoded == tokenEncoder.encode(TokenEncoder.from(bytes)) : "Expected: " + tokenEncoder.encode(TokenEncoder.from(bytes)) + ", but got: " + encoded;
@@ -60,10 +56,10 @@ final class LongTokenEncoder {
         } else {
             // TODO specialize for 2-3 tokens
             int size = byteSize(match) + 1;
-            long[] indexedRanks = getIndexedRanks(match, size);
-            int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
+            long[] indexedRanks = getIndexedRanks(intTokenEncoder, match, size);
+            int tokenCount = mergeBytesAndGetTokenCount(intTokenEncoder, match, size, indexedRanks);
             if (keepEncodings) {
-                IntList tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
+                IntList tokensToAdd = encodeToList(intTokenEncoder, match, tokenCount, indexedRanks);
                 var remaining = maxTokenCount - out.size();
                 if (remaining < tokensToAdd.size()) {
                     for (int i = 0; i < remaining; i++) {
@@ -77,15 +73,20 @@ final class LongTokenEncoder {
         }
     }
 
-    long[] getIndexedRanks(long piece, int tokenCount) {
+    long[] getIndexedRanks(IntTokenEncoder intTokenEncoder, long piece, int tokenCount) {
         long[] indexedRanks = new long[tokenCount];
         assert tokenCount > 1 : "Already filtered out";
+        var length = byteSize(piece);
         if (tokenCount == 3) {
-            indexedRanks[0] = combine(0, encode(piece));
+            if (IntTokenEncoder.accepts(length)) {
+                indexedRanks[0] = combine(0, intTokenEncoder.encode((int) piece));
+            } else {
+                indexedRanks[0] = combine(0, encode(piece));
+            }
         } else {
             for (int i = 0; i < tokenCount - 2; i++) {
-                long subToken = getSubToken(piece, i, i + 2);
-                indexedRanks[i] = combine(i, encode(subToken)); // IntTokenEncoder
+                var encoded = encode(intTokenEncoder, piece, i, i + 2);
+                indexedRanks[i] = combine(i, encoded);
             }
         }
         indexedRanks[tokenCount - 2] = combine(tokenCount - 2, MAX_RANK);
@@ -93,7 +94,7 @@ final class LongTokenEncoder {
         return indexedRanks;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int tokenCount, long[] indexedRanks) {
+    int mergeBytesAndGetTokenCount(IntTokenEncoder intTokenEncoder, long piece, int tokenCount, long[] indexedRanks) {
         assert tokenCount > 1;
         while (tokenCount > 1) {
             int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, tokenCount);
@@ -102,46 +103,64 @@ final class LongTokenEncoder {
                 break;
             }
 
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(intTokenEncoder, piece, indexedRanks, minRankIndex, tokenCount));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, tokenCount));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(intTokenEncoder, piece, indexedRanks, minRankIndex - 1, tokenCount));
             }
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, tokenCount));
             System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex - 2); // remaining ones will always be MAX_RANK values
             tokenCount--;
         }
         return tokenCount - 1;
     }
 
-    IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
+    IntList encodeToList(IntTokenEncoder intTokenEncoder, long piece, int tokenCount, long[] indexedRanks) {
         MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);
-            long bytesBetween = getSubToken(piece, start, end);
-            out.add(encode(bytesBetween));
+            var encode = encode(intTokenEncoder, piece, start, end);
+            out.add(encode);
         }
         return out;
     }
 
-    private int getRank(long piece, long[] parts, int startIndex, int size) {
+    public int encode(long payload) {
+        return encoders.getIfAbsent(payload, MAX_RANK);
+    }
+
+    private int encode(IntTokenEncoder intTokenEncoder, long piece, int start, int end) {
+        int length = end - start;
+        var byteSize = byteSize(piece);
+        if (length == byteSize) {
+            assert start == 0;
+            assert accepts(byteSize);
+            return encode(piece);
+        } else if (IntTokenEncoder.accepts(length)) {
+            return intTokenEncoder.encode((int) getSubToken(piece, start, start + length));
+        } else {
+            assert LongTokenEncoder.accepts(length);
+            return encode(getSubToken(piece, start, start + length));
+        }
+    }
+
+    private int getRank(IntTokenEncoder intTokenEncoder, long piece, long[] parts, int startIndex, int size) {
         int endIndex = startIndex + 3;
         if (endIndex >= size) {
             return MAX_RANK;
         } else {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
-            long encoderIndex = getSubToken(piece, pieceStartIndex, pieceEndIndex);
-            return encode(encoderIndex);
+            return encode(intTokenEncoder, piece, pieceStartIndex, pieceEndIndex);
         }
     }
 
     long getSubToken(long payload, int startIndex, int endIndex) {
-        int length = byteSize(payload);
+        int byteSize = byteSize(payload);
         int newLength = endIndex - startIndex;
-        if (length == newLength) {
+        if (byteSize == newLength) {
             return payload;
         } else {
-            int shift = (length - endIndex) * Byte.SIZE;
+            int shift = (byteSize - endIndex) * Byte.SIZE;
             long mask = -1L >>> -(newLength * Byte.SIZE);
             long result = (payload >>> shift) & mask;
 
