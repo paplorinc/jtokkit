@@ -104,9 +104,10 @@ public class Cl100kBaseTestTest {
     }
 
     @Test
-    void whitespace() {
-        var encodingResult = ENCODING.encode("斜\uD81E\uDC04", 10);
-        assertEquals(IntLists.immutable.of(7741, 250, 172, 245, 254, 226), encodingResult.getTokens());
+    void other() {
+//        var encodingResult = getOriginalEncoder().encode("\uDBAB\uDC2C䠸\uD820\uDC8E", 10);
+        var encodingResult = ENCODING.encode("\uDBAB\uDC2C䠸\uD820\uDC8E", 10);
+        assertEquals(IntLists.immutable.of(175, 118, 108, 105, 160, 254, 116), encodingResult.getTokens());
     }
 
     @Test

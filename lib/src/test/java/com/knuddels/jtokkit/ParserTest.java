@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ParserTest {
+    public static final String PUNCTUATION = "'\".,?!:()";
     private static final String LETTERS = generateUnicodeCategoryString(Parser::isLetter);
     private static final String NUMBERS = generateUnicodeCategoryString(Parser::isNumeric);
     private static final String WHITESPACES = generateUnicodeCategoryString(Parser::isWhitespace);
@@ -86,34 +87,47 @@ public class ParserTest {
     }
 
     private String generateRandomString() {
-        var length = rand().nextInt(1, 10);
-        return rand().ints(length, 0, 10)
+        var length = rand().nextInt(1, 20);
+        return rand().ints(length, 0, 15)
                 .mapToObj(this::getRandomCharFromCategory)
+                .map(String::valueOf)
                 .collect(joining());
     }
 
-    private String getRandomCharFromCategory(int category) {
+    private char[] getRandomCharFromCategory(int category) {
         switch (category) {
             case 0:
-                return String.valueOf(LETTERS.charAt(rand().nextInt(LETTERS.length())));
+                return new char[]{' '};
             case 1:
-                return String.valueOf(NUMBERS.charAt(rand().nextInt(NUMBERS.length())));
+                return new char[]{' ', ' '};
             case 2:
-                return String.valueOf(WHITESPACES.charAt(rand().nextInt(WHITESPACES.length())));
             case 3:
-                return String.valueOf(NEWLINES.charAt(rand().nextInt(NEWLINES.length())));
             case 4:
-                return String.valueOf(LETTER_OR_NUMERIC.charAt(rand().nextInt(LETTER_OR_NUMERIC.length())));
+                return Character.toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a'));
             case 5:
-                return String.valueOf(NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length())));
+                return new char[]{PUNCTUATION.charAt(rand().nextInt(PUNCTUATION.length()))};
             case 6:
-                return String.valueOf(WHITESPACE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length())));
+                return new char[]{NEWLINES.charAt(rand().nextInt(NEWLINES.length()))};
+            case 7:
+                return new char[]{NUMBERS.charAt(rand().nextInt(NUMBERS.length()))};
+            case 8:
+                return new char[]{WHITESPACES.charAt(rand().nextInt(WHITESPACES.length()))};
+            case 9:
+            case 10:
+                return new char[]{LETTERS.charAt(rand().nextInt(LETTERS.length()))};
+            case 11:
+                return new char[]{LETTER_OR_NUMERIC.charAt(rand().nextInt(LETTER_OR_NUMERIC.length()))};
+            case 12:
+                return new char[]{NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length()))};
+            case 13:
+                return new char[]{WHITESPACE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length()))};
             default:
-                int r;
-                do {
-                    r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
-                } while (!isValid(r));
-                return String.valueOf(Character.toChars(r));
+                while (true) {
+                    int r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
+                    if (isValid(r)) {
+                        return Character.toChars(r);
+                    }
+                }
         }
     }
 
