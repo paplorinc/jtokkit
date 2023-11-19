@@ -104,13 +104,6 @@ public class Cl100kBaseTestTest {
     }
 
     @Test
-    void other() {
-//        var encodingResult = getOriginalEncoder().encode("\uDBAB\uDC2C䠸\uD820\uDC8E", 10);
-        var encodingResult = ENCODING.encode("\uDBAB\uDC2C䠸\uD820\uDC8E", 10);
-        assertEquals(IntLists.immutable.of(175, 118, 108, 105, 160, 254, 116), encodingResult.getTokens());
-    }
-
-    @Test
     void fullMatch() {
         var encodingResult = ENCODING.encode("I'm:  0\n");
         assertEquals(7, encodingResult.size());

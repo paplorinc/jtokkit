@@ -12,6 +12,8 @@ import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static java.lang.Character.*;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.StreamSupport.stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,19 +70,19 @@ public class ParserTest {
             }
 
             var expected = originalEncoder.pattern.matcher(textString);
-            var originalEncodedStream = originalEncoded.stream();
+            var originalEncodedSpliterator = originalEncoded.spliterator();
 
-            var chars = textString.toCharArray();
-            Parser.split(chars, (start, end) -> {
+            var codepoints = textString.codePoints().toArray();
+            Parser.split(codepoints, (start, end) -> {
                 assertTrue(expected.find());
 
-                var actual = new String(chars, start, end - start);
+                var actual = new String(codepoints, start, end - start);
 
-                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), textString);
-                assertEquals(expected.group(), actual, textString);
+                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString + "`");
+                assertEquals(expected.group(), actual, "`" + textString + "`");
 
-//                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
-//                assertEquals(originalEncodedStream.limit(actualEncoded.size()).collect(toList()), actualEncoded);
+                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
+                assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded);
                 return false;
             });
         }
@@ -91,6 +93,7 @@ public class ParserTest {
         return rand().ints(length, 0, 15)
                 .mapToObj(this::getRandomCharFromCategory)
                 .map(String::valueOf)
+                .map(obj -> rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase())
                 .collect(joining());
     }
 

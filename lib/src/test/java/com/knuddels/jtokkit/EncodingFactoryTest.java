@@ -235,9 +235,9 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            var chars = testString.toCharArray();
-            Parser.split(chars, (start, end) -> {
-                actual.add(new String(chars, start, end - start));
+            var codepoints = testString.codePoints().toArray();
+            Parser.split(codepoints, (start, end) -> {
+                actual.add(new String(codepoints, start, end - start));
                 return false;
             });
 

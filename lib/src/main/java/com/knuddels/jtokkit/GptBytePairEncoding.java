@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+import static java.lang.Character.charCount;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
@@ -106,9 +107,9 @@ public class GptBytePairEncoding implements Encoding {
         MutableIntList out = IntLists.mutable.empty();
         int[] tokenCount = {0};
         if ("cl100k_base".equals(name)) {
-            var chars = text.toCharArray();
-            Parser.split(chars, (start, end) -> {
-                byte[] bytes = new String(chars, start, end - start).getBytes(UTF_8);
+            var codepoints = text.codePoints().toArray();
+            Parser.split(codepoints, (start, end) -> {
+                byte[] bytes = new String(codepoints, start, end - start).getBytes(UTF_8);
                 processTokens(maxTokenCount, keepEncodings, bytes, tokenCount, out);
                 return tokenCount[0] >= maxTokenCount;
             });
@@ -153,8 +154,11 @@ public class GptBytePairEncoding implements Encoding {
     @Override
     public long countSplitChars(String text) {
         long[] matchedCharacterCount = {0L};
-        Parser.split(text.toCharArray(), (start, end) -> {
-            matchedCharacterCount[0] += end - start;
+        var codepoints = text.codePoints().toArray();
+        Parser.split(codepoints, (start, end) -> {
+            for (int i = start; i < end; i++) {
+                matchedCharacterCount[0] += charCount(codepoints[i]);
+            }
             return false;
         });
         return matchedCharacterCount[0];
