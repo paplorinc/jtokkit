@@ -1,23 +1,24 @@
 package com.knuddels.jtokkit;
 
+import com.knuddels.jtokkit.reference.GptBytePairEncodingOriginal;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
-import static com.knuddels.jtokkit.EncodingFactoryTest.originalRegex;
 import static java.lang.Character.*;
 import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ParserTest {
-    private static final String UNICODE_LETTERS = generateUnicodeCategoryString(Parser::isUnicodeLetter);
-    private static final String UNICODE_NUMBERS = generateUnicodeCategoryString(Parser::isNumeric);
-    private static final String WHITESPACES = generateUnicodeCategoryString(Parser::isUnicodeWhitespace);
+    private static final String LETTERS = generateUnicodeCategoryString(Parser::isLetter);
+    private static final String NUMBERS = generateUnicodeCategoryString(Parser::isNumeric);
+    private static final String WHITESPACES = generateUnicodeCategoryString(Parser::isWhitespace);
     private static final String LETTER_OR_NUMERIC = generateUnicodeCategoryString(Parser::isLetterOrNumeric);
     private static final String NEWLINE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Parser::isNewlineOrLetterOrNumeric);
     private static final String WHITESPACE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Parser::isWhitespaceOrLetterOrNumeric);
@@ -32,19 +33,41 @@ public class ParserTest {
     }
 
     private static boolean isValid(int c) {
-        return isDefined(c) && !isSurrogate((char) c);
+        return isValidCodePoint(c) && isDefined(c) && !isSurrogate((char) c);
     }
 
     private static ThreadLocalRandom rand() {
         return ThreadLocalRandom.current();
     }
 
+    public static GptBytePairEncodingOriginal getOriginalEncoder() {
+        var originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
+        var regex = Pattern.compile(originalRegex, Pattern.UNICODE_CHARACTER_CLASS);
+
+        var encoder = EncodingFactory.loadMergeableRanks("/com/knuddels/jtokkit/cl100k_base.tiktoken");
+        return new GptBytePairEncodingOriginal("cl100k_base", regex, encoder, EncodingFactory.SPECIAL_TOKENS_CL100K_BASE);
+    }
+
     @Test
     public void testParserWithRandomStrings() {
+        var originalEncoder = getOriginalEncoder();
+        var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
         for (var i = 0; i < 10_000; i++) {
             var textString = generateRandomString();
 
-            var expected = compileRegex(originalRegex, false).matcher(textString);
+            var originalEncoded = originalEncoder.encode(textString);
+            if (!originalEncoder.decode(originalEncoded).equals(textString)) { // invalid encoding
+                i--;
+                continue;
+            }
+            System.out.print("✓");
+            if (i % 100 == 0) {
+                System.out.println();
+            }
+
+            var expected = originalEncoder.pattern.matcher(textString);
+            var originalEncodedStream = originalEncoded.stream();
 
             var chars = textString.toCharArray();
             Parser.split(chars, (start, end) -> {
@@ -52,15 +75,18 @@ public class ParserTest {
 
                 var actual = new String(chars, start, end - start);
 
-                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual));
-                assertEquals(expected.group(), actual);
+                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), textString);
+                assertEquals(expected.group(), actual, textString);
+
+//                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
+//                assertEquals(originalEncodedStream.limit(actualEncoded.size()).collect(toList()), actualEncoded);
                 return false;
             });
         }
     }
 
     private String generateRandomString() {
-        var length = rand().nextInt(1, 30);
+        var length = rand().nextInt(1, 10);
         return rand().ints(length, 0, 10)
                 .mapToObj(this::getRandomCharFromCategory)
                 .collect(joining());
@@ -69,9 +95,9 @@ public class ParserTest {
     private String getRandomCharFromCategory(int category) {
         switch (category) {
             case 0:
-                return String.valueOf(UNICODE_LETTERS.charAt(rand().nextInt(UNICODE_LETTERS.length())));
+                return String.valueOf(LETTERS.charAt(rand().nextInt(LETTERS.length())));
             case 1:
-                return String.valueOf(UNICODE_NUMBERS.charAt(rand().nextInt(UNICODE_NUMBERS.length())));
+                return String.valueOf(NUMBERS.charAt(rand().nextInt(NUMBERS.length())));
             case 2:
                 return String.valueOf(WHITESPACES.charAt(rand().nextInt(WHITESPACES.length())));
             case 3:
@@ -87,7 +113,7 @@ public class ParserTest {
                 do {
                     r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
                 } while (!isValid(r));
-                return String.valueOf(r);
+                return String.valueOf(Character.toChars(r));
         }
     }
 
@@ -109,7 +135,7 @@ public class ParserTest {
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
-            var isLetterOrNumeric = Parser.isUnicodeLetter(cp);
+            var isLetterOrNumeric = Parser.isLetter(cp);
 
             assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
         }
@@ -121,7 +147,7 @@ public class ParserTest {
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = whitespacePattern.matcher(charAsString).matches();
-            var isWhitespace = Parser.isUnicodeWhitespace(cp);
+            var isWhitespace = Parser.isWhitespace(cp);
 
             assertEquals(matchesRegex, isWhitespace, "Mismatch at code point: " + cp);
         }

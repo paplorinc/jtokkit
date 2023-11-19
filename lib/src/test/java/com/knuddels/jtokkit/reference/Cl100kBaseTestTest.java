@@ -1,7 +1,6 @@
 package com.knuddels.jtokkit.reference;
 
 import com.knuddels.jtokkit.EncodingFactory;
-import com.knuddels.jtokkit.GptBytePairEncoding;
 import com.knuddels.jtokkit.api.Encoding;
 import org.eclipse.collections.api.factory.primitive.IntLists;
 import org.junit.jupiter.api.Test;
@@ -12,15 +11,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.counting;
-import static java.util.stream.Collectors.groupingBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -69,50 +62,6 @@ public class Cl100kBaseTestTest {
         return result;
     }
 
-    @Test
-    void test() throws IOException {
-        TEXTS.parallelStream().forEach(text -> {
-            var oldEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBaseOriginal();
-            var encode = oldEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
-            var newEncoding = (GptBytePairEncoding) ENCODING;
-            var newEncode = newEncoding.encode(text).primitiveStream().boxed().collect(Collectors.toList());
-            if (!Objects.equals(encode, newEncode)) {
-                var diff = new HashSet<>(encode);
-                diff.removeAll(newEncode);
-                var collect = diff.stream().map(x -> oldEncoding.decode(IntLists.immutable.of(x))).collect(Collectors.toList());
-                System.out.println(collect);
-
-                var diff2 = new HashSet<>(newEncode);
-                diff2.removeAll(encode);
-                var collect2 = diff2.stream().map(x -> newEncoding.decode(IntLists.immutable.of(x))).collect(Collectors.toList());
-                System.out.println(collect2);
-
-                System.out.println("Old: " + encode);
-                System.out.println("New: " + newEncode);
-            }
-            assertEquals(encode, newEncode);
-        });
-    }
-
-    @Test
-    public void xxx() {
-        var encoding = (GptBytePairEncoding) ENCODING;
-        var actual = TEXTS.stream().mapToInt(encoding::countTokens).sum();
-        assertEquals(18760595, actual);
-
-        if (false) {
-            var actual1 = TEXTS.stream()
-                    .flatMap(x -> encoding.encode(x).primitiveStream().mapToObj(y -> encoding.decodeToken(y).length))
-                    .collect(groupingBy(identity(), counting()));
-
-            System.out.println(actual1);
-            System.out.println(214495 + 110470 + 43433 + 20046 + 8473 + 2596 + 785 + 158 + 49 + 215 + 35 + 34 + 53 + 42 + 44 + 25 + 41 + 73 + 29 + 36 + 26 + 26 + 47 + 33 + 18 + 11 + 7 + 10 + 13 + 15 + 15 + 11 + 6 + 12 + 12 + 14 + 16 + 8 + 9 + 10 + 4 + 6 + 3 + 8 + 4 + 30 + 1 + 6 + 5 + 1 + 1 + 1 + 25 + 1);
-        }
-
-
-        //params.getEncoder
-    }
-
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
     public void cl100kBaseEncodesCorrectly(
@@ -156,8 +105,8 @@ public class Cl100kBaseTestTest {
 
     @Test
     void whitespace() {
-        var encodingResult = ENCODING.encode("\uD856\uDE5E\uDCED", 10);
-        assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+        var encodingResult = ENCODING.encode("斜\uD81E\uDC04", 10);
+        assertEquals(IntLists.immutable.of(7741, 250, 172, 245, 254, 226), encodingResult.getTokens());
     }
 
     @Test

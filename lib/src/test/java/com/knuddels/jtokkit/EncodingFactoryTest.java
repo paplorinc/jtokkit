@@ -8,14 +8,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
+import static com.knuddels.jtokkit.ParserTest.getOriginalEncoder;
 import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
 import static java.lang.Character.*;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EncodingFactoryTest {
-    static final String originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
+    static final String originalRegex = getOriginalEncoder().pattern.pattern();
     static final List<String> expectedOriginal = List.of("", "(?i:'s|'t|'re|'ve|'m|'ll|'d)", "[^\\r\\n\\p{L}\\p{N}]?\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*", "\\s*[\\r\\n]+", "\\s+(?!\\S)", "\\s+");
 
     static final String currentRegex = "'(?:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+";
@@ -225,7 +227,7 @@ class EncodingFactoryTest {
         ));
         testStrings.addAll(TEXTS);
 
-        var originalPattern = compileRegex(originalRegex, false);
+        var originalPattern = getOriginalEncoder().pattern;
         for (String testString : testStrings) {
             System.out.println("Matching: `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + "`...");
             var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
@@ -239,7 +241,9 @@ class EncodingFactoryTest {
                 return false;
             });
 
-            assertEquals(expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
+            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
+            var normalizedActual = actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
+            assertEquals(normalizedExpected, normalizedActual, encounters);
             assertEquals(expected, actual);
         }
     }

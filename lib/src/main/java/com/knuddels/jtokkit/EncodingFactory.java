@@ -14,15 +14,15 @@ import java.util.regex.Pattern;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 
 public final class EncodingFactory {
+    public static final Map<String, Integer> SPECIAL_TOKENS_CL100K_BASE;
+    private static final Map<String, Integer> SPECIAL_TOKENS_X50K_BASE;
+    private static final Map<String, Integer> SPECIAL_TOKENS_P50K_EDIT;
+
     private static final String ENDOFTEXT = "<|endoftext|>";
     private static final String FIM_PREFIX = "<|fim_prefix|>";
     private static final String FIM_MIDDLE = "<|fim_middle|>";
     private static final String FIM_SUFFIX = "<|fim_suffix|>";
     private static final String ENDOFPROMPT = "<|endofprompt|>";
-
-    private static final Map<String, Integer> SPECIAL_TOKENS_X50K_BASE;
-    private static final Map<String, Integer> SPECIAL_TOKENS_P50K_EDIT;
-    private static final Map<String, Integer> SPECIAL_TOKENS_CL100K_BASE;
 
     static {
         final Map<String, Integer> map = new HashMap<>();
@@ -112,16 +112,6 @@ public final class EncodingFactory {
         );
     }
 
-    public static Encoding cl100kBaseOriginal() {
-        return fromPredefinedParameters(
-                "cl100k_base",
-                "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
-                "/com/knuddels/jtokkit/cl100k_base.tiktoken",
-                SPECIAL_TOKENS_CL100K_BASE,
-                false
-        );
-    }
-
     /**
      * Returns an {@link Encoding} instance for the given GPT BytePairEncoding parameters.
      *
@@ -158,7 +148,7 @@ public final class EncodingFactory {
         }
     }
 
-    static Map<byte[], Integer> loadMergeableRanks(final String fileName) {
+    public static Map<byte[], Integer> loadMergeableRanks(final String fileName) {
         try (final InputStream in = EncodingFactory.class.getResourceAsStream(fileName)) {
             if (in == null) {
                 throw new IllegalStateException("Could not find " + fileName + " in resources");

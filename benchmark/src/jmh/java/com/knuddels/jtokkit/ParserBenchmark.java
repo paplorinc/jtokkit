@@ -15,7 +15,7 @@ public class ParserBenchmark {
     public void benchmarkIsUnicodeWhitespace(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
-                bh.consume(Parser.isUnicodeWhitespace(cp));
+                bh.consume(Parser.isWhitespace(cp));
             }
         }
     }
@@ -33,7 +33,7 @@ public class ParserBenchmark {
     public void benchmarkIsUnicodeLetter(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
             for (var cp = Character.MIN_CODE_POINT; cp <= Character.MAX_CODE_POINT; cp++) {
-                bh.consume(Parser.isUnicodeLetter(cp));
+                bh.consume(Parser.isLetter(cp));
             }
         }
     }

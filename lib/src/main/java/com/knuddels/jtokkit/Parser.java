@@ -20,11 +20,11 @@ public class Parser {
             } else if (c0 == '\'' && isLongContraction(input, index)) {
                 // 1) `'(?:|ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
                 nextIndex += 3;
-            } else if (isUnicodeLetter(c0) || isWord(input, c0, index)) {
+            } else if (isLetter(c0) || isWord(input, c0, index)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 do {
                     nextIndex++;
-                } while (nextIndex < input.length && isUnicodeLetter(input[nextIndex]));
+                } while (nextIndex < input.length && isLetter(input[nextIndex]));
             } else if (isNumeric(c0)) {
                 // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
                 nextIndex++;
@@ -49,7 +49,7 @@ public class Parser {
                 // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
                 // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
-                assert isUnicodeWhitespace(c0) : "Unexpected character: " + c0 + " at index " + index + " for text: " + input;
+                assert isWhitespace(c0) : "Unexpected character: " + c0 + " at index " + index + " for text: " + input;
 
                 int lastNewLineIndex = -1;
                 do {
@@ -72,7 +72,7 @@ public class Parser {
                 }
 
                 if (nextIndex > index) {
-                    if (nextIndex < input.length && !isUnicodeWhitespace(c0) && (nextIndex - index) > 1) {
+                    if (nextIndex < input.length && !isWhitespace(c0) && (nextIndex - index) > 1) {
                         nextIndex--;
                     }
                 }
@@ -112,11 +112,11 @@ public class Parser {
     private static boolean isWord(char[] input, int ch, int index) {
         return !isNewlineOrLetterOrNumeric(ch)
                 && (index + 1 < input.length)
-                && isUnicodeLetter(input[index + 1]);
+                && isLetter(input[index + 1]);
     }
 
 
-    static boolean isUnicodeLetter(int ch) {
+    static boolean isLetter(int ch) {
         if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
             return true;
         }
@@ -146,7 +146,7 @@ public class Parser {
         }
     }
 
-    static boolean isUnicodeWhitespace(int ch) {
+    static boolean isWhitespace(int ch) {
         if (ch == ' ' || isNewline(ch)) {
             return true;
         }
