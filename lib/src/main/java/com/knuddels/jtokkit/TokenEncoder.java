@@ -12,12 +12,14 @@ import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 final class TokenEncoder {
     public static final int MAX_RANK = Integer.MAX_VALUE;
     private final Map<ImmutableByteArray, Integer> encoders;
+    public int maxTokenSize = 0;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
 
         this.encoders = new ConcurrentHashMap<>(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k.length)) {
+                maxTokenSize = Math.max(maxTokenSize, k.length);
                 encoders.put(from(k), v);
             }
         });
@@ -45,6 +47,9 @@ final class TokenEncoder {
     }
 
     private int encode(ImmutableByteArray payload) {
+        if (payload.length() > maxTokenSize) {
+            return MAX_RANK;
+        }
         Integer result = encoders.get(payload); // getOrDefault is slower
         return result != null ? result : MAX_RANK;
     }
@@ -148,7 +153,7 @@ final class TokenEncoder {
 
     private int getRank(IntTokenEncoder intTokenEncoder, LongTokenEncoder longTokenEncoder, ImmutableByteArray piece, long[] parts, int startIndex, int size) {
         int endIndex = startIndex + 3;
-        if (endIndex >= size) {
+        if (endIndex >= size || endIndex - startIndex > maxTokenSize) {
             return MAX_RANK;
         } else {
             int pieceStartIndex = index(parts[startIndex]);
