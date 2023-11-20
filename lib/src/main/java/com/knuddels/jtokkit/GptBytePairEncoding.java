@@ -167,7 +167,12 @@ public class GptBytePairEncoding implements Encoding {
     // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
-        return encodeInternal(text, Integer.MAX_VALUE, false).getTokenCount();
+        return countTokens(text, Integer.MAX_VALUE);
+    }
+
+    @Override
+    public int countTokens(String text, int maxValue) {
+        return encodeInternal(text, maxValue, false).getTokenCount();
     }
 
     @Override

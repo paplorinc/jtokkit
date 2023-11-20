@@ -3,6 +3,7 @@ package com.knuddels.jtokkit.reference;
 import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.api.Encoding;
 import org.eclipse.collections.api.factory.primitive.IntLists;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -101,6 +102,18 @@ public class Cl100kBaseTestTest {
     void snowman() {
         var encodingResult = ENCODING.encode("Unicode snowman: ☃️", 10);
         assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+    }
+
+    @Disabled
+    @Test
+    void roundtrip() {
+        var text = "\u0000\uD871\uDE0E�";
+//        var encodingResult = GptBytePairEncodingOriginal.getEncoder().encode(text);
+        var encodingResult = ENCODING.encode(text);
+        assertEquals(IntLists.immutable.of(188, 172, 105, 246, 236, 172, 96, 107), encodingResult);
+
+        var roundtrip = ENCODING.decode(IntLists.immutable.ofAll(encodingResult));
+        assertEquals(text, roundtrip);
     }
 
     @Test

@@ -85,11 +85,7 @@ final class TokenEncoder {
         long[] indexedRanks = new long[tokenCount];
         assert tokenCount > 1 : "Already filtered out";
         if (tokenCount == 3) {
-            if (IntTokenEncoder.accepts(piece.array.length)) {
-                indexedRanks[0] = combine(0, intTokenEncoder.encode(IntTokenEncoder.from(piece.array, 0, piece.array.length)));
-            } else {
-                indexedRanks[0] = combine(0, longTokenEncoder.encode(LongTokenEncoder.from(piece.array, 0, piece.array.length)));
-            }
+            indexedRanks[0] = combine(0, longTokenEncoder.encode(LongTokenEncoder.from(piece.array, 0, piece.array.length)));
         } else {
             for (int i = 0; i < tokenCount - 2; i++) {
                 var encoded = encode(intTokenEncoder, longTokenEncoder, piece, i, i + 2);
@@ -139,9 +135,9 @@ final class TokenEncoder {
             return encode(piece);
         } else {
             if (IntTokenEncoder.accepts(length)) {
-                return intTokenEncoder.encode(IntTokenEncoder.from(piece.array, start, start + length));
+                return intTokenEncoder.encode(IntTokenEncoder.from(piece.array, start, end));
             } else if (LongTokenEncoder.accepts(length)) {
-                return longTokenEncoder.encode(LongTokenEncoder.from(piece.array, start, start + length));
+                return longTokenEncoder.encode(LongTokenEncoder.from(piece.array, start, end));
             } else {
                 byte[] result = new byte[length];
                 System.arraycopy(piece.array, start, result, 0, length);

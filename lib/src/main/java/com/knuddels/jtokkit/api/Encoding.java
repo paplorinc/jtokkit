@@ -106,25 +106,9 @@ public interface Encoding {
      */
     EncodingResult encodeOrdinary(String text, int maxTokens);
 
-    /**
-     * Encodes the given text into a list of token ids and returns the amount of tokens.
-     * This is a convenience method for {@link #encode(String)}, if all you want is to
-     * know the amount of tokens. It is not more performant than {@link #encode(String)},
-     * so prefer to use {@link #encode(String)} if you actually need the tokens.
-     * <pre>
-     * Encoding encoding = EncodingRegistry.getEncoding(EncodingType.CL100K_BASE);
-     * encoding.countTokens("hello world");
-     * // returns 2
-     *
-     * encoding.countTokens("hello &lt;|endoftext|&gt; world");
-     * // raises an UnsupportedOperationException
-     * </pre>
-     *
-     * @param text the text to count tokens for
-     * @return the amount of tokens
-     * @throws UnsupportedOperationException if the text contains special tokens which are not supported for now
-     */
     int countTokens(String text);
+
+    int countTokens(String text, int maxValue);
 
     long countSplitChars(String text); // TODO for benchmarking
 

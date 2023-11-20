@@ -164,7 +164,12 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
         }
 
         @Override
-        public int countTokens(final String text) {
+        public int countTokens(String text) {
+            return 0;
+        }
+
+        @Override
+        public int countTokens(final String text, int maxValue) {
             return 0;
         }
 

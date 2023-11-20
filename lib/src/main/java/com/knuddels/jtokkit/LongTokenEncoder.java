@@ -76,13 +76,8 @@ final class LongTokenEncoder {
     long[] getIndexedRanks(IntTokenEncoder intTokenEncoder, long piece, int tokenCount) {
         long[] indexedRanks = new long[tokenCount];
         assert tokenCount > 1 : "Already filtered out";
-        var length = byteSize(piece);
         if (tokenCount == 3) {
-            if (IntTokenEncoder.accepts(length)) {
-                indexedRanks[0] = combine(0, intTokenEncoder.encode((int) piece));
-            } else {
-                indexedRanks[0] = combine(0, encode(piece));
-            }
+            indexedRanks[0] = combine(0, encode(piece));
         } else {
             for (int i = 0; i < tokenCount - 2; i++) {
                 var encoded = encode(intTokenEncoder, piece, i, i + 2);
@@ -136,10 +131,10 @@ final class LongTokenEncoder {
             assert accepts(byteSize);
             return encode(piece);
         } else if (IntTokenEncoder.accepts(length)) {
-            return intTokenEncoder.encode((int) getSubToken(piece, start, start + length));
+            return intTokenEncoder.encode((int) getSubToken(piece, start, end));
         } else {
             assert LongTokenEncoder.accepts(length);
-            return encode(getSubToken(piece, start, start + length));
+            return encode(getSubToken(piece, start, end));
         }
     }
 

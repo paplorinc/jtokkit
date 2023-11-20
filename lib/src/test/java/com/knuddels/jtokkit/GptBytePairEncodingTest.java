@@ -46,7 +46,7 @@ class GptBytePairEncodingTest {
     void bytePairMerge3() {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        System.out.println(encoding.countTokens(" "));
+        System.out.println(encoding.encode("a b c d e f g h i j k", 5));
 
         var sum = 0;
         for (var text : TEXTS) {

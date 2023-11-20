@@ -2,6 +2,7 @@ package com.knuddels.jtokkit;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
@@ -44,35 +45,39 @@ public class ParserTest {
     @Test
     public void testParserWithRandomStrings() {
         // TODO [188, 172, 99, 96] fails!
+        // TODO [188, 172, 105, 246, 236, 172, 96, 107] fails!
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        IntStream.range(0, 1_000_000).parallel().forEach(i -> {
-            var textString = generateRandomString();
-            var originalEncoded = originalEncoder.encode(textString);
-            if (originalEncoder.decode(originalEncoded).equals(textString)) { // valid encoding
-                System.out.print("✓");
-                if (i % 100 == 0) {
-                    System.out.println();
-                }
+        IntStream.range(0, 100_000).parallel().forEach(i -> {
+            String[] textString = new String[1];
+            List<Integer> originalEncoded;
+            do {
+                textString[0] = generateRandomString();
+                originalEncoded = originalEncoder.encode(textString[0]);
+            } while (!originalEncoder.decode(originalEncoded).equals(textString[0]));
 
-                var expected = originalEncoder.pattern.matcher(textString);
-                var originalEncodedSpliterator = originalEncoded.spliterator();
-
-                var codepoints = textString.codePoints().toArray();
-                Parser.split(codepoints, (start, end) -> {
-                    assertTrue(expected.find());
-
-                    var actual = new String(codepoints, start, end - start);
-
-                    assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString + "`");
-                    assertEquals(expected.group(), actual, "`" + textString + "`");
-
-                    var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
-                    assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded, "`" + textString + "`");
-                    return false;
-                });
+            System.out.print("✓");
+            if (i % 100 == 0) {
+                System.out.println();
             }
+
+            var expected = originalEncoder.pattern.matcher(textString[0]);
+            var originalEncodedSpliterator = originalEncoded.spliterator();
+
+            var codepoints = textString[0].codePoints().toArray();
+            Parser.split(codepoints, (start, end) -> {
+                assertTrue(expected.find());
+
+                var actual = new String(codepoints, start, end - start);
+
+                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString[0] + "`");
+                assertEquals(expected.group(), actual, "`" + textString[0] + "`");
+
+                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
+                assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded, "`" + textString[0] + "`");
+                return false;
+            });
         });
     }
 
