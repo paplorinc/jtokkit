@@ -31,19 +31,15 @@ class GptBytePairEncodingTest {
 
         var expected = 0L;
         var sum = 0L;
-        var max = 2;
+        var max = 1;
         for (int i = 0; i < max; i++) {
             for (var text : TEXTS) {
                 expected += text.length();
                 sum += encoding.countSplitChars(text);
             }
         }
-        if (sum != max * 74_157_645) {
-            throw new IllegalStateException();
-        }
-        if (sum != expected) {
-            throw new IllegalStateException();
-        }
+        assertEquals(max * 74_307_673, sum);
+        assertEquals(expected, sum);
     }
 
     @Test
@@ -58,7 +54,7 @@ class GptBytePairEncodingTest {
             sum += i;
         }
         System.out.println(sum);
-        assertEquals(18760595, sum);
+        assertEquals(18_840_846, sum);
 
         var sum1 = 0;
         for (var x : TEXTS) {
@@ -66,7 +62,7 @@ class GptBytePairEncodingTest {
             sum1 += size;
         }
         System.out.println(sum1);
-        assertEquals(18760595, sum1);
+        assertEquals(18_840_846, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 

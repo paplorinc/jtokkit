@@ -10,6 +10,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardOpenOption.CREATE;
 import static java.util.stream.Collectors.toCollection;
 
 public class FileDownloader {
@@ -146,10 +147,42 @@ public class FileDownloader {
         uniqueBookIds.parallelStream()
                 .forEach(bookId -> downloadBook(bookId, rootFolder));
 
+        String[] patterns = {
+                "'s", "'t", "'re", "'ve", "'m", "'ll", "'d", "'x",
+                "abcdefghijklmnopqrstuvwxyz",
+                "123",
+                "ő",
+                ",.!?:; \n",
+                "\n   \n",
+                "     ",
+                "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000"
+        };
+
+        int size = 10_000;
+        for (int i = 0; i < patterns.length; i++) {
+            String fileName = "test_" + i + "_" + size + ".txt";
+            Path path = rootFolder.resolve(fileName);
+            generateFile(path, patterns[i], size);
+        }
+
         // Assert the total size (replace 0L with the expected total size)
         long totalSize = calculateTotalFileSize(rootFolder);
-        if (totalSize != 75_515_819) {
+        if (totalSize != 75_692_227) {
             throw new AssertionError("Total size did not match expected value, actual: " + totalSize);
+        }
+    }
+
+    private static void generateFile(Path path, String pattern, int sizeInBytes) {
+        StringBuilder builder = new StringBuilder();
+        while (builder.length() < sizeInBytes) {
+            builder.append(pattern);
+        }
+
+        try {
+            Files.writeString(path, builder.toString(), CREATE);
+            System.out.println("File created: " + path);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
