@@ -11,6 +11,7 @@ import java.util.List;
 
 @State(Scope.Benchmark)
 public class BenchmarkingState {
+    public final GptBytePairEncodingOriginal cl100kBaseOriginal = GptBytePairEncodingOriginal.getEncoder();
     public final Encoding cl100kBase = EncodingFactory.cl100kBase();
     public final Encoding p50kBase = EncodingFactory.p50kBase();
     public final Encoding p50kEdit = EncodingFactory.p50kEdit();

@@ -1,4 +1,4 @@
-package com.knuddels.jtokkit.reference;
+package com.knuddels.jtokkit;
 
 import org.eclipse.collections.api.list.primitive.IntList;
 
@@ -20,6 +20,15 @@ public final class GptBytePairEncodingOriginal {
         this.encoder = new TokenEncoderOriginal<>(encoder, ImmutableByteArray::from);
         this.specialTokensEncoder = new TokenEncoderOriginal<>(specialTokensEncoder);
     }
+
+    public static GptBytePairEncodingOriginal getEncoder() {
+        var originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
+        var regex = Pattern.compile(originalRegex, Pattern.UNICODE_CHARACTER_CLASS);
+
+        var encoder = EncodingFactory.loadMergeableRanks("/com/knuddels/jtokkit/cl100k_base.tiktoken");
+        return new GptBytePairEncodingOriginal("cl100k_base", regex, encoder, EncodingFactory.SPECIAL_TOKENS_CL100K_BASE);
+    }
+
 
     public List<Integer> encode(final String text) {
         return encodeInternal(text, null).getTokens();

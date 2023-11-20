@@ -1,11 +1,9 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.reference.GptBytePairEncodingOriginal;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
@@ -43,17 +41,9 @@ public class ParserTest {
         return ThreadLocalRandom.current();
     }
 
-    public static GptBytePairEncodingOriginal getOriginalEncoder() {
-        var originalRegex = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+";
-        var regex = Pattern.compile(originalRegex, Pattern.UNICODE_CHARACTER_CLASS);
-
-        var encoder = EncodingFactory.loadMergeableRanks("/com/knuddels/jtokkit/cl100k_base.tiktoken");
-        return new GptBytePairEncodingOriginal("cl100k_base", regex, encoder, EncodingFactory.SPECIAL_TOKENS_CL100K_BASE);
-    }
-
     @Test
     public void testParserWithRandomStrings() {
-        var originalEncoder = getOriginalEncoder();
+        var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
         for (var i = 0; i < 10_000; i++) {
