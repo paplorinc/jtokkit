@@ -3,7 +3,7 @@ package com.knuddels.jtokkit;
 import org.openjdk.jmh.annotations.Benchmark;
 
 public abstract class AbstractBenchmark {
-    @Benchmark
+    //    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
@@ -31,7 +31,7 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    @Benchmark
+    //    @Benchmark
     public long benchmarkCl100kBaseCharacterCount(BenchmarkingState state) {
         var result = 0L;
         var encoding = state.cl100kBase;

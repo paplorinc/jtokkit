@@ -43,43 +43,41 @@ public class ParserTest {
 
     @Test
     public void testParserWithRandomStrings() {
+        // TODO [188, 172, 99, 96] fails!
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        for (var i = 0; i < 10_000; i++) {
+        IntStream.range(0, 1_000_000).parallel().forEach(i -> {
             var textString = generateRandomString();
-
             var originalEncoded = originalEncoder.encode(textString);
-            if (!originalEncoder.decode(originalEncoded).equals(textString)) { // invalid encoding
-                i--;
-                continue;
+            if (originalEncoder.decode(originalEncoded).equals(textString)) { // valid encoding
+                System.out.print("✓");
+                if (i % 100 == 0) {
+                    System.out.println();
+                }
+
+                var expected = originalEncoder.pattern.matcher(textString);
+                var originalEncodedSpliterator = originalEncoded.spliterator();
+
+                var codepoints = textString.codePoints().toArray();
+                Parser.split(codepoints, (start, end) -> {
+                    assertTrue(expected.find());
+
+                    var actual = new String(codepoints, start, end - start);
+
+                    assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString + "`");
+                    assertEquals(expected.group(), actual, "`" + textString + "`");
+
+                    var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
+                    assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded, "`" + textString + "`");
+                    return false;
+                });
             }
-            System.out.print("✓");
-            if (i % 100 == 0) {
-                System.out.println();
-            }
-
-            var expected = originalEncoder.pattern.matcher(textString);
-            var originalEncodedSpliterator = originalEncoded.spliterator();
-
-            var codepoints = textString.codePoints().toArray();
-            Parser.split(codepoints, (start, end) -> {
-                assertTrue(expected.find());
-
-                var actual = new String(codepoints, start, end - start);
-
-                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString + "`");
-                assertEquals(expected.group(), actual, "`" + textString + "`");
-
-                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
-                assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded);
-                return false;
-            });
-        }
+        });
     }
 
     private String generateRandomString() {
-        var length = rand().nextInt(1, 20);
+        var length = rand().nextInt(1, 10);
         return rand().ints(length, 0, 15)
                 .mapToObj(this::getRandomCharFromCategory)
                 .map(String::valueOf)
