@@ -167,7 +167,7 @@ class EncodingFactoryTest {
 //        System.out.println(groupedResults.size());
 
         var encounters = getEncounters("I'm:  0\n", currentRegexParts, currentRegex, true);
-        System.out.println(encounters);
+//        System.out.println(encounters);
         assertEquals(7, encounters.size());
 
         Map<String, SortedMap<Integer, List<String>>> completeLines = new TreeMap<>();
@@ -180,7 +180,7 @@ class EncodingFactoryTest {
             }
 //            });
         }
-        System.out.println(completeLines.entrySet());
+//        System.out.println(completeLines.entrySet());
     }
 
     @Test

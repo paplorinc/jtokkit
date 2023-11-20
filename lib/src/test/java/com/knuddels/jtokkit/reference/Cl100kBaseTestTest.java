@@ -28,7 +28,7 @@ public class Cl100kBaseTestTest {
             var fileContents = new ArrayList<String>();
             try (var files = Files.walk(folderPath)) {
                 files.forEach(file -> {
-                    if (Files.isRegularFile(file) && file.toString().endsWith(".txt")) {
+                    if (Files.isRegularFile(file)) {
                         try {
                             fileContents.add(Files.readString(file, UTF_8));
                         } catch (IOException exception) {

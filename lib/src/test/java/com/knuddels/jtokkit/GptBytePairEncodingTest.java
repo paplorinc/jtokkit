@@ -38,7 +38,7 @@ class GptBytePairEncodingTest {
                 sum += encoding.countSplitChars(text);
             }
         }
-        assertEquals(max * 74_307_673, sum);
+        assertEquals(max * 98_344_202, sum);
         assertEquals(expected, sum);
     }
 
@@ -54,7 +54,7 @@ class GptBytePairEncodingTest {
             sum += i;
         }
         System.out.println(sum);
-        assertEquals(18_840_846, sum);
+        assertEquals(25_772_866, sum);
 
         var sum1 = 0;
         for (var x : TEXTS) {
@@ -62,7 +62,7 @@ class GptBytePairEncodingTest {
             sum1 += size;
         }
         System.out.println(sum1);
-        assertEquals(18_840_846, sum1);
+        assertEquals(25_772_866, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 
@@ -74,11 +74,11 @@ class GptBytePairEncodingTest {
 
             if (sizes != key.length) {
                 sizes = key.length;
-                System.out.println("Testing size: " + sizes);
+//                System.out.println("Testing size: " + sizes);
             }
             var stringToken = new String(key, UTF_8);
             if (Arrays.equals(key, stringToken.getBytes(UTF_8))) {
-                System.out.println("Testing: " + stringToken);
+//                System.out.println("Testing: " + stringToken);
                 var intToken = entry.getValue();
 
                 // Ensure countTokens returns the expected count

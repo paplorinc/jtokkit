@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toCollection;
 
 public class FileDownloader {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         int[] bookIds = {
                 // English
                 10,
@@ -158,16 +158,26 @@ public class FileDownloader {
                 "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000"
         };
 
-        int size = 10_000;
+        // really long strings, basically a dos attack
+        int bytesPerFile = 10_000;
         for (int i = 0; i < patterns.length; i++) {
-            String fileName = "test_" + i + "_" + size + ".txt";
+            String fileName = String.format("test_%d_%d.txt", i, bytesPerFile);
             Path path = rootFolder.resolve(fileName);
-            generateFile(path, patterns[i], size);
+            generateFile(path, patterns[i], bytesPerFile);
         }
 
-        // Assert the total size (replace 0L with the expected total size)
+        String[] sourceCodes = {
+                "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/acpi/cppc_acpi.c",
+                "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/usb/musb/cppi_dma.c",
+                "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/gpu/drm/amd/include/asic_reg/dcn/dcn_3_2_0_sh_mask.h"
+        };
+        for (String url : sourceCodes) {
+            var fileName = url.substring(url.lastIndexOf('/') + 1);
+            downloadUrl(url, rootFolder, fileName);
+        }
+
         long totalSize = calculateTotalFileSize(rootFolder);
-        if (totalSize != 75_692_227) {
+        if (totalSize != 99_728_756) {
             throw new AssertionError("Total size did not match expected value, actual: " + totalSize);
         }
     }
@@ -182,7 +192,7 @@ public class FileDownloader {
             Files.writeString(path, builder.toString(), CREATE);
             System.out.println("File created: " + path);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalStateException(e);
         }
     }
 
@@ -190,17 +200,21 @@ public class FileDownloader {
     public static void downloadBook(int bookId, Path rootFolder) {
         try {
             String fileName = String.format("%d.txt", bookId);
-            Path localPath = rootFolder.resolve(fileName);
-            URL fileUrl = new URL(String.format("https://www.gutenberg.org/cache/epub/%d/pg%d.txt", bookId, bookId));
-
-            if (Files.exists(localPath)) {
-                System.out.printf("File %s already exists, skipping download.%n", fileName);
-            } else {
-                System.out.printf("Downloading %s...\n", fileName);
-                Files.copy(fileUrl.openStream(), localPath);
-            }
+            String format = String.format("https://www.gutenberg.org/cache/epub/%d/pg%d.txt", bookId, bookId);
+            downloadUrl(format, rootFolder, fileName);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static void downloadUrl(String url, Path rootFolder, String fileName) throws IOException {
+        URL fileUrl = new URL(url);
+        Path localPath = rootFolder.resolve(fileName);
+        if (Files.exists(localPath)) {
+            System.out.printf("File %s already exists, skipping download.%n", fileName);
+        } else {
+            System.out.printf("Downloading %s...\n", fileName);
+            Files.copy(fileUrl.openStream(), localPath);
         }
     }
 
