@@ -55,6 +55,7 @@ final class TokenEncoder {
     }
 
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
+        assert accepts(bytes.length);
         ImmutableByteArray match = from(bytes);
         int encoded = encode(match);
         if (encoded != MAX_RANK) {
@@ -63,9 +64,9 @@ final class TokenEncoder {
             }
             return 1;
         } else {
-            int size = match.length() + 1;
-            long[] indexedRanks = getIndexedRanks(compactTokenEncoder, match, size);
-            int tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, size, indexedRanks);
+            var byteSize = match.length();
+            long[] indexedRanks = getIndexedRanks(compactTokenEncoder, match, byteSize + 1);
+            int tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, byteSize + 1, indexedRanks);
             if (keepEncodings) {
                 IntList tokensToAdd = encodeToList(compactTokenEncoder, match, tokenCount, indexedRanks);
                 var remaining = maxTokenCount - out.size();

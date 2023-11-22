@@ -75,10 +75,10 @@ final class CompactTokenEncoder {
             }
             return 1;
         } else {
-            // TODO specialize for 2-3 tokens
-            int size = byteSize(match) + 1;
-            long[] indexedRanks = getIndexedRanks(match, size);
-            int tokenCount = mergeBytesAndGetTokenCount(match, size, indexedRanks);
+            var byteSize = byteSize(match);
+            assert byteSize > 1;
+            long[] indexedRanks = getIndexedRanks(match, byteSize + 1);
+            int tokenCount = mergeBytesAndGetTokenCount(match, byteSize + 1, indexedRanks);
             if (keepEncodings) {
                 IntList tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
                 var remaining = maxTokenCount - out.size();
