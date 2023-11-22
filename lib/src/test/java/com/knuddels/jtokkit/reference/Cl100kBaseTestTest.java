@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit.reference;
 
 import com.knuddels.jtokkit.EncodingFactory;
+import com.knuddels.jtokkit.GptBytePairEncodingOriginal;
 import com.knuddels.jtokkit.api.Encoding;
 import org.eclipse.collections.api.factory.primitive.IntLists;
 import org.junit.jupiter.api.Disabled;
@@ -100,20 +101,60 @@ public class Cl100kBaseTestTest {
 
     @Test
     void snowman() {
-        var encodingResult = ENCODING.encode("Unicode snowman: ☃️", 10);
+        var original = "Unicode snowman: ☃️";
+        var encodingResult = ENCODING.encode(original, 10);
         assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+
+        var decoded = ENCODING.decode(encodingResult.getTokens());
+        assertTrue(original.startsWith(decoded), decoded);
     }
 
-    @Disabled
+    @Test
+    void mixed() {
+        var original = "Mixed script: 你好 world! \uD83C\uDF0D";
+        var encodingResult = ENCODING.encode(original, 10);
+        assertEquals(IntLists.immutable.of(87533, 5429, 25, 220, 57668, 53901, 1917, 0), encodingResult.getTokens());
+
+        var decoded = ENCODING.decode(encodingResult.getTokens());
+        assertTrue(original.startsWith(decoded), decoded);
+    }
+
+    @Test
+    void mixed2() {
+        var original = "مرحبا بالعالم! كيف حالك؟ \uD83D\uDE0E";
+        var encodingResult = ENCODING.encode(original, 10);
+        assertEquals(IntLists.immutable.of(10386, 11318, 30925, 22071, 5821, 28946, 32482, 24102, 32482, 10386), encodingResult.getTokens());
+
+        var decoded = ENCODING.decode(encodingResult.getTokens());
+        assertTrue(original.startsWith(decoded), decoded);
+    }
+
+    @Disabled // TODO
     @Test
     void roundtrip() {
-        var text = "\u0000\uD871\uDE0E�";
-//        var encodingResult = GptBytePairEncodingOriginal.getEncoder().encode(text);
+        var original = GptBytePairEncodingOriginal.getEncoder();
+        var input = List.of(188, 172, 105, 246, 236, 172, 96, 107);
+        var text = original.decode(input);
+        System.out.println(text);
+
+//        var encodingResult = original.encode(text);
         var encodingResult = ENCODING.encode(text);
-        assertEquals(IntLists.immutable.of(188, 172, 105, 246, 236, 172, 96, 107), encodingResult);
+        assertEquals(IntLists.immutable.ofAll(input), encodingResult);
 
         var roundtrip = ENCODING.decode(IntLists.immutable.ofAll(encodingResult));
         assertEquals(text, roundtrip);
+    }
+
+    @Test
+    void roundtrip2() {
+        var text = "Many words map to one token, but some don't: indivisible.\n" +
+                "\n" +
+                "Unicode characters like emojis may be split into many tokens containing the underlying bytes: \uD83E\uDD1A\uD83C\uDFFE\n" +
+                "\n" +
+                "Sequences of characters commonly found next to each other may be grouped together: 1234567890";
+        assertEquals(252, text.length());
+        assertEquals(57, GptBytePairEncodingOriginal.getEncoder().encode(text).size());
+        assertEquals(57, ENCODING.encode(text).size());
     }
 
     @Test

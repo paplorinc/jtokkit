@@ -25,8 +25,7 @@ public class GptBytePairEncoding implements Encoding {
     private final Pattern pattern;
     private final StringEncoder specialTokensEncoder;
 
-    private final IntTokenEncoder intTokenEncoder;
-    private final LongTokenEncoder longTokenEncoder;
+    private final CompactTokenEncoder compactTokenEncoder;
     private final TokenEncoder tokenEncoder;
 
     private final Map<Integer, byte[]> encodedToDecoded;
@@ -36,10 +35,10 @@ public class GptBytePairEncoding implements Encoding {
         this.pattern = params.getPattern();
         this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
 
-        this.intTokenEncoder = new IntTokenEncoder(params.getEncoder());
-        this.longTokenEncoder = new LongTokenEncoder(params.getEncoder());
+        this.compactTokenEncoder = new CompactTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
-        assert intTokenEncoder.length() + longTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size();
+        assert compactTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size()
+                : compactTokenEncoder.length() + "+" + tokenEncoder.length() + " != " + params.getEncoder().size();
 
         this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
@@ -140,12 +139,10 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     private void processTokens(int maxTokenCount, boolean keepEncodings, byte[] bytes, int[] tokenCount, MutableIntList out) {
-        if (IntTokenEncoder.accepts(bytes.length)) {
-            tokenCount[0] += intTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
-        } else if (LongTokenEncoder.accepts(bytes.length)) {
-            tokenCount[0] += longTokenEncoder.addTokensAndGetCount(intTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+        if (CompactTokenEncoder.accepts(bytes.length)) {
+            tokenCount[0] += compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
         } else if (TokenEncoder.accepts(bytes.length)) {
-            tokenCount[0] += tokenEncoder.addTokensAndGetCount(intTokenEncoder, longTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
+            tokenCount[0] += tokenEncoder.addTokensAndGetCount(compactTokenEncoder, maxTokenCount, keepEncodings, bytes, out);
         } else {
             throw new IllegalStateException();
         }

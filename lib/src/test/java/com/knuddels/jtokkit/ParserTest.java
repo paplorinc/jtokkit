@@ -2,6 +2,7 @@ package com.knuddels.jtokkit;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
@@ -11,10 +12,7 @@ import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static java.lang.Character.*;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.StreamSupport.stream;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ParserTest {
     public static final String PUNCTUATION = "'\".,?!:()";
@@ -63,21 +61,24 @@ public class ParserTest {
             }
 
             var expected = originalEncoder.pattern.matcher(textString[0]);
-            var originalEncodedSpliterator = originalEncoded.spliterator();
 
             var codepoints = textString[0].codePoints().toArray();
+            var actualEncoded = new ArrayList<>();
             Parser.split(codepoints, (start, end) -> {
                 assertTrue(expected.find());
 
                 var actual = new String(codepoints, start, end - start);
 
-                assertEquals(normalizeStringForTesting(expected.group()), normalizeStringForTesting(actual), "`" + textString[0] + "`");
-                assertEquals(expected.group(), actual, "`" + textString[0] + "`");
+                var group = expected.group();
+                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), "`" + textString[0] + "`");
+                assertEquals(group, actual, "`" + textString[0] + "`");
 
-                var actualEncoded = encoder.encode(actual).primitiveStream().boxed().collect(toList());
-                assertEquals(stream(originalEncodedSpliterator, false).limit(actualEncoded.size()).collect(toList()), actualEncoded, "`" + textString[0] + "`");
+                encoder.encode(actual).forEach(actualEncoded::add);
                 return false;
             });
+            assertFalse(expected.find());
+
+            assertEquals(originalEncoded, actualEncoded, "`" + textString[0] + "`");
         });
     }
 

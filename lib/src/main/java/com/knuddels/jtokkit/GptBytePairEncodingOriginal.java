@@ -1,7 +1,5 @@
 package com.knuddels.jtokkit;
 
-import org.eclipse.collections.api.list.primitive.IntList;
-
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
@@ -116,16 +114,6 @@ public final class GptBytePairEncodingOriginal {
 
     public int countTokensOrdinary(final String text) {
         return encodeOrdinary(text).size();
-    }
-
-
-    public String decode(IntList tokens) {
-        return null;
-    }
-
-
-    public byte[] decodeBytes(IntList tokens) {
-        return new byte[0];
     }
 
 
