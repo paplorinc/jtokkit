@@ -1,6 +1,6 @@
 package com.knuddels.jtokkit;
 
-import org.eclipse.collections.api.factory.primitive.IntLists;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -87,7 +87,7 @@ class GptBytePairEncodingTest {
 
                 // Check the encoding process
                 var encodedTokens = encoding.encode(stringToken);
-                assertEquals(IntLists.immutable.of(intToken), encodedTokens, "Encoded tokens do not match expected value for stringToken: " + stringToken);
+                assertEquals(IntArrayList.of(intToken), encodedTokens, "Encoded tokens do not match expected value for stringToken: " + stringToken);
 
                 var decodedToken = encoding.decode(encodedTokens);
                 assertEquals(stringToken, decodedToken, "Decoded token does not match original stringToken: " + stringToken);

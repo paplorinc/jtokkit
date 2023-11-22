@@ -1,7 +1,7 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.*;
-import org.eclipse.collections.api.list.primitive.IntList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

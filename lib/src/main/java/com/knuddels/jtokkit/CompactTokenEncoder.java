@@ -1,11 +1,9 @@
 package com.knuddels.jtokkit;
 
-import org.eclipse.collections.api.factory.primitive.IntLists;
-import org.eclipse.collections.api.factory.primitive.LongIntMaps;
-import org.eclipse.collections.api.list.primitive.IntList;
-import org.eclipse.collections.api.list.primitive.MutableIntList;
-import org.eclipse.collections.api.map.primitive.ImmutableLongIntMap;
-import org.eclipse.collections.api.map.primitive.MutableLongIntMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -14,9 +12,9 @@ import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-final class CompactTokenEncoder {
+class CompactTokenEncoder {
     private int[] shortEncoders;
-    private ImmutableLongIntMap longEncoders;
+    private Long2IntMap longEncoders;
     private int length = 0;
 
     public CompactTokenEncoder(Map<byte[], Integer> encoder) {
@@ -24,7 +22,7 @@ final class CompactTokenEncoder {
             shortEncoders = new int[1 << (Short.SIZE - 1)];
             Arrays.fill(shortEncoders, MAX_RANK);
 
-            MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
+            longEncoders = new Long2IntOpenHashMap(encoder.size());
             encoder.forEach((k, v) -> {
                 if (accepts(k.length)) {
                     length++;
@@ -37,11 +35,10 @@ final class CompactTokenEncoder {
                         assert shortEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
                         shortEncoders[index] = v;
                     } else {
-                        tempLongEncoders.put(key, v);
+                        longEncoders.put(key, (int) v);
                     }
                 }
             });
-            this.longEncoders = tempLongEncoders.toImmutable();
         }
     }
 
@@ -63,7 +60,7 @@ final class CompactTokenEncoder {
         return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
         long match = from(bytes, 0, bytes.length);
         int token = encode(match);
         if (token != MAX_RANK) {
@@ -81,7 +78,7 @@ final class CompactTokenEncoder {
                 var remaining = maxTokenCount - out.size();
                 if (remaining < tokensToAdd.size()) {
                     for (int i = 0; i < remaining; i++) {
-                        out.add(tokensToAdd.get(i));
+                        out.add(tokensToAdd.getInt(i));
                     }
                 } else {
                     out.addAll(tokensToAdd);
@@ -123,7 +120,7 @@ final class CompactTokenEncoder {
     }
 
     IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
-        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
+        IntList out = new IntArrayList(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);
@@ -139,7 +136,7 @@ final class CompactTokenEncoder {
         if (key == shortKey) {
             return shortEncoders[shortKey];
         } else {
-            return longEncoders.getIfAbsent(key, MAX_RANK);
+            return longEncoders.getOrDefault(key, MAX_RANK);
         }
     }
 

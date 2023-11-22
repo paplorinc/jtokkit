@@ -21,7 +21,7 @@ java {
 }
 
 dependencies {
-    api("org.eclipse.collections:eclipse-collections:11.1.0")
+    api("it.unimi.dsi:fastutil:8.5.12")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")

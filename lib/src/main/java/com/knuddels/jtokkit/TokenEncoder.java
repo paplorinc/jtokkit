@@ -1,8 +1,7 @@
 package com.knuddels.jtokkit;
 
-import org.eclipse.collections.api.list.primitive.IntList;
-import org.eclipse.collections.api.list.primitive.MutableIntList;
-import org.eclipse.collections.impl.factory.primitive.IntLists;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +53,7 @@ final class TokenEncoder {
         return result != null ? result : MAX_RANK;
     }
 
-    public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, MutableIntList out) {
+    public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
         assert accepts(bytes.length);
         ImmutableByteArray match = from(bytes);
         int encoded = encode(match);
@@ -114,7 +113,7 @@ final class TokenEncoder {
     }
 
     IntList encodeToList(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
-        MutableIntList out = IntLists.mutable.withInitialCapacity(tokenCount);
+        IntList out = new IntArrayList(tokenCount);
         for (int i = 0; i < tokenCount; i++) {
             var start = index(indexedRanks[i]);
             int end = index(indexedRanks[i + 1]);

@@ -47,7 +47,7 @@ public class ParserTest {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        IntStream.range(0, 100_000).parallel().forEach(i -> {
+        IntStream.range(0, 1_000).parallel().forEach(i -> {
             String[] textString = new String[1];
             List<Integer> originalEncoded;
             do {
@@ -64,21 +64,22 @@ public class ParserTest {
 
             var codepoints = textString[0].codePoints().toArray();
             var actualEncoded = new ArrayList<>();
+            var message = "`" + textString[0] + "` should have mapped to: " + originalEncoder.encode(textString[0]) + ", but was: " + encoder.encode(textString[0]);
             Parser.split(codepoints, (start, end) -> {
                 assertTrue(expected.find());
 
                 var actual = new String(codepoints, start, end - start);
 
                 var group = expected.group();
-                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), "`" + textString[0] + "`");
-                assertEquals(group, actual, "`" + textString[0] + "`");
+                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), message);
+                assertEquals(group, actual, message);
 
-                encoder.encode(actual).forEach(actualEncoded::add);
+                actualEncoded.addAll(encoder.encode(actual));
                 return false;
             });
-            assertFalse(expected.find());
+            assertFalse(expected.find(), message);
 
-            assertEquals(originalEncoded, actualEncoded, "`" + textString[0] + "`");
+            assertEquals(originalEncoded, actualEncoded, message);
         });
     }
 

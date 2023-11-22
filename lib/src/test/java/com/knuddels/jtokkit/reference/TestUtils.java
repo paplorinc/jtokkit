@@ -1,7 +1,7 @@
 package com.knuddels.jtokkit.reference;
 
-import org.eclipse.collections.api.list.primitive.IntList;
-import org.eclipse.collections.impl.factory.primitive.IntLists;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -15,6 +15,6 @@ public class TestUtils {
                                 .split(",")
                 ).map(Integer::parseInt)
                 .collect(Collectors.toList());
-        return IntLists.immutable.ofAll(results);
+        return new IntArrayList(results);
     }
 }

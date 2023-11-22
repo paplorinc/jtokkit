@@ -1,6 +1,6 @@
 package com.knuddels.jtokkit.api;
 
-import org.eclipse.collections.api.list.primitive.IntList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 public interface Encoding {
 

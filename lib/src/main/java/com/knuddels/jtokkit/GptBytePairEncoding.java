@@ -3,11 +3,10 @@ package com.knuddels.jtokkit;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
-import org.eclipse.collections.api.factory.primitive.ByteLists;
-import org.eclipse.collections.api.factory.primitive.IntLists;
-import org.eclipse.collections.api.list.primitive.IntList;
-import org.eclipse.collections.api.list.primitive.MutableByteList;
-import org.eclipse.collections.api.list.primitive.MutableIntList;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.bytes.ByteList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -72,7 +71,7 @@ public class GptBytePairEncoding implements Encoding {
 
     private EncodingResult encodeInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(IntLists.immutable.empty(), -1, false);
+            return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
         checkForSpecialTokens(text);
@@ -100,10 +99,10 @@ public class GptBytePairEncoding implements Encoding {
 
     private EncodingResult encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings) {
         if (text == null) {
-            return new EncodingResult(IntLists.immutable.empty(), -1, false);
+            return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
-        MutableIntList out = IntLists.mutable.empty();
+        IntArrayList out = new IntArrayList();
         int[] tokenCount = {0};
         if ("cl100k_base".equals(name)) {
             var codepoints = text.codePoints().toArray();
@@ -122,9 +121,10 @@ public class GptBytePairEncoding implements Encoding {
         if (maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
             for (int tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
-                MutableIntList tokens = IntLists.mutable.empty();
-                for (int i = 0; i < out.size() - tokensToRemove; i++) {
-                    tokens.add(out.get(i));
+                var size = out.size() - tokensToRemove;
+                IntArrayList tokens = new IntArrayList(size);
+                for (int i = 0; i < size; i++) {
+                    tokens.add(out.getInt(i));
                 }
                 // TODO optimize
                 String decoded = decode(tokens);
@@ -138,7 +138,7 @@ public class GptBytePairEncoding implements Encoding {
         return new EncodingResult(out, tokenCount[0], false);
     }
 
-    private void processTokens(int maxTokenCount, boolean keepEncodings, byte[] bytes, int[] tokenCount, MutableIntList out) {
+    private void processTokens(int maxTokenCount, boolean keepEncodings, byte[] bytes, int[] tokenCount, IntArrayList out) {
         if (CompactTokenEncoder.accepts(bytes.length)) {
             tokenCount[0] += compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, bytes, out);
         } else if (TokenEncoder.accepts(bytes.length)) {
@@ -184,14 +184,14 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public byte[] decodeBytes(IntList tokens) {
-        MutableByteList out = ByteLists.mutable.withInitialCapacity(2 * tokens.size());
+        ByteList out = new ByteArrayList(2 * tokens.size());
         tokens.forEach(token -> {
             byte[] decodedToken = decodeToken(token);
             for (byte b : decodedToken) {
                 out.add(b);
             }
         });
-        return out.toArray();
+        return out.toByteArray();
     }
 
     @Override

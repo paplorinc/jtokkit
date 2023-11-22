@@ -3,7 +3,7 @@ package com.knuddels.jtokkit.reference;
 import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.GptBytePairEncodingOriginal;
 import com.knuddels.jtokkit.api.Encoding;
-import org.eclipse.collections.api.factory.primitive.IntLists;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -103,7 +103,7 @@ public class Cl100kBaseTestTest {
     void snowman() {
         var original = "Unicode snowman: ☃️";
         var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntLists.immutable.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
+        assertEquals(IntArrayList.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
 
         var decoded = ENCODING.decode(encodingResult.getTokens());
         assertTrue(original.startsWith(decoded), decoded);
@@ -113,7 +113,7 @@ public class Cl100kBaseTestTest {
     void mixed() {
         var original = "Mixed script: 你好 world! \uD83C\uDF0D";
         var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntLists.immutable.of(87533, 5429, 25, 220, 57668, 53901, 1917, 0), encodingResult.getTokens());
+        assertEquals(IntArrayList.of(87533, 5429, 25, 220, 57668, 53901, 1917, 0), encodingResult.getTokens());
 
         var decoded = ENCODING.decode(encodingResult.getTokens());
         assertTrue(original.startsWith(decoded), decoded);
@@ -123,7 +123,7 @@ public class Cl100kBaseTestTest {
     void mixed2() {
         var original = "مرحبا بالعالم! كيف حالك؟ \uD83D\uDE0E";
         var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntLists.immutable.of(10386, 11318, 30925, 22071, 5821, 28946, 32482, 24102, 32482, 10386), encodingResult.getTokens());
+        assertEquals(IntArrayList.of(10386, 11318, 30925, 22071, 5821, 28946, 32482, 24102, 32482, 10386), encodingResult.getTokens());
 
         var decoded = ENCODING.decode(encodingResult.getTokens());
         assertTrue(original.startsWith(decoded), decoded);
@@ -139,9 +139,9 @@ public class Cl100kBaseTestTest {
 
 //        var encodingResult = original.encode(text);
         var encodingResult = ENCODING.encode(text);
-        assertEquals(IntLists.immutable.ofAll(input), encodingResult);
+        assertEquals(new IntArrayList(input), encodingResult);
 
-        var roundtrip = ENCODING.decode(IntLists.immutable.ofAll(encodingResult));
+        var roundtrip = ENCODING.decode(new IntArrayList(encodingResult));
         assertEquals(text, roundtrip);
     }
 
