@@ -21,7 +21,7 @@ final class CompactTokenEncoder {
 
     public CompactTokenEncoder(Map<byte[], Integer> encoder) {
         if (!encoder.isEmpty()) {
-            shortEncoders = new int[1 << Short.SIZE];
+            shortEncoders = new int[1 << (Short.SIZE - 1)];
             Arrays.fill(shortEncoders, MAX_RANK);
 
             MutableLongIntMap tempLongEncoders = LongIntMaps.mutable.ofInitialCapacity(encoder.size());
@@ -32,7 +32,8 @@ final class CompactTokenEncoder {
                     var key = from(k, 0, k.length);
                     var shortKey = (short) key;
                     if (key == shortKey) {
-                        var index = shortIndex(shortKey);
+                        assert shortKey >= 0 : "Negative short key: " + new String(k, UTF_8);
+                        var index = (int) shortKey;
                         assert shortEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
                         shortEncoders[index] = v;
                     } else {
@@ -42,10 +43,6 @@ final class CompactTokenEncoder {
             });
             this.longEncoders = tempLongEncoders.toImmutable();
         }
-    }
-
-    private static int shortIndex(short key) {
-        return key - Short.MIN_VALUE;
     }
 
     static boolean accepts(int length) {
@@ -76,7 +73,7 @@ final class CompactTokenEncoder {
             return 1;
         } else {
             var byteSize = byteSize(match);
-            assert byteSize > 1;
+            assert byteSize > 1 && byteSize <= Long.BYTES;
             long[] indexedRanks = getIndexedRanks(match, byteSize + 1);
             int tokenCount = mergeBytesAndGetTokenCount(match, byteSize + 1, indexedRanks);
             if (keepEncodings) {
@@ -140,8 +137,7 @@ final class CompactTokenEncoder {
     public int encode(long key) {
         var shortKey = (short) key;
         if (key == shortKey) {
-            var index = shortIndex(shortKey);
-            return shortEncoders[index]; // TODO cache
+            return shortEncoders[shortKey];
         } else {
             return longEncoders.getIfAbsent(key, MAX_RANK);
         }
