@@ -16,7 +16,7 @@ public final class ImmutableByteArray {
      * constructor again.
      */
     ImmutableByteArray(final byte[] array) {
-        assert array.length > 0 : "Empty byte array";
+        assert array.length > Long.BYTES : "Invalid byte array";
         this.array = array;
     }
 

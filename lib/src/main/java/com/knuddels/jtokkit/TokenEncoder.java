@@ -3,6 +3,7 @@ package com.knuddels.jtokkit;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -80,7 +81,7 @@ final class TokenEncoder {
                 var remaining = maxTokenCount - out.size();
                 if (remaining < tokensToAdd.size()) {
                     for (int i = 0; i < remaining; i++) {
-                        out.add(tokensToAdd.get(i));
+                        out.add(tokensToAdd.getInt(i));
                     }
                 } else {
                     out.addAll(tokensToAdd);
@@ -110,9 +111,9 @@ final class TokenEncoder {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, tokenCount));
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, tokenCount));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, tokenCount));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, tokenCount));
             }
             System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex - 2); // remaining ones will always be MAX_RANK values
             tokenCount--;
@@ -150,14 +151,14 @@ final class TokenEncoder {
         }
     }
 
-    private int getRank(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, long[] parts, int startIndex, int size) {
-        int endIndex = startIndex + 3;
-        if (endIndex >= size || endIndex - startIndex > maxTokenSize) {
-            return MAX_RANK;
-        } else {
+    private int getRank(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, long[] parts, int startIndex, int endIndex, int size) {
+        if (endIndex < size) {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
+            System.out.println(new String(piece.array, pieceStartIndex, pieceEndIndex - pieceStartIndex, StandardCharsets.UTF_8));
             return encode(compactTokenEncoder, piece, pieceStartIndex, pieceEndIndex);
+        } else {
+            return MAX_RANK;
         }
     }
 
