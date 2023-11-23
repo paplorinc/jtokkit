@@ -33,9 +33,8 @@ final class TokenEncoder {
     }
 
     public static int getMinRankIndex(long[] indexedRanks, int size) {
-        int minRankIndex = 0;
-        int minRank = rank(indexedRanks[minRankIndex]);
-        for (int i = 1; i < size - 2; i++) {
+        int minRankIndex = -1, minRank = MAX_RANK;
+        for (int i = 0; i < size - 2; i++) {
             int r = rank(indexedRanks[i]);
             if (r < minRank) {
                 minRankIndex = i;
@@ -97,8 +96,7 @@ final class TokenEncoder {
         assert tokenCount > 1;
         while (tokenCount > 1) {
             int minRankIndex = getMinRankIndex(indexedRanks, tokenCount);
-            int minRank = rank(indexedRanks[minRankIndex]);
-            if (minRank == MAX_RANK) {
+            if (minRankIndex < 0) {
                 break;
             }
 

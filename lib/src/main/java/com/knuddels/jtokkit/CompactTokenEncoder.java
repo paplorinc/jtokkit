@@ -104,8 +104,7 @@ class CompactTokenEncoder {
         assert tokenCount > 1;
         while (tokenCount > 1) {
             int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, tokenCount);
-            int minRank = rank(indexedRanks[minRankIndex]);
-            if (minRank == MAX_RANK) {
+            if (minRankIndex < 0) {
                 break;
             }
 
