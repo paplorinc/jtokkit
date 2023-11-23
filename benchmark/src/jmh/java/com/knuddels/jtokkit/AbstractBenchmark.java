@@ -2,14 +2,14 @@ package com.knuddels.jtokkit;
 
 import org.openjdk.jmh.annotations.Benchmark;
 
+@SuppressWarnings("DuplicatedCode")
 public abstract class AbstractBenchmark {
     //    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
         for (var fileContent : state.fileContents) {
-            var i = encoding.countTokens(fileContent);
-            result += i;
+            result += encoding.countTokens(fileContent);
         }
         if (result != state.expectedFileContentsCl100kBaseTokenCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
@@ -20,10 +20,8 @@ public abstract class AbstractBenchmark {
     @Benchmark
     public int benchmarkCl100kBaseTokenCount(BenchmarkingState state) {
         var result = 0;
-        var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
-            var i = encoding.countTokens(fileContent);
-            result += i;
+            result += state.cl100kBase.countTokens(fileContent);
         }
         if (result != state.expectedFileContentsCl100kBaseTokenCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
@@ -34,9 +32,8 @@ public abstract class AbstractBenchmark {
     //    @Benchmark
     public long benchmarkCl100kBaseCharacterCount(BenchmarkingState state) {
         var result = 0L;
-        var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
-            result += encoding.countSplitChars(fileContent);
+            result += state.cl100kBase.countSplitChars(fileContent);
         }
         if (result != state.expectedFileContentsCl100kBaseCharCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));

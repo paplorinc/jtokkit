@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import com.knuddels.jtokkit.reference.Cl100kBaseTestTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -8,7 +9,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
-import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
 import static java.lang.Character.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -171,7 +171,7 @@ class EncodingFactoryTest {
         assertEquals(7, encounters.size());
 
         Map<String, SortedMap<Integer, List<String>>> completeLines = new TreeMap<>();
-        for (var text : TEXTS) {
+        for (var text : Cl100kBaseTestTest.getTexts("../")) {
 //            text.lines().forEach(line -> {
 //                var t = line + "\n";
             var actual = getEncounters(text, currentRegexParts, currentRegex, true);
@@ -224,7 +224,7 @@ class EncodingFactoryTest {
                 "03½",
                 "* \u05E2"
         ));
-        testStrings.addAll(TEXTS);
+        testStrings.addAll(Cl100kBaseTestTest.getTexts("../"));
 
         var originalPattern = GptBytePairEncodingOriginal.getEncoder().pattern;
         for (String testString : testStrings) {

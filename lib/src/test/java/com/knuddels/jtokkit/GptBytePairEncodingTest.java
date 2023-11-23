@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import com.knuddels.jtokkit.reference.Cl100kBaseTestTest;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import static com.knuddels.jtokkit.EncodingFactory.loadMergeableRanks;
-import static com.knuddels.jtokkit.reference.Cl100kBaseTestTest.TEXTS;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
@@ -17,8 +17,8 @@ class GptBytePairEncodingTest {
 //    public static void main(String[] args) {
 //        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 //        var sum = 0;
-//        for (int i = 0; i < 10; i++) {
-//            for (var text : TEXTS) {
+//        for (int i = 0; i < 5; i++) {
+//            for (var text : Cl100kBaseTestTest.getTexts("")) {
 //                sum += encoding.countTokens(text);
 //            }
 //        }
@@ -33,7 +33,7 @@ class GptBytePairEncodingTest {
         var sum = 0L;
         var max = 1;
         for (int i = 0; i < max; i++) {
-            for (var text : TEXTS) {
+            for (var text : Cl100kBaseTestTest.getTexts("../")) {
                 expected += text.length();
                 sum += encoding.countSplitChars(text);
             }
@@ -49,7 +49,8 @@ class GptBytePairEncodingTest {
         System.out.println(encoding.encode("a b c d e f g h i j k", 5));
 
         var sum = 0;
-        for (var text : TEXTS) {
+        var texts = Cl100kBaseTestTest.getTexts("../");
+        for (var text : texts) {
             var i = encoding.countTokens(text);
             sum += i;
         }
@@ -57,7 +58,7 @@ class GptBytePairEncodingTest {
         assertEquals(25_772_866, sum);
 
         var sum1 = 0;
-        for (var x : TEXTS) {
+        for (var x : texts) {
             var size = encoding.encode(x).size();
             sum1 += size;
         }

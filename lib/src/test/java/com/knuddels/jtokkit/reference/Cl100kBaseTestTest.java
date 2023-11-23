@@ -21,12 +21,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Cl100kBaseTestTest {
 
-    public static final List<String> TEXTS = loadData("../benchmark/data");
     private static final Encoding ENCODING = EncodingFactory.cl100kBase();
 
-    public static List<String> loadData(final String folder) {
+    public static List<String> getTexts(String prefix) {
+        return loadData(prefix, "benchmark/data");
+    }
+
+    public static List<String> loadData(String prefix, String folder) {
         try {
-            var folderPath = Paths.get(folder);
+            var folderPath = Paths.get(prefix, folder);
             var fileContents = new ArrayList<String>();
             try (var files = Files.walk(folderPath)) {
                 files.forEach(file -> {
@@ -40,7 +43,7 @@ public class Cl100kBaseTestTest {
                 });
             }
 
-            fileContents.addAll(getBasePromptsKeys());
+            fileContents.addAll(getBasePromptsKeys(prefix));
 
             return fileContents;
         } catch (IOException e) {
@@ -48,9 +51,9 @@ public class Cl100kBaseTestTest {
         }
     }
 
-    public static List<String> getBasePromptsKeys() throws IOException {
+    public static List<String> getBasePromptsKeys(String prefix) throws IOException {
         var result = new ArrayList<String>();
-        var csvPath = Paths.get("../lib/src/test/resources/base_prompts.csv");
+        var csvPath = Paths.get(prefix + "lib/src/test/resources/base_prompts.csv");
         try (var br = Files.newBufferedReader(csvPath, UTF_8)) {
             br.readLine(); // Skip header
 
