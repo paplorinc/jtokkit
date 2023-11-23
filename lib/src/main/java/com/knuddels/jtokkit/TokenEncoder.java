@@ -33,15 +33,25 @@ final class TokenEncoder {
     }
 
     public static int getMinRankIndex(long[] indexedRanks, int size) {
-        int minRankIndex = -1, minRank = MAX_RANK;
-        for (int i = 0; i < size - 2; i++) {
-            int r = rank(indexedRanks[i]);
-            if (r < minRank) {
-                minRankIndex = i;
-                minRank = r;
+        int minRankIndex = -1;
+        int minRank = MAX_RANK;
+
+        int i = 0;
+        for (; i <= size - 4; i += 2) { // Unroll loop
+            for (int j = 0; j < 2; j++) {
+                int r = rank(indexedRanks[i + j]);
+                if (r < minRank) {
+                    minRankIndex = i + j;
+                    minRank = r;
+                }
             }
         }
-        return minRankIndex;
+
+        if (i < size - 2 && rank(indexedRanks[i]) < minRank) {
+            return i;
+        } else {
+            return minRankIndex;
+        }
     }
 
     int encode(ImmutableByteArray payload) {
