@@ -145,7 +145,7 @@ class CompactTokenEncoder {
 
     int mergeBytesAndGetTokenCount(long piece, int remaining, long[] indexedRanks) {
         assert remaining > 1;
-        while (remaining > 0) {
+        while (remaining > 2) {
             int minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
