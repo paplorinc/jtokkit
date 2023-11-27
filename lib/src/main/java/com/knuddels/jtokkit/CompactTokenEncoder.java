@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
@@ -24,14 +25,14 @@ class CompactTokenEncoder {
 
             longEncoders = new Long2IntOpenHashMap(encoder.size());
             encoder.forEach((k, v) -> {
+                assert v >= 0 : "Negative token: " + new String(k, UTF_8);
+
                 if (accepts(k.length)) {
                     length++;
 
                     var key = from(k, 0, k.length);
-                    var shortKey = (short) key;
-                    if (key == shortKey) {
-                        assert shortKey >= 0 : "Negative short key: " + new String(k, UTF_8);
-                        var index = (int) shortKey;
+                    var index = (short) key;
+                    if (key == index) {
                         assert shortEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
                         shortEncoders[index] = v;
                     } else {
@@ -100,22 +101,23 @@ class CompactTokenEncoder {
         return indexedRanks;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int tokenCount, long[] indexedRanks) {
-        assert tokenCount > 1;
-        while (tokenCount > 0) {
-            int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, tokenCount - 1);
+    int mergeBytesAndGetTokenCount(long piece, int remaining, long[] indexedRanks) {
+        assert remaining > 1;
+        while (remaining > 0) {
+            int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, minRankIndex + 3, tokenCount + 1));
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, tokenCount + 1));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining));
             }
-            tokenCount--;
-            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex); // remaining ones will always be MAX_RANK values
+            remaining--;
+            assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
+            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, remaining - minRankIndex);
         }
-        return tokenCount;
+        return remaining;
     }
 
     IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
@@ -154,7 +156,7 @@ class CompactTokenEncoder {
     }
 
     private int getRank(long piece, long[] parts, int startIndex, int endIndex, int size) {
-        if (endIndex < size) {
+        if (endIndex <= size) {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
             return encode(piece, pieceStartIndex, pieceEndIndex);

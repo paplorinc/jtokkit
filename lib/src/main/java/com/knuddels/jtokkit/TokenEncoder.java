@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 
@@ -103,30 +104,24 @@ final class TokenEncoder {
         return indexedRanks;
     }
 
-    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
-        assert tokenCount > 1;
-        while (tokenCount > 0) {
-//            //Get rid of last few max_ranks
-//            for (int i = last; i >= 0; i--) {
-//                int r = rank(indexedRanks[i]);
-//                if (r != MAX_RANK && r <= minRank) {
-//                    minRankIndex = i;
-//                    minRank = r;
-//                }
-//            }
-            int minRankIndex = getMinRankIndex(indexedRanks, tokenCount - 1);
+    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int remaining, long[] indexedRanks) {
+        assert remaining > 1;
+        while (remaining > 0) {
+            int minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, tokenCount + 1));
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, tokenCount + 1));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining));
             }
-            tokenCount--;
-            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex); // remaining ones will always be MAX_RANK values
+            remaining--;
+            assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
+            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, remaining - minRankIndex);
+
         }
-        return tokenCount;
+        return remaining;
     }
 
     IntList encodeToList(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
@@ -160,10 +155,9 @@ final class TokenEncoder {
     }
 
     private int getRank(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, long[] parts, int startIndex, int endIndex, int size) {
-        if (endIndex < size) {
+        if (endIndex <= size) {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
-//            System.out.println(new String(piece.array, pieceStartIndex, pieceEndIndex - pieceStartIndex, StandardCharsets.UTF_8));
             return encode(compactTokenEncoder, piece, pieceStartIndex, pieceEndIndex);
         } else {
             return MAX_RANK;
