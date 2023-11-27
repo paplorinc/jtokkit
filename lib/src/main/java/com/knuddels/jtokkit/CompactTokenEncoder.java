@@ -48,13 +48,26 @@ class CompactTokenEncoder {
     }
 
     static long from(byte[] bytes, int start, int end) {
+        assert end - start > 0 : "Too small byte array: " + new String(bytes, UTF_8);
         assert accepts(end - start) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
-
-        long result = 0; // Faster without extracting the first byte
-        for (int i = start; i < end; i++) {
-            result = (result << Byte.SIZE) | (bytes[i] & 0xFFL);
+        if (end - start == 1) {
+            return bytes[start] & 0xFFL;
         }
-        return result;
+
+        int i = start + 2;
+        long result1 = bytes[start] & 0xFFL;
+        long result2 = bytes[start + 1] & 0xFFL;
+        for (; i < end - 1; i += 2) {
+            result1 = (result1 << Byte.SIZE * 2) | (bytes[i] & 0xFFL);
+            result2 = (result2 << Byte.SIZE * 2) | (bytes[i + 1] & 0xFFL);
+        }
+
+        long combinedResult = (result1 << Byte.SIZE) | result2;
+        if (i < end) {
+            return (combinedResult << Byte.SIZE) | (bytes[i] & 0xFFL);
+        } else {
+            return combinedResult;
+        }
     }
 
     public static int byteSize(long payload) {
@@ -67,10 +80,17 @@ class CompactTokenEncoder {
 
         int i = 0;
         for (; i <= last - 2; i += 2) { // Unrolled loop
-            for (int j = 0; j < 2; j++) {
-                int r = rank(indexedRanks[i + j]);
+            {
+                int r = rank(indexedRanks[i]);
                 if (r < minRank) {
-                    minRankIndex = i + j;
+                    minRankIndex = i;
+                    minRank = r;
+                }
+            }
+            {
+                int r = rank(indexedRanks[i + 1]);
+                if (r < minRank) {
+                    minRankIndex = i + 1;
                     minRank = r;
                 }
             }

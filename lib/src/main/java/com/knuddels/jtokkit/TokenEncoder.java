@@ -35,20 +35,48 @@ final class TokenEncoder {
 
         int i = 0;
         for (; i <= last - 4; i += 4) { // Unrolled loop
-            for (int j = 0; j < 4; j++) {
-                int r = rank(indexedRanks[i + j]);
+            {
+                int r = rank(indexedRanks[i]);
                 if (r < minRank) {
-                    minRankIndex = i + j;
+                    minRankIndex = i;
+                    minRank = r;
+                }
+            }
+            {
+                int r = rank(indexedRanks[i + 1]);
+                if (r < minRank) {
+                    minRankIndex = i + 1;
+                    minRank = r;
+                }
+            }
+            {
+                int r = rank(indexedRanks[i + 2]);
+                if (r < minRank) {
+                    minRankIndex = i + 2;
+                    minRank = r;
+                }
+            }
+            {
+                int r = rank(indexedRanks[i + 3]);
+                if (r < minRank) {
+                    minRankIndex = i + 3;
                     minRank = r;
                 }
             }
         }
 
         for (; i <= last - 2; i += 2) { // Unrolled loop
-            for (int j = 0; j < 2; j++) {
-                int r = rank(indexedRanks[i + j]);
+            {
+                int r = rank(indexedRanks[i]);
                 if (r < minRank) {
-                    minRankIndex = i + j;
+                    minRankIndex = i;
+                    minRank = r;
+                }
+            }
+            {
+                int r = rank(indexedRanks[i + 1]);
+                if (r < minRank) {
+                    minRankIndex = i + 1;
                     minRank = r;
                 }
             }
