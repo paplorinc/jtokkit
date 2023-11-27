@@ -150,14 +150,21 @@ public class Cl100kBaseTestTest {
 
     @Test
     void roundtrip2() {
-        var text = "Many words map to one token, but some don't: indivisible.\n" +
-                "\n" +
-                "Unicode characters like emojis may be split into many tokens containing the underlying bytes: \uD83E\uDD1A\uD83C\uDFFE\n" +
-                "\n" +
+        var text = "Many words map to one token, but some don't: indivisible." +
+                "\n\n" +
+                "Unicode characters like emojis may be split into many tokens containing the underlying bytes: \uD83E\uDD1A\uD83C\uDFFE" +
+                "\n\n" +
                 "Sequences of characters commonly found next to each other may be grouped together: 1234567890";
         assertEquals(252, text.length());
         assertEquals(57, GptBytePairEncodingOriginal.getEncoder().encode(text).size());
         assertEquals(57, ENCODING.encode(text).size());
+    }
+
+    @Test
+    void roundtrip3() {
+        var text = "A wizard in a top hat riding a unicycle while juggling flaming pineapples";
+        assertEquals(73, text.length());
+        assertEquals(GptBytePairEncodingOriginal.getEncoder().encode(text).size(), ENCODING.encode(text).size());
     }
 
     @Test

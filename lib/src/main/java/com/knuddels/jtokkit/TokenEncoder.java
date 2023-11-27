@@ -19,7 +19,7 @@ final class TokenEncoder {
         encoder.forEach((k, v) -> {
             if (accepts(k.length)) {
                 maxTokenSize = Math.max(maxTokenSize, k.length);
-                var key = from(k);
+                var key = new ImmutableByteArray(k, 0, k.length);
                 encoders.put(key, v);
             }
         });
@@ -29,15 +29,21 @@ final class TokenEncoder {
         return !CompactTokenEncoder.accepts(length);
     }
 
-    static ImmutableByteArray from(byte[] bytes) {
-        return new ImmutableByteArray(bytes);
-    }
-
     public static int getMinRankIndex(long[] indexedRanks, int last) {
         int minRankIndex = -1;
         int minRank = MAX_RANK;
 
         int i = 0;
+        for (; i <= last - 4; i += 4) { // Unrolled loop
+            for (int j = 0; j < 4; j++) {
+                int r = rank(indexedRanks[i + j]);
+                if (r < minRank) {
+                    minRankIndex = i + j;
+                    minRank = r;
+                }
+            }
+        }
+
         for (; i <= last - 2; i += 2) { // Unrolled loop
             for (int j = 0; j < 2; j++) {
                 int r = rank(indexedRanks[i + j]);
@@ -66,7 +72,7 @@ final class TokenEncoder {
 
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
         assert accepts(bytes.length);
-        ImmutableByteArray match = from(bytes);
+        ImmutableByteArray match = new ImmutableByteArray(bytes, 0, bytes.length);
         int encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
@@ -112,14 +118,16 @@ final class TokenEncoder {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining));
+            var newMinRank = getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining);
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], newMinRank);
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining));
+                var newPrevMinRank = getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining);
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], newPrevMinRank);
             }
+
             remaining--;
             assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
             System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, remaining - minRankIndex);
-
         }
         return remaining;
     }
@@ -139,17 +147,16 @@ final class TokenEncoder {
     private int encode(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int start, int end) {
         int length = end - start;
         if (length == piece.length()) {
-            assert start == 0;
-            assert accepts(piece.array.length);
+            assert start == piece.getStart() && end == piece.getEnd();
+            assert accepts(piece.length());
             return encode(piece);
         } else {
+            start += piece.getStart();
+            end += piece.getStart();
             if (CompactTokenEncoder.accepts(length)) {
                 return compactTokenEncoder.encode(CompactTokenEncoder.from(piece.array, start, end));
             } else {
-                byte[] result = new byte[length];
-                System.arraycopy(piece.array, start, result, 0, length);
-                ImmutableByteArray bytesBetween = new ImmutableByteArray(result);
-                return encode(bytesBetween);
+                return encode(new ImmutableByteArray(piece.array, start, end));
             }
         }
     }

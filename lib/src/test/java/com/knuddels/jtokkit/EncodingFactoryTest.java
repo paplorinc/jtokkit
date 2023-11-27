@@ -228,7 +228,7 @@ class EncodingFactoryTest {
 
         var originalPattern = GptBytePairEncodingOriginal.getEncoder().pattern;
         for (String testString : testStrings) {
-            System.out.println("Matching: `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + "`...");
+//            System.out.println("Matching: `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + "`...");
             var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
 
             List<String> expected = matches(testString, originalPattern);

@@ -61,6 +61,28 @@ class CompactTokenEncoder {
         return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
     }
 
+    public static int getMinRankIndex(long[] indexedRanks, int last) {
+        int minRankIndex = -1;
+        int minRank = MAX_RANK;
+
+        int i = 0;
+        for (; i <= last - 2; i += 2) { // Unrolled loop
+            for (int j = 0; j < 2; j++) {
+                int r = rank(indexedRanks[i + j]);
+                if (r < minRank) {
+                    minRankIndex = i + j;
+                    minRank = r;
+                }
+            }
+        }
+
+        if (i < last && rank(indexedRanks[i]) < minRank) {
+            return i;
+        } else {
+            return minRankIndex;
+        }
+    }
+
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
         long match = from(bytes, 0, bytes.length);
         int token = encode(match);
@@ -104,15 +126,18 @@ class CompactTokenEncoder {
     int mergeBytesAndGetTokenCount(long piece, int remaining, long[] indexedRanks) {
         assert remaining > 1;
         while (remaining > 0) {
-            int minRankIndex = TokenEncoder.getMinRankIndex(indexedRanks, remaining - 1);
+            int minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining));
+            var newMinRank = getRank(piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining);
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], newMinRank);
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining));
+                var newPrevMinRank = getRank(piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining);
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], newPrevMinRank);
             }
+
             remaining--;
             assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
             System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, remaining - minRankIndex);
