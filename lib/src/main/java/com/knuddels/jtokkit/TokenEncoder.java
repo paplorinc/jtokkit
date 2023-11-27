@@ -3,7 +3,6 @@ package com.knuddels.jtokkit;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,12 +32,12 @@ final class TokenEncoder {
         return new ImmutableByteArray(bytes);
     }
 
-    public static int getMinRankIndex(long[] indexedRanks, int size) {
+    public static int getMinRankIndex(long[] indexedRanks, int last) {
         int minRankIndex = -1;
         int minRank = MAX_RANK;
 
         int i = 0;
-        for (; i <= size - 4; i += 2) { // Unroll loop
+        for (; i <= last - 2; i += 2) { // Unrolled loop
             for (int j = 0; j < 2; j++) {
                 int r = rank(indexedRanks[i + j]);
                 if (r < minRank) {
@@ -48,7 +47,7 @@ final class TokenEncoder {
             }
         }
 
-        if (i < size - 2 && rank(indexedRanks[i]) < minRank) {
+        if (i < last && rank(indexedRanks[i]) < minRank) {
             return i;
         } else {
             return minRankIndex;
@@ -56,11 +55,12 @@ final class TokenEncoder {
     }
 
     int encode(ImmutableByteArray payload) {
-        if (payload.length() > maxTokenSize) {
+        if (payload.length() <= maxTokenSize) {
+            Integer result = encoders.get(payload); // getOrDefault is slower
+            return result != null ? result : MAX_RANK;
+        } else {
             return MAX_RANK;
         }
-        Integer result = encoders.get(payload); // getOrDefault is slower
-        return result != null ? result : MAX_RANK;
     }
 
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
@@ -74,8 +74,8 @@ final class TokenEncoder {
             return 1;
         } else {
             var byteSize = match.length();
-            long[] indexedRanks = getIndexedRanks(compactTokenEncoder, match, byteSize + 1);
-            int tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, byteSize + 1, indexedRanks);
+            long[] indexedRanks = getIndexedRanks(compactTokenEncoder, match, byteSize);
+            int tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, byteSize, indexedRanks);
             if (keepEncodings) {
                 IntList tokensToAdd = encodeToList(compactTokenEncoder, match, tokenCount, indexedRanks);
                 var remaining = maxTokenCount - out.size();
@@ -92,33 +92,41 @@ final class TokenEncoder {
     }
 
     long[] getIndexedRanks(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount) {
-        long[] indexedRanks = new long[tokenCount];
         assert tokenCount > 1 : "Already filtered out";
-        for (int i = 0; i < tokenCount - 2; i++) {
+        long[] indexedRanks = new long[tokenCount + 1];
+        for (int i = 0; i < tokenCount - 1; i++) {
             var encoded = encode(compactTokenEncoder, piece, i, i + 2);
             indexedRanks[i] = combine(i, encoded);
         }
-        indexedRanks[tokenCount - 2] = combine(tokenCount - 2, MAX_RANK);
         indexedRanks[tokenCount - 1] = combine(tokenCount - 1, MAX_RANK);
+        indexedRanks[tokenCount] = combine(tokenCount, MAX_RANK);
         return indexedRanks;
     }
 
     int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
         assert tokenCount > 1;
-        while (tokenCount > 1) {
-            int minRankIndex = getMinRankIndex(indexedRanks, tokenCount);
+        while (tokenCount > 0) {
+//            //Get rid of last few max_ranks
+//            for (int i = last; i >= 0; i--) {
+//                int r = rank(indexedRanks[i]);
+//                if (r != MAX_RANK && r <= minRank) {
+//                    minRankIndex = i;
+//                    minRank = r;
+//                }
+//            }
+            int minRankIndex = getMinRankIndex(indexedRanks, tokenCount - 1);
             if (minRankIndex < 0) {
                 break;
             }
 
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, tokenCount));
+            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex, minRankIndex + 3, tokenCount + 1));
             if (minRankIndex > 0) {
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, tokenCount));
+                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], getRank(compactTokenEncoder, piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, tokenCount + 1));
             }
-            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex - 2); // remaining ones will always be MAX_RANK values
             tokenCount--;
+            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, tokenCount - minRankIndex); // remaining ones will always be MAX_RANK values
         }
-        return tokenCount - 1;
+        return tokenCount;
     }
 
     IntList encodeToList(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
@@ -155,7 +163,7 @@ final class TokenEncoder {
         if (endIndex < size) {
             int pieceStartIndex = index(parts[startIndex]);
             int pieceEndIndex = index(parts[endIndex]);
-            System.out.println(new String(piece.array, pieceStartIndex, pieceEndIndex - pieceStartIndex, StandardCharsets.UTF_8));
+//            System.out.println(new String(piece.array, pieceStartIndex, pieceEndIndex - pieceStartIndex, StandardCharsets.UTF_8));
             return encode(compactTokenEncoder, piece, pieceStartIndex, pieceEndIndex);
         } else {
             return MAX_RANK;
