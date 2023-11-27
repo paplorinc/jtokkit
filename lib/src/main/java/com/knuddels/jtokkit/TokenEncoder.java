@@ -133,13 +133,16 @@ final class TokenEncoder {
     }
 
     IntList encodeToList(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, long[] indexedRanks) {
-        IntList out = new IntArrayList(tokenCount);
-        for (int i = 0; i < tokenCount; i++) {
-            var start = index(indexedRanks[i]);
-            int end = index(indexedRanks[i + 1]);
+        IntList out = new IntArrayList();
+        int start = 0;
+        for (int i = 1; i < tokenCount + 1; i++) {
+            int end = index(indexedRanks[i]);
+
             var token = encode(compactTokenEncoder, piece, start, end);
             assert token != MAX_RANK;
             out.add(token);
+
+            start = end;
         }
         return out;
     }
