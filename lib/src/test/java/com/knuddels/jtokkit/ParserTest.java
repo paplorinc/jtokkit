@@ -42,8 +42,6 @@ public class ParserTest {
 
     @Test
     public void testParserWithRandomStrings() {
-        // TODO [188, 172, 99, 96] fails!
-        // TODO [188, 172, 105, 246, 236, 172, 96, 107] fails!
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
@@ -55,8 +53,10 @@ public class ParserTest {
                 originalEncoded = originalEncoder.encode(textString[0]);
             } while (!originalEncoder.decode(originalEncoded).equals(textString[0]));
 
-            System.out.print("✓");
-            if (i % 100 == 0) {
+            if (i % 10_000 == 0) {
+                System.out.print("✓");
+            }
+            if (i % 1_000_000 == 0) {
                 System.out.println();
             }
 
@@ -84,8 +84,9 @@ public class ParserTest {
     }
 
     private String generateRandomString() {
-        var length = rand().nextInt(1, 10);
-        return rand().ints(length, 0, 15)
+        var length = rand().nextInt(1, 15);
+        return rand()
+                .ints(length, 0, 15)
                 .mapToObj(this::getRandomCharFromCategory)
                 .map(String::valueOf)
                 .map(obj -> rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase())
@@ -105,19 +106,20 @@ public class ParserTest {
             case 5:
                 return new char[]{PUNCTUATION.charAt(rand().nextInt(PUNCTUATION.length()))};
             case 6:
-                return new char[]{NEWLINES.charAt(rand().nextInt(NEWLINES.length()))};
             case 7:
-                return new char[]{NUMBERS.charAt(rand().nextInt(NUMBERS.length()))};
+                return new char[]{NEWLINES.charAt(rand().nextInt(NEWLINES.length()))};
             case 8:
-                return new char[]{WHITESPACES.charAt(rand().nextInt(WHITESPACES.length()))};
+                return new char[]{NUMBERS.charAt(rand().nextInt(NUMBERS.length()))};
             case 9:
+                return new char[]{WHITESPACES.charAt(rand().nextInt(WHITESPACES.length()))};
             case 10:
-                return new char[]{LETTERS.charAt(rand().nextInt(LETTERS.length()))};
             case 11:
-                return new char[]{LETTER_OR_NUMERIC.charAt(rand().nextInt(LETTER_OR_NUMERIC.length()))};
+                return new char[]{LETTERS.charAt(rand().nextInt(LETTERS.length()))};
             case 12:
-                return new char[]{NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length()))};
+                return new char[]{LETTER_OR_NUMERIC.charAt(rand().nextInt(LETTER_OR_NUMERIC.length()))};
             case 13:
+                return new char[]{NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length()))};
+            case 14:
                 return new char[]{WHITESPACE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length()))};
             default:
                 while (true) {

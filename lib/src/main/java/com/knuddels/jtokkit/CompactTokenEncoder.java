@@ -13,65 +13,77 @@ import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-class CompactTokenEncoder {
-    private int[] shortEncoders;
+public class CompactTokenEncoder {
+    private int[] byteEncoders;
     private Long2IntMap longEncoders;
     private int length = 0;
 
     public CompactTokenEncoder(Map<byte[], Integer> encoder) {
         if (!encoder.isEmpty()) {
-            shortEncoders = new int[1 << (Short.SIZE - 1)];
-            Arrays.fill(shortEncoders, MAX_RANK);
+            byteEncoders = new int[1 << Byte.SIZE];
+            Arrays.fill(byteEncoders, MAX_RANK);
 
             longEncoders = new Long2IntOpenHashMap(encoder.size());
             encoder.forEach((k, v) -> {
                 assert v >= 0 : "Negative token: " + new String(k, UTF_8);
-
                 if (accepts(k.length)) {
                     length++;
 
                     var key = from(k, 0, k.length);
-                    var index = (short) key;
-                    if (key == index) {
-                        assert shortEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
-                        shortEncoders[index] = v;
+                    if (k.length == 1) {
+                        var index = (int) key >> Byte.SIZE; // drop length
+                        assert byteEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
+                        byteEncoders[index] = v;
                     } else {
                         longEncoders.put(key, (int) v);
                     }
+                    assert encode(key) == v;
                 }
             });
         }
     }
 
     static boolean accepts(int length) {
-        return length <= Long.BYTES;
+        return length < Long.BYTES; // first byte is size
     }
 
     static long from(byte[] bytes, int start, int end) {
-        assert end - start > 0 : "Too small byte array: " + new String(bytes, UTF_8);
-        assert accepts(end - start) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
-        if (end - start == 1) {
-            return bytes[start] & 0xFFL;
-        }
+        var length = end - start;
+        assert length > 0 : "Too small byte array: " + new String(bytes, UTF_8);
+        assert accepts(length) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
 
-        int i = start + 2;
-        long result1 = bytes[start] & 0xFFL;
-        long result2 = bytes[start + 1] & 0xFFL;
-        for (; i < end - 1; i += 2) {
-            result1 = (result1 << Byte.SIZE * 2) | (bytes[i] & 0xFFL);
-            result2 = (result2 << Byte.SIZE * 2) | (bytes[i + 1] & 0xFFL);
-        }
+        long finalResult = bytes[start] & 0xFFL;
+        if (length > 1) {
+            int i = start + 2;
+            long result2 = bytes[start + 1] & 0xFFL;
+            for (; i < end - 1; i += 2) {
+                finalResult = (finalResult << Byte.SIZE * 2) | (bytes[i] & 0xFFL);
+                result2 = (result2 << Byte.SIZE * 2) | (bytes[i + 1] & 0xFFL);
+            }
 
-        long combinedResult = (result1 << Byte.SIZE) | result2;
-        if (i < end) {
-            return (combinedResult << Byte.SIZE) | (bytes[i] & 0xFFL);
-        } else {
-            return combinedResult;
+            finalResult = (finalResult << Byte.SIZE) | result2;
+            if (i < end) {
+                finalResult = (finalResult << Byte.SIZE) | (bytes[i] & 0xFFL);
+            }
         }
+        finalResult = (finalResult << Byte.SIZE) | length;
+
+        assert Arrays.equals(Arrays.copyOfRange(bytes, start, end), toByteArray(finalResult))
+                : "Expected: " + Arrays.toString(Arrays.copyOfRange(bytes, start, end)) + ", but got: " + Arrays.toString(toByteArray(finalResult));
+        return finalResult;
+    }
+
+    static byte[] toByteArray(long value) {
+        byte[] bytes = new byte[byteSize(value)];
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            value >>>= Byte.SIZE;
+            bytes[i] = (byte) (value & 0xFF);
+        }
+        return bytes;
     }
 
     public static int byteSize(long payload) {
-        return Long.BYTES - Long.numberOfLeadingZeros(payload) / Byte.SIZE;
+        return (int) (payload & 0xFF);
     }
 
     public static int getMinRankIndex(long[] indexedRanks, int last) {
@@ -103,6 +115,23 @@ class CompactTokenEncoder {
         }
     }
 
+    static long getSubToken(long payload, int startIndex, int endIndex) {
+        int byteSize = byteSize(payload);
+        int newLength = endIndex - startIndex;
+        if (byteSize == newLength) {
+            return payload;
+        } else {
+            int shift = (1 + byteSize - endIndex) * Byte.SIZE;
+            long mask = -1L >>> -(newLength * Byte.SIZE);
+            long result = (payload >>> shift) & mask;
+            result = (result << Byte.SIZE) | newLength;
+
+            assert newLength == byteSize(result) : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
+
+            return result;
+        }
+    }
+
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
         long match = from(bytes, 0, bytes.length);
         int token = encode(match);
@@ -113,7 +142,7 @@ class CompactTokenEncoder {
             return 1;
         } else {
             var byteSize = byteSize(match);
-            assert byteSize > 1 && byteSize <= Long.BYTES;
+            assert byteSize > 1 && byteSize < Long.BYTES;
             long[] indexedRanks = getIndexedRanks(match, byteSize);
             int tokenCount = mergeBytesAndGetTokenCount(match, byteSize, indexedRanks);
             if (keepEncodings) {
@@ -178,9 +207,8 @@ class CompactTokenEncoder {
     }
 
     public int encode(long key) {
-        var shortKey = (short) key;
-        if (key == shortKey) {
-            return shortEncoders[shortKey];
+        if (byteSize(key) == 1) {
+            return byteEncoders[(int) ((key >> Byte.SIZE) & 0xFF)];
         } else {
             return longEncoders.getOrDefault(key, MAX_RANK);
         }
@@ -188,10 +216,10 @@ class CompactTokenEncoder {
 
     private int encode(long piece, int start, int end) {
         int length = end - start;
-        var byteSize = byteSize(piece);
-        if (length == byteSize) {
+        var fullByteSize = byteSize(piece);
+        if (length == fullByteSize) {
             assert start == 0;
-            assert accepts(byteSize);
+            assert accepts(fullByteSize);
             return encode(piece);
         } else {
             var subToken = getSubToken(piece, start, end);
@@ -207,22 +235,6 @@ class CompactTokenEncoder {
             return encode(piece, pieceStartIndex, pieceEndIndex);
         } else {
             return MAX_RANK;
-        }
-    }
-
-    long getSubToken(long payload, int startIndex, int endIndex) {
-        int byteSize = byteSize(payload);
-        int newLength = endIndex - startIndex;
-        if (byteSize == newLength) {
-            return payload;
-        } else {
-            int shift = (byteSize - endIndex) * Byte.SIZE;
-            long mask = -1L >>> -(newLength * Byte.SIZE);
-            long result = (payload >>> shift) & mask;
-
-            assert newLength == byteSize(result) : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
-
-            return result;
         }
     }
 

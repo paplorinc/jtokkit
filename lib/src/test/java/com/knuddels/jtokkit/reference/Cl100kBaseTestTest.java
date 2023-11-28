@@ -103,6 +103,17 @@ public class Cl100kBaseTestTest {
     }
 
     @Test
+    void zeroChar() {
+        var text = "\u0000\uD81C\uDFE1 a\u0000b-\u0000\u0000\u0000 \u0000";
+        var expected = GptBytePairEncodingOriginal.getEncoder().encode(text);
+        var encodingResult = ENCODING.encode(text);
+        assertEquals(expected, encodingResult.stream().toList());
+
+        var decoded = ENCODING.decode(encodingResult);
+        assertTrue(text.startsWith(decoded), decoded);
+    }
+
+    @Test
     void snowman() {
         var original = "Unicode snowman: ☃️";
         var encodingResult = ENCODING.encode(original, 10);
