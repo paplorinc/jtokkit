@@ -9,6 +9,8 @@ import org.openjdk.jmh.annotations.State;
 import java.io.IOException;
 import java.util.List;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 @State(Scope.Benchmark)
 public class BenchmarkingState {
     public final GptBytePairEncodingOriginal cl100kBaseOriginal = GptBytePairEncodingOriginal.getEncoder();
@@ -18,7 +20,7 @@ public class BenchmarkingState {
     public final Encoding r50kBase = EncodingFactory.r50kBase();
     public List<String> fileContents;
     public int expectedFileContentsCl100kBaseTokenCount;
-    public int expectedFileContentsCl100kBaseCharCount;
+    public int expectedFileContentsCl100kBaseByteCount;
     @Param("data")
     public String dataFolderPath;
 
@@ -28,8 +30,8 @@ public class BenchmarkingState {
         expectedFileContentsCl100kBaseTokenCount = fileContents.stream()
                 .mapToInt(x -> cl100kBase.encode(x).size())
                 .sum();
-        expectedFileContentsCl100kBaseCharCount = fileContents.stream()
-                .mapToInt(String::length)
+        expectedFileContentsCl100kBaseByteCount = fileContents.stream()
+                .mapToInt(s -> s.getBytes(UTF_8).length)
                 .sum();
     }
 }

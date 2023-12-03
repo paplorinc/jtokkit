@@ -1,120 +1,122 @@
 package com.knuddels.jtokkit;
 
-import java.util.function.BiPredicate;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 
-import static java.lang.Character.toLowerCase;
+import java.util.Arrays;
+import java.util.function.Predicate;
+
+import static java.lang.Character.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.binarySearch;
 
 public class Parser {
+
     private static final String SDTM = "sdtmSDTM";
     private static final int[] REMAINING_UNICODE_WHITESPACES = "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
-    public static void split(int[] codepoints, BiPredicate<Integer, Integer> fragmentConsumer) {
-        for (int index = 0; index < codepoints.length; ) {
-            var nextIndex = index;
-            var c0 = codepoints[index];
+    public static void split(String input, Predicate<ByteArrayList> fragmentConsumer) {
+        assert isValidUTF8(input) : "Input is not UTF-8: " + input;
+        var utf8Bytes = new ByteArrayList();
+        for (int startIndex = 0, endIndex = startIndex; startIndex < input.length(); ) {
+            var c0 = input.codePointAt(startIndex);
 
-            if (c0 == '\'' && isShortContraction(codepoints, index)) {
+            if (c0 == '\'' && isShortContraction(input, startIndex)) {
                 // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
-                nextIndex += 2;
-            } else if (c0 == '\'' && isLongContraction(codepoints, index)) {
-                // 1) `'(?:|ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
-                nextIndex += 3;
-            } else if (isLetter(c0) || isWord(codepoints, c0, index)) {
+                endIndex += 2;
+            } else if (c0 == '\'' && isLongContraction(input, startIndex)) {
+                // 1) `'(?:ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
+                endIndex += 3;
+            } else if (isLetter(c0) || isWord(input, c0, startIndex)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 do {
-                    nextIndex++;
-                } while (nextIndex < codepoints.length && isLetter(codepoints[nextIndex]));
+                    endIndex += Character.charCount(c0);
+                } while (endIndex < input.length() && isLetter(c0 = input.codePointAt(endIndex)));
             } else if (isNumeric(c0)) {
                 // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
-                nextIndex++;
-                for (int i = 0; i < 2 && nextIndex < codepoints.length && isNumeric(codepoints[nextIndex]); i++) {
-                    nextIndex++;
+                endIndex += Character.charCount(c0);
+                for (var i = 0; i < 2 && endIndex < input.length() && isNumeric(c0 = input.codePointAt(endIndex)); i++) {
+                    endIndex += Character.charCount(c0);
                 }
-            } else if (!isWhitespaceOrLetterOrNumeric(c0) || isPunctuation(codepoints, c0, index)) {
+            } else if (!isWhitespaceOrLetterOrNumeric(c0) || isSpaceOrPunctuation(input, c0, startIndex)) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
-                nextIndex++;
-                while (nextIndex < codepoints.length) {
-                    c0 = codepoints[nextIndex];
-                    if (isWhitespaceOrLetterOrNumeric(c0)) {
-                        break;
-                    }
-                    nextIndex++;
+                endIndex += Character.charCount(c0);
+                while (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
+                    endIndex += Character.charCount(c0);
                 }
 
-                while (nextIndex < codepoints.length && isNewline(codepoints[nextIndex])) {
-                    nextIndex++;
+                while (endIndex < input.length() && isNewline(input.codePointAt(endIndex))) {
+                    endIndex++;
                 }
             } else {
                 // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
                 // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
-                assert isWhitespace(c0);
-
-                int lastNewLineIndex = -1;
+                var lastNewLineIndex = -1;
                 do {
-                    c0 = codepoints[nextIndex];
+                    c0 = input.codePointAt(endIndex);
                     if (isNewline(c0)) {
-                        lastNewLineIndex = nextIndex - index;
+                        lastNewLineIndex = endIndex;
                     } else if (c0 != ' ' && !isRemainingWhitespace(c0)) {
                         break;
                     }
 
-                    nextIndex++;
-                } while (nextIndex < codepoints.length);
+                    assert isWhitespace(c0);
+                    endIndex += Character.charCount(c0);
+                } while (endIndex < input.length());
 
-                if (lastNewLineIndex >= 0) {
-                    var end = index + lastNewLineIndex + 1;
-                    if (fragmentConsumer.test(index, end)) {
+                if (lastNewLineIndex >= startIndex) {
+                    endIndex = lastNewLineIndex + 1;
+                    if (fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes))) {
                         return;
                     }
-                    nextIndex = index = end;
-                }
-
-                if (nextIndex > index) {
-                    if (nextIndex < codepoints.length && !isWhitespace(c0) && (nextIndex - index) > 1) {
-                        nextIndex--;
+                    startIndex = endIndex;
+                } else {
+                    var charCount = charCount(input.codePointAt(endIndex - 1));
+                    if (endIndex < input.length() && (endIndex - startIndex) > charCount && !isWhitespace(c0)) {
+                        endIndex -= charCount;
                     }
                 }
             }
-
-            if (nextIndex > index) {
-                if (fragmentConsumer.test(index, nextIndex)) {
+            if (endIndex > startIndex) {
+                if (fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes))) {
                     return;
                 }
-                index = nextIndex;
+                startIndex = endIndex;
             }
         }
     }
 
-    private static boolean isShortContraction(int[] input, int index) {
-        return index + 1 < input.length
-                && SDTM.indexOf(input[index + 1]) >= 0;
+    public static boolean isValidUTF8(String input) {
+        return UTF_8.newEncoder().canEncode(input);
     }
 
-    private static boolean isLongContraction(int[] input, int index) {
-        if (index + 2 >= input.length) {
+    private static boolean isShortContraction(String input, int index) {
+        return index + 1 < input.length()
+                && SDTM.indexOf(input.codePointAt(index + 1)) >= 0;
+    }
+
+    private static boolean isLongContraction(String input, int index) {
+        if (index + 2 >= input.length()) {
             return false;
         }
-        var c1 = toLowerCase(input[index + 1]);
-        var c2 = toLowerCase(input[index + 2]);
+        var c1 = toLowerCase(input.codePointAt(index + 1));
+        var c2 = toLowerCase(input.codePointAt(index + 2));
         return ((c1 == 'l' && c2 == 'l')
                 || (c1 == 'v' && c2 == 'e')
                 || (c1 == 'r' && c2 == 'e'));
     }
 
-    private static boolean isPunctuation(int[] input, int ch, int index) {
-        return (index + 1 < input.length)
-                && ch == ' '
-                && !isWhitespaceOrLetterOrNumeric(input[index + 1]);
+    private static boolean isSpaceOrPunctuation(String input, int ch, int index) {
+        return ch == ' '
+                && index + Character.charCount(ch) < input.length()
+                && !isWhitespaceOrLetterOrNumeric(input.codePointAt(index + Character.charCount(ch)));
     }
 
-    private static boolean isWord(int[] input, int ch, int index) {
+    private static boolean isWord(String input, int ch, int index) {
         return !isNewlineOrLetterOrNumeric(ch)
-                && (index + 1 < input.length)
-                && isLetter(input[index + 1]);
+                && (index + Character.charCount(ch) < input.length())
+                && isLetter(input.codePointAt(index + Character.charCount(ch)));
     }
-
 
     static boolean isLetter(int ch) {
         if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
@@ -197,5 +199,32 @@ public class Parser {
         }
         var isPotentialWhitespaceType = type >= Character.SPACE_SEPARATOR && type <= Character.CONTROL;
         return isPotentialWhitespaceType && isRemainingWhitespace(ch);
+    }
+
+    public static ByteArrayList toUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
+        dst.clear();
+        for (int i = start; i < end; i++) {
+            assert Arrays.equals(input.substring(start, i).getBytes(UTF_8), dst.toByteArray())
+                    : "Mismatch around byte for (" + start + ", " + i + ") - `" + input.substring(start, i) + "` (" + Arrays.toString(input.substring(start, i).getBytes(UTF_8)) + ") != `" + new String(dst.toByteArray(), UTF_8) + "` in `" + Arrays.toString(dst.toByteArray()) + "`";
+            int cp = input.codePointAt(i);
+            if (cp < 0x80) {
+                dst.add((byte) cp);
+            } else if (cp < 0x800) {
+                dst.add((byte) (0xc0 | cp >> 0x6));
+                dst.add((byte) (0x80 | cp & 0x3f));
+            } else if (cp < MIN_SUPPLEMENTARY_CODE_POINT) {
+                dst.add((byte) (0xe0 | cp >> 0xc));
+                dst.add((byte) (0x80 | cp >> 0x6 & 0x3f));
+                dst.add((byte) (0x80 | cp & 0x3f));
+            } else {
+                assert cp < MAX_CODE_POINT + 1 : "Invalid code point: " + cp;
+                dst.add((byte) (0xf0 | cp >> 0x12));
+                dst.add((byte) (0x80 | cp >> 0xc & 0x3f));
+                dst.add((byte) (0x80 | cp >> 0x6 & 0x3f));
+                dst.add((byte) (0x80 | cp & 0x3f));
+                i++;
+            }
+        }
+        return dst;
     }
 }

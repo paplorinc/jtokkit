@@ -3,13 +3,12 @@ package com.knuddels.jtokkit.reference;
 import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.GptBytePairEncodingOriginal;
 import com.knuddels.jtokkit.api.Encoding;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.io.IOException;
+import java.nio.charset.CharacterCodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -19,7 +18,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class Cl100kBaseTestTest {
+public class Cl100kBaseTest {
 
     private static final Encoding ENCODING = EncodingFactory.cl100kBase();
 
@@ -103,60 +102,28 @@ public class Cl100kBaseTestTest {
     }
 
     @Test
-    void zeroChar() {
-        var text = "\u0000\uD81C\uDFE1 a\u0000b-\u0000\u0000\u0000 \u0000";
-        var expected = GptBytePairEncodingOriginal.getEncoder().encode(text);
-        var encodingResult = ENCODING.encode(text);
-        assertEquals(expected, encodingResult.stream().toList());
+    void testEdgeCases() throws CharacterCodingException {
+        var texts = List.of(
+                "Unicode snowman: ☃️",
+                "Mixed script: 你好 world! \uD83C\uDF0D",
+                "مرحبا بالعالم! كيف حالك؟ \uD83D\uDE0E",
+                "\u0000\uD81C\uDFE1 a\u0000b-\u0000\u0000\u0000 \u0000",
+                "\uD83C\uDF0D a",
+                "(\uD856\uDDD9h",
+                ",   \uD880\uDE44",
+                "  \uDB96\uDE10)",
+                "ﮀ\n "
+        );
+        var bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder();
+        for (var text : texts) {
+            System.out.println("Validating `" + text + "`");
+            var expected = bytePairEncodingOriginal.encode(text);
+            var encodingResult = ENCODING.encode(text);
+            assertEquals(expected, encodingResult.stream().toList());
 
-        var decoded = ENCODING.decode(encodingResult);
-        assertTrue(text.startsWith(decoded), decoded);
-    }
-
-    @Test
-    void snowman() {
-        var original = "Unicode snowman: ☃️";
-        var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntArrayList.of(35020, 12056, 1543, 25, 26182, 225, 31643), encodingResult.getTokens());
-
-        var decoded = ENCODING.decode(encodingResult.getTokens());
-        assertTrue(original.startsWith(decoded), decoded);
-    }
-
-    @Test
-    void mixed() {
-        var original = "Mixed script: 你好 world! \uD83C\uDF0D";
-        var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntArrayList.of(87533, 5429, 25, 220, 57668, 53901, 1917, 0), encodingResult.getTokens());
-
-        var decoded = ENCODING.decode(encodingResult.getTokens());
-        assertTrue(original.startsWith(decoded), decoded);
-    }
-
-    @Test
-    void mixed2() {
-        var original = "مرحبا بالعالم! كيف حالك؟ \uD83D\uDE0E";
-        var encodingResult = ENCODING.encode(original, 10);
-        assertEquals(IntArrayList.of(10386, 11318, 30925, 22071, 5821, 28946, 32482, 24102, 32482, 10386), encodingResult.getTokens());
-
-        var decoded = ENCODING.decode(encodingResult.getTokens());
-        assertTrue(original.startsWith(decoded), decoded);
-    }
-
-    @Disabled // TODO
-    @Test
-    void roundtrip() {
-        var original = GptBytePairEncodingOriginal.getEncoder();
-        var input = List.of(188, 172, 105, 246, 236, 172, 96, 107);
-        var text = original.decode(input);
-        System.out.println(text);
-
-//        var encodingResult = original.encode(text);
-        var encodingResult = ENCODING.encode(text);
-        assertEquals(new IntArrayList(input), encodingResult);
-
-        var roundtrip = ENCODING.decode(new IntArrayList(encodingResult));
-        assertEquals(text, roundtrip);
+            var decoded = ENCODING.decode(encodingResult);
+            assertTrue(text.startsWith(decoded), decoded);
+        }
     }
 
     @Test

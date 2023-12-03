@@ -7,11 +7,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class EncodingFactory {
     public static final Map<String, Integer> SPECIAL_TOKENS_CL100K_BASE;
@@ -155,16 +155,14 @@ public final class EncodingFactory {
             }
 
             final Map<byte[], Integer> mergeableRanks = new LinkedHashMap<>(); // keep order to optimize collisions
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
-                final String[] parts = line.split("\\s+", 2);
-                if (parts.length != 2) {
-                    throw new IllegalStateException("Invalid line in " + fileName + ": " + line);
-                }
+                int firstSpaceIndex = line.indexOf(' ');
+                assert firstSpaceIndex != -1 : "Invalid line in " + fileName + ": " + line;
 
-                final byte[] token = Base64.getDecoder().decode(parts[0].getBytes(StandardCharsets.UTF_8));
-                final int rank = Integer.parseInt(parts[1]);
+                byte[] token = Base64.getDecoder().decode(line.substring(0, firstSpaceIndex).getBytes(UTF_8));
+                int rank = Integer.parseInt(line.substring(firstSpaceIndex + 1));
                 assert rank != MAX_RANK;
 
                 mergeableRanks.put(token, rank);

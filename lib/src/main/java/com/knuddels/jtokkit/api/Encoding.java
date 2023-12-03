@@ -110,7 +110,7 @@ public interface Encoding {
 
     int countTokens(String text, int maxValue);
 
-    long countSplitChars(String text); // TODO for benchmarking
+    long countBytes(String text); // TODO for benchmarking
 
     /**
      * Encodes the given text into a list of token ids and returns the amount of tokens.

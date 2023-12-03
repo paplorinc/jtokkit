@@ -174,7 +174,7 @@ public abstract class BaseEncodingRegistryTest<T extends AbstractEncodingRegistr
         }
 
         @Override
-        public long countSplitChars(String text) {
+        public long countBytes(String text) {
             return 0;
         }
 

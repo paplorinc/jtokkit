@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
@@ -132,8 +133,8 @@ public class CompactTokenEncoder {
         }
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
-        long match = from(bytes, 0, bytes.length);
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
+        long match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
         int token = encode(match);
         if (token != MAX_RANK) {
             if (keepEncodings) {

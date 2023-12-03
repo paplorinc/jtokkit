@@ -1,6 +1,6 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.reference.Cl100kBaseTestTest;
+import com.knuddels.jtokkit.reference.Cl100kBaseTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static java.lang.Character.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
@@ -171,7 +172,7 @@ class EncodingFactoryTest {
         assertEquals(7, encounters.size());
 
         Map<String, SortedMap<Integer, List<String>>> completeLines = new TreeMap<>();
-        for (var text : Cl100kBaseTestTest.getTexts("../")) {
+        for (var text : Cl100kBaseTest.getTexts("../")) {
 //            text.lines().forEach(line -> {
 //                var t = line + "\n";
             var actual = getEncounters(text, currentRegexParts, currentRegex, true);
@@ -224,7 +225,7 @@ class EncodingFactoryTest {
                 "03½",
                 "* \u05E2"
         ));
-        testStrings.addAll(Cl100kBaseTestTest.getTexts("../"));
+        testStrings.addAll(Cl100kBaseTest.getTexts("../"));
 
         var originalPattern = GptBytePairEncodingOriginal.getEncoder().pattern;
         for (String testString : testStrings) {
@@ -234,9 +235,8 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            var codepoints = testString.codePoints().toArray();
-            Parser.split(codepoints, (start, end) -> {
-                actual.add(new String(codepoints, start, end - start));
+            Parser.split(testString, utf8Bytes -> {
+                actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
                 return false;
             });
 

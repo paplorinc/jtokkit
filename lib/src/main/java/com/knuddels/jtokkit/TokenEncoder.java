@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
@@ -98,9 +99,9 @@ final class TokenEncoder {
         }
     }
 
-    public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, byte[] bytes, IntList out) {
-        assert accepts(bytes.length);
-        ImmutableByteArray match = new ImmutableByteArray(bytes, 0, bytes.length);
+    public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
+        assert accepts(utf8Bytes.size());
+        ImmutableByteArray match = new ImmutableByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
         int encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {

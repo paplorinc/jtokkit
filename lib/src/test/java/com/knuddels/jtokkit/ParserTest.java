@@ -1,16 +1,23 @@
 package com.knuddels.jtokkit;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.CharacterCodingException;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
+import static com.knuddels.jtokkit.Parser.isValidUTF8;
+import static com.knuddels.jtokkit.Parser.toUtf8Bytes;
 import static java.lang.Character.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,67 +33,118 @@ public class ParserTest {
 
     private static String generateUnicodeCategoryString(IntPredicate characterProperty) {
         return IntStream.range(MIN_CODE_POINT, MAX_CODE_POINT)
-                .filter(ParserTest::isValid)
+                .filter(ParserTest::validTestCodePoint)
                 .filter(characterProperty)
                 .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
                 .toString();
     }
 
-    private static boolean isValid(int c) {
-        return isValidCodePoint(c) && isDefined(c) && !isSurrogate((char) c);
+    private static boolean validTestCodePoint(int c) {
+        return isValidCodePoint(c) && isDefined(c);
     }
 
     private static ThreadLocalRandom rand() {
         return ThreadLocalRandom.current();
     }
 
+    public static Map<Integer, String> fetchUnicodeData() {
+        String url = "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt";
+        Map<Integer, String> unicodeMap = new HashMap<>();
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(";");
+                assert parts.length > 1;
+                int codePoint = Integer.parseInt(parts[0], 16);
+                String name = parts[1];
+                unicodeMap.put(codePoint, name);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException();
+        }
+        return unicodeMap;
+    }
+
+    private static String getMessage(String[] textString, GptBytePairEncodingOriginal originalEncoder, GptBytePairEncoding encoder) {
+        return "`" + textString[0] + "` should have mapped to: " + originalEncoder.encode(textString[0]) + ", but was: " + encoder.encode(textString[0]);
+    }
+
     @Test
-    public void testParserWithRandomStrings() {
+    void testToUtf8Bytes() {
+        String input = "\uD81C\uDFE1";
+
+        ByteArrayList dst = new ByteArrayList();
+        toUtf8Bytes(input, 0, input.length(), dst);
+
+        byte[] expectedBytes = input.getBytes(UTF_8);
+        byte[] actualBytes = dst.toByteArray();
+
+        assertArrayEquals(expectedBytes, actualBytes, "UTF-8 conversion did not match expected bytes");
+        assertEquals(new String(expectedBytes, UTF_8), input);
+    }
+
+    @Test
+    public void testAllCodePoints() throws CharacterCodingException {
+        ByteArrayList byteArrayList = new ByteArrayList();
+        fetchUnicodeData().forEach((codepoint, name) -> {
+            var expected = new String(toChars(codepoint));
+            if (isValidUTF8(expected)) {
+                toUtf8Bytes(expected, 0, expected.length(), byteArrayList);
+
+                var message = "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(byteArrayList.toByteArray()) + "`";
+                assertArrayEquals(expected.getBytes(UTF_8), byteArrayList.toByteArray(), message);
+            } else {
+                System.out.println("Skipping invalid UTF-8: " + name + " (" + codepoint + ")");
+            }
+        });
+    }
+
+    @Test
+    public void testParserAndEncoderWithRandomStrings() {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        IntStream.range(0, 1_000).parallel().forEach(i -> {
+        IntStream.range(0, 10_000).parallel().forEach(i -> {
             String[] textString = new String[1];
             List<Integer> originalEncoded;
             do {
-                textString[0] = generateRandomString();
+                textString[0] = generateRandomString(10);
                 originalEncoded = originalEncoder.encode(textString[0]);
             } while (!originalEncoder.decode(originalEncoded).equals(textString[0]));
 
-            if (i % 10_000 == 0) {
+            if (i % 1_000 == 0) {
                 System.out.print("✓");
             }
-            if (i % 1_000_000 == 0) {
+            if (i % 10_000 == 0) {
                 System.out.println();
             }
 
             var expected = originalEncoder.pattern.matcher(textString[0]);
 
-            var codepoints = textString[0].codePoints().toArray();
             var actualEncoded = new ArrayList<>();
-            var message = "`" + textString[0] + "` should have mapped to: " + originalEncoder.encode(textString[0]) + ", but was: " + encoder.encode(textString[0]);
-            Parser.split(codepoints, (start, end) -> {
-                assertTrue(expected.find());
+            Parser.split(textString[0], utf8Bytes -> {
+                assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
-                var actual = new String(codepoints, start, end - start);
+                var actual = new String(utf8Bytes.toByteArray(), UTF_8);
 
                 var group = expected.group();
-                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), message);
-                assertEquals(group, actual, message);
+                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder));
+                assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder));
 
                 actualEncoded.addAll(encoder.encode(actual));
                 return false;
             });
-            assertFalse(expected.find(), message);
+            assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
-            assertEquals(originalEncoded, actualEncoded, message);
+            assertEquals(originalEncoded, actualEncoded, () -> getMessage(textString, originalEncoder, encoder));
         });
     }
 
-    private String generateRandomString() {
-        var length = rand().nextInt(1, 15);
+    private String generateRandomString(int stringLength) {
+        var length = rand().nextInt(1, stringLength);
         return rand()
-                .ints(length, 0, 15)
+                .ints(length, 0, 20)
                 .mapToObj(this::getRandomCharFromCategory)
                 .map(String::valueOf)
                 .map(obj -> rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase())
@@ -102,7 +160,7 @@ public class ParserTest {
             case 2:
             case 3:
             case 4:
-                return Character.toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a'));
+                return toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a'));
             case 5:
                 return new char[]{PUNCTUATION.charAt(rand().nextInt(PUNCTUATION.length()))};
             case 6:
@@ -121,11 +179,14 @@ public class ParserTest {
                 return new char[]{NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length()))};
             case 14:
                 return new char[]{WHITESPACE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length()))};
+            case 15:
+            case 16:
+                return Character.toChars(0x1F600 + rand().nextInt(0x50)); // emojis
             default:
                 while (true) {
                     int r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
-                    if (isValid(r)) {
-                        return Character.toChars(r);
+                    if (validTestCodePoint(r)) {
+                        return toChars(r);
                     }
                 }
         }
@@ -133,10 +194,10 @@ public class ParserTest {
 
     @Test
     public void testIsNumeric() {
-        var numericPattern = compileRegex("\\p{N}", true);
+        var pattern = compileRegex("^\\p{N}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = numericPattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isNumeric = Parser.isNumeric(cp);
 
             assertEquals(matchesRegex, isNumeric, "Mismatch at code point: " + cp);
@@ -145,22 +206,22 @@ public class ParserTest {
 
     @Test
     public void testIsLetter() {
-        var letterOrNumericPattern = compileRegex("\\p{L}", true);
+        var pattern = compileRegex("^\\p{L}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
-            var isLetterOrNumeric = Parser.isLetter(cp);
+            var matchesRegex = pattern.matcher(charAsString).matches();
+            var isLetter = Parser.isLetter(cp);
 
-            assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
+            assertEquals(matchesRegex, isLetter, "Mismatch at code point: " + cp);
         }
     }
 
     @Test
     public void testIsUnicodeWhitespace() {
-        var whitespacePattern = compileRegex("\\s", true);
+        var pattern = compileRegex("^\\s$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = whitespacePattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isWhitespace = Parser.isWhitespace(cp);
 
             assertEquals(matchesRegex, isWhitespace, "Mismatch at code point: " + cp);
@@ -169,10 +230,10 @@ public class ParserTest {
 
     @Test
     public void testIsLetterOrNumeric() {
-        var letterOrNumericPattern = compileRegex("[\\p{L}\\p{N}]", true);
+        var pattern = compileRegex("^[\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isLetterOrNumeric = Parser.isLetterOrNumeric(cp);
 
             assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
@@ -181,10 +242,10 @@ public class ParserTest {
 
     @Test
     public void testIsWhitespaceLetterOrNumeric() {
-        var letterOrNumericPattern = compileRegex("[\\s\\p{L}\\p{N}]", true);
+        var pattern = compileRegex("^[\\s\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Parser.isWhitespaceOrLetterOrNumeric(cp);
 
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
@@ -193,10 +254,10 @@ public class ParserTest {
 
     @Test
     public void testIsNewlineOrLetterOrNumeric() {
-        var letterOrNumericPattern = compileRegex("[\r\n\\p{L}\\p{N}]", true);
+        var pattern = compileRegex("^[\r\n\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Parser.isNewlineOrLetterOrNumeric(cp);
 
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
@@ -205,10 +266,10 @@ public class ParserTest {
 
     @Test
     public void testIsNewline() {
-        var letterOrNumericPattern = compileRegex("[\r\n]", true);
+        var pattern = compileRegex("^[\r\n]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
-            var matchesRegex = letterOrNumericPattern.matcher(charAsString).matches();
+            var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Parser.isNewline(cp);
 
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
