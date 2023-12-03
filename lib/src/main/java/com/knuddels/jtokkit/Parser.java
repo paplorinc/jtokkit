@@ -11,7 +11,7 @@ import static java.util.Arrays.binarySearch;
 
 public class Parser {
     private static final String SDTM = "sdtmSDTM";
-    private static final String SIMPLE_WHITESPACES = " \t\n\r\u000B\u000C\u0085\u00A0";
+    private static final String SIMPLE_WHITESPACES = "\t\u000B\u000C\u0085\u00A0";
     private static final int[] REMAINING_WHITESPACES = "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
     public static Iterable<ByteArrayList> split(String input) {
@@ -79,7 +79,9 @@ public class Parser {
     }
 
     static boolean isWhitespace(int ch) {
-        return SIMPLE_WHITESPACES.indexOf(ch) >= 0
+        return ch == ' '
+                || isNewline(ch)
+                || SIMPLE_WHITESPACES.indexOf(ch) >= 0
                 || (ch >= '\u1680' && ch <= '\u3000' && binarySearch(REMAINING_WHITESPACES, ch) >= 0);
     }
 

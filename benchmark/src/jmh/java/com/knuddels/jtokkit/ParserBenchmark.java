@@ -4,13 +4,13 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
 
 //Benchmark                                                      (dataFolderPath)  Mode  Cnt  Score   Error  Units
-//ParserBenchmark.benchmarkIsLetterOrNumeric                                  N/A    ss   10  0.124 ± 0.011   s/op
+//ParserBenchmark.benchmarkIsLetterOrNumeric                                  N/A    ss   10  0.134 ± 0.002   s/op
 //ParserBenchmark.benchmarkIsNewline                                          N/A    ss   10  0.046 ± 0.020   s/op
-//ParserBenchmark.benchmarkIsNewlineOrLetterOrNumeric                         N/A    ss   10  0.156 ± 0.011   s/op
-//ParserBenchmark.benchmarkIsNumeric                                          N/A    ss   10  0.096 ± 0.012   s/op
-//ParserBenchmark.benchmarkIsUnicodeLetter                                    N/A    ss   10  0.132 ± 0.002   s/op
-//ParserBenchmark.benchmarkIsUnicodeWhitespace                                N/A    ss   10  0.095 ± 0.011   s/op
-//ParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                      N/A    ss   10  0.198 ± 0.015   s/op
+//ParserBenchmark.benchmarkIsNewlineOrLetterOrNumeric                         N/A    ss   10  0.154 ± 0.011   s/op
+//ParserBenchmark.benchmarkIsNumeric                                          N/A    ss   10  0.096 ± 0.011   s/op
+//ParserBenchmark.benchmarkIsUnicodeLetter                                    N/A    ss   10  0.142 ± 0.021   s/op
+//ParserBenchmark.benchmarkIsUnicodeWhitespace                                N/A    ss   10  0.059 ± 0.011   s/op
+//ParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                      N/A    ss   10  0.170 ± 0.018   s/op
 public class ParserBenchmark {
     @Benchmark
     public void benchmarkIsUnicodeWhitespace(Blackhole bh) {
