@@ -105,7 +105,7 @@ public class ParserTest {
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
         IntStream.range(0, 100_000).parallel().forEach(i -> {
-            var textString = generateValidText(originalEncoder);
+            var textString = generateValidText(originalEncoder, 100);
 
             if (i % 1_000 == 0) {
                 System.out.print("✓");
@@ -134,10 +134,10 @@ public class ParserTest {
         });
     }
 
-    private String generateValidText(GptBytePairEncodingOriginal originalEncoder) {
+    private String generateValidText(GptBytePairEncodingOriginal originalEncoder, int stringLength) {
         String textString;
         do {
-            textString = generateRandomString(20);
+            textString = generateRandomString(stringLength);
         } while (!Objects.equals(originalEncoder.decode(originalEncoder.encode(textString)), textString));
         return textString;
     }
