@@ -4,7 +4,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 
 @SuppressWarnings("DuplicatedCode")
 public abstract class AbstractBenchmark {
-    //        @Benchmark
+    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
@@ -18,10 +18,11 @@ public abstract class AbstractBenchmark {
     }
 
     @Benchmark
-    public int benchmarkCl100kBaseTokens(BenchmarkingState state) {
+    public int benchmarkCl100kBaseTokenCount(BenchmarkingState state) {
         var result = 0;
+        var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
-            result += state.cl100kBase.encode(fileContent).size();
+            result += encoding.countTokens(fileContent);
         }
         if (result != state.expectedFileContentsCl100kBaseTokenCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
@@ -30,10 +31,11 @@ public abstract class AbstractBenchmark {
     }
 
     @Benchmark
-    public int benchmarkCl100kBaseTokenCount(BenchmarkingState state) {
+    public int benchmarkCl100kBaseTokens(BenchmarkingState state) {
         var result = 0;
+        var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
-            result += state.cl100kBase.countTokens(fileContent);
+            result += encoding.encode(fileContent).size();
         }
         if (result != state.expectedFileContentsCl100kBaseTokenCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
@@ -44,8 +46,9 @@ public abstract class AbstractBenchmark {
     @Benchmark
     public long benchmarkCl100kBaseCountBytes(BenchmarkingState state) {
         var result = 0L;
+        var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
-            result += state.cl100kBase.countBytes(fileContent);
+            result += encoding.countBytes(fileContent);
         }
         if (result != state.expectedFileContentsCl100kBaseByteCount) {
             throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));

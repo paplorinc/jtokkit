@@ -10,79 +10,121 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.binarySearch;
 
 public class Parser {
-
     private static final String SDTM = "sdtmSDTM";
-    private static final int[] REMAINING_UNICODE_WHITESPACES = "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
+    private static final String SIMPLE_WHITESPACES = " \t\u000B\u000C\u0085\u00A0";
+    private static final int[] REMAINING_UNICODE_WHITESPACES = "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
     public static void split(String input, Predicate<ByteArrayList> fragmentConsumer) {
         assert isValidUTF8(input) : "Input is not UTF-8: " + input;
-        var utf8Bytes = new ByteArrayList();
-        for (int startIndex = 0, endIndex = startIndex; startIndex < input.length(); ) {
-            var c0 = input.codePointAt(startIndex);
+        ByteArrayList utf8Bytes = new ByteArrayList();
+        boolean finished = false;
+        for (int endIndex = 0; endIndex < input.length() && !finished; ) {
+            int startIndex = endIndex;
+            int c0 = input.codePointAt(startIndex);
 
-            if (c0 == '\'' && isShortContraction(input, startIndex)) {
-                // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
-                endIndex += 2;
-            } else if (c0 == '\'' && isLongContraction(input, startIndex)) {
-                // 1) `'(?:ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
-                endIndex += 3;
-            } else if (isLetter(c0) || isWord(input, c0, startIndex)) {
+            if (c0 == '\'' && startIndex + 1 < input.length()) {
+                int c1 = input.codePointAt(startIndex + 1);
+                if (SDTM.indexOf(c1) >= 0) {
+                    // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
+                    endIndex += 2;
+                    finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                    continue;
+                } else if (startIndex + 2 < input.length()) {
+                    // 1) `'(?:ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
+                    int lc1 = toLowerCase(c1);
+                    int lc2 = toLowerCase(input.codePointAt(startIndex + 2));
+                    if ((lc1 == 'l' && lc2 == 'l')
+                            || (lc1 == 'v' && lc2 == 'e')
+                            || (lc1 == 'r' && lc2 == 'e')) {
+                        endIndex += 3;
+                        finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                        continue;
+                    }
+                }
+            }
+
+            int cc0 = charCount(c0);
+            int nextIndex = startIndex + cc0;
+            int c1 = nextIndex < input.length() ? input.codePointAt(nextIndex) : -1;
+            int cc1 = charCount(c1);
+            if (isLetter(c0) || !isNewlineOrLetterOrNumeric(c0) && isLetter(c1)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
-                do {
-                    endIndex += Character.charCount(c0);
-                } while (endIndex < input.length() && isLetter(c0 = input.codePointAt(endIndex)));
-            } else if (isNumeric(c0)) {
-                // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
-                endIndex += Character.charCount(c0);
-                for (var i = 0; i < 2 && endIndex < input.length() && isNumeric(c0 = input.codePointAt(endIndex)); i++) {
-                    endIndex += Character.charCount(c0);
+                endIndex += cc0;
+                if (isLetter(c1)) {
+                    endIndex += cc1;
+                    while (endIndex < input.length() && isLetter(c0 = input.codePointAt(endIndex))) {
+                        endIndex += charCount(c0);
+                    }
                 }
-            } else if (!isWhitespaceOrLetterOrNumeric(c0) || isSpaceOrPunctuation(input, c0, startIndex)) {
-                // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
-                endIndex += Character.charCount(c0);
-                while (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
-                    endIndex += Character.charCount(c0);
-                }
+                finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                continue;
+            }
 
+            if (isNumeric(c0)) {
+                // 3) `\p{N}{1,3}` - numbers, such as `4`, `235` or `3½`
+                endIndex += cc0;
+                if (isNumeric(c1)) {
+                    endIndex += cc1;
+                    if (endIndex < input.length() && isNumeric(c0 = input.codePointAt(endIndex))) {
+                        endIndex += charCount(c0);
+                    }
+                }
+                finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                continue;
+            }
+
+            if (!isWhitespaceOrLetterOrNumeric(c0) || (c0 == ' ' && !isWhitespaceOrLetterOrNumeric(c1))) {
+                // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
+                endIndex += cc0;
+                if (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c1)) {
+                    endIndex += cc1;
+                    while (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
+                        endIndex += charCount(c0);
+                    }
+                }
                 while (endIndex < input.length() && isNewline(input.codePointAt(endIndex))) {
                     endIndex++;
                 }
-            } else {
-                // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
-                // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
-                // 7) `\s+` - unmatched remaining spaces, such as ` `
-                var lastNewLineIndex = -1;
-                do {
+                finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                continue;
+            }
+
+            // 5) `\s*[\r\n]+` - line endings such as `\r\n    \r\n`
+            // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
+            // 7) `\s+` - unmatched remaining spaces, such as ` `
+            assert isWhitespace(c0);
+            int lastNewLineIndex = isNewline(c0) ? endIndex : -1;
+            assert charCount(c0) == 1;
+            endIndex++;
+            if (isWhitespace(c1)) {
+                assert cc1 == 1;
+                if (isNewline(c1)) {
+                    lastNewLineIndex = endIndex;
+                }
+                endIndex++;
+                while (endIndex < input.length()) {
                     c0 = input.codePointAt(endIndex);
-                    if (isNewline(c0)) {
-                        lastNewLineIndex = endIndex;
-                    } else if (c0 != ' ' && !isRemainingWhitespace(c0)) {
+                    if (!isWhitespace(c0)) {
                         break;
                     }
-
-                    assert isWhitespace(c0);
-                    endIndex += Character.charCount(c0);
-                } while (endIndex < input.length());
-
-                if (lastNewLineIndex >= startIndex) {
-                    endIndex = lastNewLineIndex + 1;
-                    if (fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes))) {
-                        return;
+                    if (isNewline(c0)) {
+                        lastNewLineIndex = endIndex;
                     }
-                    startIndex = endIndex;
-                } else {
-                    var charCount = charCount(input.codePointAt(endIndex - 1));
-                    if (endIndex < input.length() && (endIndex - startIndex) > charCount && !isWhitespace(c0)) {
-                        endIndex -= charCount;
-                    }
+
+                    assert charCount(c0) == 1;
+                    endIndex++;
                 }
             }
-            if (endIndex > startIndex) {
-                if (fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes))) {
-                    return;
+
+            if (lastNewLineIndex >= startIndex) {
+                endIndex = lastNewLineIndex + 1;
+            } else {
+                assert charCount(input.codePointAt(endIndex - 1)) == 1;
+                if (endIndex < input.length() && (endIndex - startIndex) > 1 && !isWhitespace(c0)) {
+                    endIndex--;
                 }
-                startIndex = endIndex;
             }
+            finished = fragmentConsumer.test(toUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
         }
     }
 
@@ -90,44 +132,16 @@ public class Parser {
         return UTF_8.newEncoder().canEncode(input);
     }
 
-    private static boolean isShortContraction(String input, int index) {
-        return index + 1 < input.length()
-                && SDTM.indexOf(input.codePointAt(index + 1)) >= 0;
-    }
-
-    private static boolean isLongContraction(String input, int index) {
-        if (index + 2 >= input.length()) {
-            return false;
-        }
-        var c1 = toLowerCase(input.codePointAt(index + 1));
-        var c2 = toLowerCase(input.codePointAt(index + 2));
-        return ((c1 == 'l' && c2 == 'l')
-                || (c1 == 'v' && c2 == 'e')
-                || (c1 == 'r' && c2 == 'e'));
-    }
-
-    private static boolean isSpaceOrPunctuation(String input, int ch, int index) {
-        return ch == ' '
-                && index + Character.charCount(ch) < input.length()
-                && !isWhitespaceOrLetterOrNumeric(input.codePointAt(index + Character.charCount(ch)));
-    }
-
-    private static boolean isWord(String input, int ch, int index) {
-        return !isNewlineOrLetterOrNumeric(ch)
-                && (index + Character.charCount(ch) < input.length())
-                && isLetter(input.codePointAt(index + Character.charCount(ch)));
-    }
-
     static boolean isLetter(int ch) {
         if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
             return true;
         }
-        switch (Character.getType(ch)) {
-            case Character.UPPERCASE_LETTER:
-            case Character.LOWERCASE_LETTER:
-            case Character.TITLECASE_LETTER:
-            case Character.MODIFIER_LETTER:
-            case Character.OTHER_LETTER:
+        switch (getType(ch)) {
+            case UPPERCASE_LETTER:
+            case LOWERCASE_LETTER:
+            case TITLECASE_LETTER:
+            case MODIFIER_LETTER:
+            case OTHER_LETTER:
                 return true;
             default:
                 return false;
@@ -138,10 +152,10 @@ public class Parser {
         if (ch >= '0' && ch <= '9') {
             return true;
         }
-        switch (Character.getType(ch)) {
-            case Character.DECIMAL_DIGIT_NUMBER:
-            case Character.LETTER_NUMBER:
-            case Character.OTHER_NUMBER:
+        switch (getType(ch)) {
+            case DECIMAL_DIGIT_NUMBER:
+            case LETTER_NUMBER:
+            case OTHER_NUMBER:
                 return true;
             default:
                 return false;
@@ -149,14 +163,15 @@ public class Parser {
     }
 
     static boolean isWhitespace(int ch) {
-        if (ch == ' ' || isNewline(ch)) {
-            return true;
-        }
-        return isRemainingWhitespace(ch);
+        return isNewline(ch) || isRemainingWhitespace(ch);
     }
 
     private static boolean isRemainingWhitespace(int ch) {
-        return binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0;
+        return SIMPLE_WHITESPACES.indexOf(ch) >= 0 || (
+                ch >= REMAINING_UNICODE_WHITESPACES[0]
+                        && ch <= REMAINING_UNICODE_WHITESPACES[REMAINING_UNICODE_WHITESPACES.length - 1]
+                        && binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0
+        );
     }
 
     static boolean isNewline(int ch) {
@@ -165,24 +180,24 @@ public class Parser {
     }
 
     static boolean isLetterOrNumeric(int ch) {
-        return isLetterOrNumericType(Character.getType(ch));
+        return isLetterOrNumericType(getType(ch));
     }
 
     static boolean isNewlineOrLetterOrNumeric(int ch) {
         return isNewline(ch)
-                || isLetterOrNumericType(Character.getType(ch));
+                || isLetterOrNumericType(getType(ch));
     }
 
     private static boolean isLetterOrNumericType(int type) {
         switch (type) {
-            case Character.UPPERCASE_LETTER:
-            case Character.LOWERCASE_LETTER:
-            case Character.TITLECASE_LETTER:
-            case Character.MODIFIER_LETTER:
-            case Character.OTHER_LETTER:
-            case Character.DECIMAL_DIGIT_NUMBER:
-            case Character.LETTER_NUMBER:
-            case Character.OTHER_NUMBER:
+            case UPPERCASE_LETTER:
+            case LOWERCASE_LETTER:
+            case TITLECASE_LETTER:
+            case MODIFIER_LETTER:
+            case OTHER_LETTER:
+            case DECIMAL_DIGIT_NUMBER:
+            case LETTER_NUMBER:
+            case OTHER_NUMBER:
                 return true;
             default:
                 return false;
@@ -193,15 +208,16 @@ public class Parser {
         if (ch == ' ' || isNewline(ch)) {
             return true;
         }
-        var type = Character.getType(ch);
+        int type = getType(ch);
         if (isLetterOrNumericType(type)) {
             return true;
         }
-        var isPotentialWhitespaceType = type >= Character.SPACE_SEPARATOR && type <= Character.CONTROL;
+        boolean isPotentialWhitespaceType = type >= SPACE_SEPARATOR && type <= CONTROL;
         return isPotentialWhitespaceType && isRemainingWhitespace(ch);
     }
 
     public static ByteArrayList toUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
+        assert end > start;
         dst.clear();
         for (int i = start; i < end; i++) {
             assert Arrays.equals(input.substring(start, i).getBytes(UTF_8), dst.toByteArray())

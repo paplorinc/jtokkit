@@ -48,16 +48,16 @@ public class ParserTest {
     }
 
     public static Map<Integer, String> fetchUnicodeData() {
-        String url = "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt";
+        var url = "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt";
         Map<Integer, String> unicodeMap = new HashMap<>();
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
+        try (var br = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
             String line;
             while ((line = br.readLine()) != null) {
-                String[] parts = line.split(";");
+                var parts = line.split(";");
                 assert parts.length > 1;
-                int codePoint = Integer.parseInt(parts[0], 16);
-                String name = parts[1];
+                var codePoint = Integer.parseInt(parts[0], 16);
+                var name = parts[1];
                 unicodeMap.put(codePoint, name);
             }
         } catch (Exception e) {
@@ -72,28 +72,27 @@ public class ParserTest {
 
     @Test
     void testToUtf8Bytes() {
-        String input = "\uD81C\uDFE1";
+        var input = "\uD81C\uDFE1";
 
-        ByteArrayList dst = new ByteArrayList();
+        var dst = new ByteArrayList();
         toUtf8Bytes(input, 0, input.length(), dst);
 
-        byte[] expectedBytes = input.getBytes(UTF_8);
-        byte[] actualBytes = dst.toByteArray();
+        var expectedBytes = input.getBytes(UTF_8);
+        var actualBytes = dst.toByteArray();
 
         assertArrayEquals(expectedBytes, actualBytes, "UTF-8 conversion did not match expected bytes");
         assertEquals(new String(expectedBytes, UTF_8), input);
     }
 
     @Test
-    public void testAllCodePoints() throws CharacterCodingException {
-        ByteArrayList byteArrayList = new ByteArrayList();
+    public void testToUtf8BytesOnFetchedUnicodeData() throws CharacterCodingException {
+        var byteArrayList = new ByteArrayList();
         fetchUnicodeData().forEach((codepoint, name) -> {
             var expected = new String(toChars(codepoint));
             if (isValidUTF8(expected)) {
                 toUtf8Bytes(expected, 0, expected.length(), byteArrayList);
 
-                var message = "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(byteArrayList.toByteArray()) + "`";
-                assertArrayEquals(expected.getBytes(UTF_8), byteArrayList.toByteArray(), message);
+                assertArrayEquals(expected.getBytes(UTF_8), byteArrayList.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(byteArrayList.toByteArray()) + "`");
             } else {
                 System.out.println("Skipping invalid UTF-8: " + name + " (" + codepoint + ")");
             }
@@ -105,11 +104,11 @@ public class ParserTest {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        IntStream.range(0, 10_000).parallel().forEach(i -> {
-            String[] textString = new String[1];
+        IntStream.range(0, 100_000).parallel().forEach(i -> {
+            var textString = new String[1];
             List<Integer> originalEncoded;
             do {
-                textString[0] = generateRandomString(10);
+                textString[0] = generateRandomString(20);
                 originalEncoded = originalEncoder.encode(textString[0]);
             } while (!originalEncoder.decode(originalEncoded).equals(textString[0]));
 
@@ -162,38 +161,43 @@ public class ParserTest {
             case 4:
                 return toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a'));
             case 5:
-                return new char[]{PUNCTUATION.charAt(rand().nextInt(PUNCTUATION.length()))};
+                return toChars(PUNCTUATION.codePointAt(rand().nextInt(PUNCTUATION.length())));
             case 6:
             case 7:
-                return new char[]{NEWLINES.charAt(rand().nextInt(NEWLINES.length()))};
+                return toChars(NEWLINES.codePointAt(rand().nextInt(NEWLINES.length())));
             case 8:
-                return new char[]{NUMBERS.charAt(rand().nextInt(NUMBERS.length()))};
+                return toChars(NUMBERS.codePointAt(rand().nextInt(NUMBERS.length())));
             case 9:
-                return new char[]{WHITESPACES.charAt(rand().nextInt(WHITESPACES.length()))};
+                return toChars(WHITESPACES.codePointAt(rand().nextInt(WHITESPACES.length())));
             case 10:
             case 11:
-                return new char[]{LETTERS.charAt(rand().nextInt(LETTERS.length()))};
+                return toChars(LETTERS.codePointAt(rand().nextInt(LETTERS.length())));
             case 12:
-                return new char[]{LETTER_OR_NUMERIC.charAt(rand().nextInt(LETTER_OR_NUMERIC.length()))};
+                return toChars(LETTER_OR_NUMERIC.codePointAt(rand().nextInt(LETTER_OR_NUMERIC.length())));
             case 13:
-                return new char[]{NEWLINE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length()))};
+                return toChars(NEWLINE_OR_LETTER_OR_NUMERIC.codePointAt(rand().nextInt(NEWLINE_OR_LETTER_OR_NUMERIC.length())));
             case 14:
-                return new char[]{WHITESPACE_OR_LETTER_OR_NUMERIC.charAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length()))};
+                return toChars(WHITESPACE_OR_LETTER_OR_NUMERIC.codePointAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length())));
             case 15:
             case 16:
-                return Character.toChars(0x1F600 + rand().nextInt(0x50)); // emojis
-            default:
+                return toChars(0x1F600 + rand().nextInt(0x50)); // emojis
+            case 17:
+            case 18:
+            case 19:
                 while (true) {
-                    int r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
+                    var r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
                     if (validTestCodePoint(r)) {
                         return toChars(r);
                     }
                 }
+            default:
+                throw new IllegalStateException();
         }
     }
 
     @Test
     public void testIsNumeric() {
+        assertFalse(Parser.isNumeric(-1));
         var pattern = compileRegex("^\\p{N}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -206,6 +210,7 @@ public class ParserTest {
 
     @Test
     public void testIsLetter() {
+        assertFalse(Parser.isLetter(-1));
         var pattern = compileRegex("^\\p{L}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -218,6 +223,7 @@ public class ParserTest {
 
     @Test
     public void testIsUnicodeWhitespace() {
+        assertFalse(Parser.isWhitespace(-1));
         var pattern = compileRegex("^\\s$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -230,6 +236,7 @@ public class ParserTest {
 
     @Test
     public void testIsLetterOrNumeric() {
+        assertFalse(Parser.isLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -242,6 +249,7 @@ public class ParserTest {
 
     @Test
     public void testIsWhitespaceLetterOrNumeric() {
+        assertFalse(Parser.isWhitespaceOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\s\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -254,6 +262,7 @@ public class ParserTest {
 
     @Test
     public void testIsNewlineOrLetterOrNumeric() {
+        assertFalse(Parser.isNewlineOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[\r\n\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
@@ -266,6 +275,7 @@ public class ParserTest {
 
     @Test
     public void testIsNewline() {
+        assertFalse(Parser.isNewline(-1));
         var pattern = compileRegex("^[\r\n]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
