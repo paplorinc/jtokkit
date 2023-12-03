@@ -11,8 +11,8 @@ import static java.util.Arrays.binarySearch;
 
 public class Parser {
     private static final String SDTM = "sdtmSDTM";
-    private static final String SIMPLE_WHITESPACES = " \t\u000B\u000C\u0085\u00A0";
-    private static final int[] REMAINING_UNICODE_WHITESPACES = "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
+    private static final String SIMPLE_WHITESPACES = " \t\n\r\u000B\u000C\u0085\u00A0";
+    private static final int[] REMAINING_WHITESPACES = "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();
 
     public static Iterable<ByteArrayList> split(String input) {
         assert isValidUTF8(input) : "Input is not UTF-8: " + input;
@@ -24,45 +24,68 @@ public class Parser {
     }
 
     static boolean isLetter(int ch) {
-        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
-            return true;
+        if (ch >= 'A' && ch <= 0x323af) {
+            if (ch <= 'z') {
+                return ch >= 'a' || ch <= 'Z';
+            } else {
+                switch (getType(ch)) {
+                    case UPPERCASE_LETTER:
+                    case LOWERCASE_LETTER:
+                    case TITLECASE_LETTER:
+                    case MODIFIER_LETTER:
+                    case OTHER_LETTER:
+                        return true;
+                }
+            }
         }
-        switch (getType(ch)) {
-            case UPPERCASE_LETTER:
-            case LOWERCASE_LETTER:
-            case TITLECASE_LETTER:
-            case MODIFIER_LETTER:
-            case OTHER_LETTER:
-                return true;
-            default:
-                return false;
-        }
+        return false;
     }
 
     static boolean isNumeric(int ch) {
-        if (ch >= '0' && ch <= '9') {
-            return true;
+        if (ch >= '0' && ch <= 0x1fbf9) {
+            if (ch < 0xb2) {
+                return ch <= '9';
+            } else {
+                switch (getType(ch)) {
+                    case DECIMAL_DIGIT_NUMBER:
+                    case LETTER_NUMBER:
+                    case OTHER_NUMBER:
+                        return true;
+                }
+            }
         }
-        switch (getType(ch)) {
-            case DECIMAL_DIGIT_NUMBER:
-            case LETTER_NUMBER:
-            case OTHER_NUMBER:
-                return true;
-            default:
-                return false;
+        return false;
+    }
+
+    static boolean isLetterOrNumeric(int ch) {
+        if (ch >= '0' && ch <= 0x323af) {
+            if (ch <= 'z') {
+                return ch <= '9' || ch >= 'a' || (ch >= 'A' && ch <= 'Z');
+            } else {
+                switch (getType(ch)) {
+                    case UPPERCASE_LETTER:
+                    case LOWERCASE_LETTER:
+                    case TITLECASE_LETTER:
+                    case MODIFIER_LETTER:
+                    case OTHER_LETTER:
+                    case DECIMAL_DIGIT_NUMBER:
+                    case LETTER_NUMBER:
+                    case OTHER_NUMBER:
+                        return true;
+                }
+            }
         }
+        return false;
     }
 
     static boolean isWhitespace(int ch) {
-        return isNewline(ch) || isRemainingWhitespace(ch);
+        return SIMPLE_WHITESPACES.indexOf(ch) >= 0
+                || (ch >= '\u1680' && ch <= '\u3000' && binarySearch(REMAINING_WHITESPACES, ch) >= 0);
     }
 
-    private static boolean isRemainingWhitespace(int ch) {
-        return SIMPLE_WHITESPACES.indexOf(ch) >= 0 || (
-                ch >= REMAINING_UNICODE_WHITESPACES[0]
-                        && ch <= REMAINING_UNICODE_WHITESPACES[REMAINING_UNICODE_WHITESPACES.length - 1]
-                        && binarySearch(REMAINING_UNICODE_WHITESPACES, ch) >= 0
-        );
+    static boolean isWhitespaceOrLetterOrNumeric(int ch) {
+        return isWhitespace(ch)
+                || isLetterOrNumeric(ch);
     }
 
     static boolean isNewline(int ch) {
@@ -70,41 +93,9 @@ public class Parser {
                 || ch == '\r';
     }
 
-    static boolean isLetterOrNumeric(int ch) {
-        return isLetterOrNumericType(getType(ch));
-    }
-
     static boolean isNewlineOrLetterOrNumeric(int ch) {
         return isNewline(ch)
-                || isLetterOrNumericType(getType(ch));
-    }
-
-    private static boolean isLetterOrNumericType(int type) {
-        switch (type) {
-            case UPPERCASE_LETTER:
-            case LOWERCASE_LETTER:
-            case TITLECASE_LETTER:
-            case MODIFIER_LETTER:
-            case OTHER_LETTER:
-            case DECIMAL_DIGIT_NUMBER:
-            case LETTER_NUMBER:
-            case OTHER_NUMBER:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    static boolean isWhitespaceOrLetterOrNumeric(int ch) {
-        if (ch == ' ' || isNewline(ch)) {
-            return true;
-        }
-        int type = getType(ch);
-        if (isLetterOrNumericType(type)) {
-            return true;
-        }
-        boolean isPotentialWhitespaceType = type >= SPACE_SEPARATOR && type <= CONTROL;
-        return isPotentialWhitespaceType && isRemainingWhitespace(ch);
+                || isLetterOrNumeric(ch);
     }
 
     public static ByteArrayList toUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
