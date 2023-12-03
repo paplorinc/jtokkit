@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.reference.Cl100kBaseTest;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -235,10 +236,9 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            Parser.split(testString, utf8Bytes -> {
+            for (ByteArrayList utf8Bytes : Parser.split(testString)) {
                 actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
-                return false;
-            });
+            }
 
             var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
             var normalizedActual = actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());

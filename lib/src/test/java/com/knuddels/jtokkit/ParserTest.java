@@ -66,8 +66,8 @@ public class ParserTest {
         return unicodeMap;
     }
 
-    private static String getMessage(String[] textString, GptBytePairEncodingOriginal originalEncoder, GptBytePairEncoding encoder) {
-        return "`" + textString[0] + "` should have mapped to: " + originalEncoder.encode(textString[0]) + ", but was: " + encoder.encode(textString[0]);
+    private static String getMessage(String textString, GptBytePairEncodingOriginal originalEncoder, GptBytePairEncoding encoder) {
+        return "`" + textString + "` should have mapped to: " + originalEncoder.encode(textString) + ", but was: " + encoder.encode(textString);
     }
 
     @Test
@@ -105,12 +105,7 @@ public class ParserTest {
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
         IntStream.range(0, 100_000).parallel().forEach(i -> {
-            var textString = new String[1];
-            List<Integer> originalEncoded;
-            do {
-                textString[0] = generateRandomString(20);
-                originalEncoded = originalEncoder.encode(textString[0]);
-            } while (!originalEncoder.decode(originalEncoded).equals(textString[0]));
+            var textString = generateValidText(originalEncoder);
 
             if (i % 1_000 == 0) {
                 System.out.print("✓");
@@ -119,10 +114,10 @@ public class ParserTest {
                 System.out.println();
             }
 
-            var expected = originalEncoder.pattern.matcher(textString[0]);
+            var expected = originalEncoder.pattern.matcher(textString);
 
             var actualEncoded = new ArrayList<>();
-            Parser.split(textString[0], utf8Bytes -> {
+            for (ByteArrayList utf8Bytes : Parser.split(textString)) {
                 assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
                 var actual = new String(utf8Bytes.toByteArray(), UTF_8);
@@ -132,12 +127,19 @@ public class ParserTest {
                 assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder));
 
                 actualEncoded.addAll(encoder.encode(actual));
-                return false;
-            });
+            }
             assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
-            assertEquals(originalEncoded, actualEncoded, () -> getMessage(textString, originalEncoder, encoder));
+            assertEquals(originalEncoder.encode(textString), actualEncoded, () -> getMessage(textString, originalEncoder, encoder));
         });
+    }
+
+    private String generateValidText(GptBytePairEncodingOriginal originalEncoder) {
+        String textString;
+        do {
+            textString = generateRandomString(20);
+        } while (!Objects.equals(originalEncoder.decode(originalEncoder.encode(textString)), textString));
+        return textString;
     }
 
     private String generateRandomString(int stringLength) {
