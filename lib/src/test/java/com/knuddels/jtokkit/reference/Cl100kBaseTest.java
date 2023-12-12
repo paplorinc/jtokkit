@@ -104,6 +104,7 @@ public class Cl100kBaseTest {
     @Test
     void testEdgeCases() throws CharacterCodingException {
         var texts = List.of(
+                "Many words map to one token, but some don't: indivisible.\n\nUnicode characters like emojis may be split into many tokens containing the underlying bytes: \uD83E\uDD1A\uD83C\uDFFE\n\nSequences of characters commonly found next to each other may be grouped together: 1234567890",
                 "Unicode snowman: ☃️",
                 "Mixed script: 你好 world! \uD83C\uDF0D",
                 "مرحبا بالعالم! كيف حالك؟ \uD83D\uDE0E",

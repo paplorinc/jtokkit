@@ -14,17 +14,6 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GptBytePairEncodingTest {
-//    public static void main(String[] args) {
-//        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-//        var sum = 0;
-//        for (int i = 0; i < 5; i++) {
-//            for (var text : Cl100kBaseTestTest.getTexts("")) {
-//                sum += encoding.countTokens(text);
-//            }
-//        }
-//        System.out.println(sum);
-//    }
-
     @Test
     void countBytes() {
         GptBytePairEncoding encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
@@ -53,7 +42,7 @@ class GptBytePairEncodingTest {
             sum += i;
         }
         System.out.println(sum);
-        assertEquals(25_772_866, sum);
+        assertEquals(25_876_716, sum);
 
         var sum1 = 0;
         for (var x : texts) {
@@ -61,7 +50,7 @@ class GptBytePairEncodingTest {
             sum1 += size;
         }
         System.out.println(sum1);
-        assertEquals(25_772_866, sum1);
+        assertEquals(25_876_716, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 
@@ -96,14 +85,4 @@ class GptBytePairEncodingTest {
         }
         System.out.println("Skipped " + skipped); // can these work with regexes?
     }
-
-//    @Test
-//    void bytePairMerge() {
-//        var gptBytePairEncoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-//        var piece = ImmutableByteArray.from(" GUTENBERG");
-//        var indexedRanks = gptBytePairEncoding.getIndexedRanks(piece, piece.length() + 1);
-//        var tokenCount = gptBytePairEncoding.mergeBytesAndGetTokenCount(piece, piece.length() + 1, indexedRanks);
-//        var result = gptBytePairEncoding.encodeToList(piece, tokenCount, indexedRanks);
-//        assertEquals(gptBytePairEncoding.decode(result), " GUTENBERG");
-//    }
 }

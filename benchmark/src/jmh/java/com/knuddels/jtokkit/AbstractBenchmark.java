@@ -30,6 +30,16 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
+    //    @Benchmark
+    public int benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state) {
+        return state.cl100kBaseOriginal.countTokens(state.bigFileContent);
+    }
+
+    //    @Benchmark
+    public int benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state) {
+        return state.cl100kBase.countTokens(state.bigFileContent);
+    }
+
     @Benchmark
     public int benchmarkCl100kBaseTokens(BenchmarkingState state) {
         var result = 0;
