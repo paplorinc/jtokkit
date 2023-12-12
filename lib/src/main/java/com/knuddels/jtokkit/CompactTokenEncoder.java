@@ -1,7 +1,6 @@
 package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
@@ -135,26 +134,26 @@ public class CompactTokenEncoder {
 
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
         long match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
-        int token = encode(match);
-        if (token != MAX_RANK) {
+        int encoded = encode(match);
+        if (encoded != MAX_RANK) {
             if (keepEncodings) {
-                out.add(token);
+                out.add(encoded);
             }
             return 1;
         } else {
-            var byteSize = byteSize(match);
-            assert byteSize > 1 && byteSize < Long.BYTES;
-            long[] indexedRanks = getIndexedRanks(match, byteSize);
-            int tokenCount = mergeBytesAndGetTokenCount(match, byteSize, indexedRanks);
+            var length = byteSize(match);
+            assert length > 1 && length < Long.BYTES;
+            long[] indexedRanks = getIndexedRanks(match, length);
+            int tokenCount = mergeBytesAndGetTokenCount(match, length, indexedRanks);
             if (keepEncodings) {
-                IntList tokensToAdd = encodeToList(match, tokenCount, indexedRanks);
-                var remaining = maxTokenCount - out.size();
-                if (remaining < tokensToAdd.size()) {
-                    for (int i = 0; i < remaining; i++) {
-                        out.add(tokensToAdd.getInt(i));
-                    }
-                } else {
-                    out.addAll(tokensToAdd);
+                int start = 0;
+                for (int i = 0; i < tokenCount && out.size() < maxTokenCount; i++) {
+                    int end = index(indexedRanks[i + 1]);
+                    var token = encode(match, start, end);
+                    assert token != MAX_RANK;
+                    out.add(token);
+
+                    start = end;
                 }
             }
             return tokenCount;
@@ -175,36 +174,28 @@ public class CompactTokenEncoder {
 
     int mergeBytesAndGetTokenCount(long piece, int remaining, long[] indexedRanks) {
         assert remaining > 1;
-        while (remaining > 2) {
+        while (true) {
             int minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
             }
+            var previousIndex = minRankIndex - 1;
+            var nextIndex = minRankIndex + 1;
+            var nextNextIndex = nextIndex + 1;
+            var nextNextNextIndex = nextNextIndex + 1;
 
-            var newMinRank = getRank(piece, indexedRanks, minRankIndex, minRankIndex + 3, remaining);
+            var newMinRank = getRank(piece, indexedRanks, minRankIndex, nextNextNextIndex, remaining);
             indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], newMinRank);
-            if (minRankIndex > 0) {
-                var newPrevMinRank = getRank(piece, indexedRanks, minRankIndex - 1, minRankIndex + 2, remaining);
-                indexedRanks[minRankIndex - 1] = setRank(indexedRanks[minRankIndex - 1], newPrevMinRank);
+            if (previousIndex >= 0) {
+                var newPrevMinRank = getRank(piece, indexedRanks, previousIndex, nextNextIndex, remaining);
+                indexedRanks[previousIndex] = setRank(indexedRanks[previousIndex], newPrevMinRank);
             }
 
             remaining--;
             assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
-            System.arraycopy(indexedRanks, minRankIndex + 2, indexedRanks, minRankIndex + 1, remaining - minRankIndex);
+            System.arraycopy(indexedRanks, nextNextIndex, indexedRanks, nextIndex, remaining - minRankIndex);
         }
         return remaining;
-    }
-
-    IntList encodeToList(long piece, int tokenCount, long[] indexedRanks) {
-        IntList out = new IntArrayList(tokenCount);
-        for (int i = 0; i < tokenCount; i++) {
-            var start = index(indexedRanks[i]);
-            int end = index(indexedRanks[i + 1]);
-            var token = encode(piece, start, end);
-            assert token != MAX_RANK;
-            out.add(token);
-        }
-        return out;
     }
 
     public int encode(long key) {
