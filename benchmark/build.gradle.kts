@@ -1,5 +1,5 @@
 plugins {
-    id("java")
+    java
     id("me.champeau.jmh") version "0.7.2"
 }
 
@@ -9,7 +9,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 

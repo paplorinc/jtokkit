@@ -1,7 +1,7 @@
 plugins {
-    id("java-library")
-    id("maven-publish")
-    id("signing")
+    `java-library`
+    `maven-publish`
+    signing
 }
 
 group = "com.knuddels"
@@ -12,12 +12,13 @@ repositories {
 }
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
-
     withSourcesJar()
     withJavadocJar()
+}
+
+tasks.withType<JavaCompile> {
+    val javaVersion = if (name == "compileTestJava") 21 else 11
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(javaVersion) }
 }
 
 dependencies {

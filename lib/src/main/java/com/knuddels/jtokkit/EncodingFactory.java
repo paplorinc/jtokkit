@@ -10,7 +10,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+import static java.lang.Integer.parseInt;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class EncodingFactory {
@@ -137,7 +137,7 @@ public final class EncodingFactory {
 
     static Pattern compileRegex(String patternString, boolean caseInsensitive) {
         try {
-            var flags = Pattern.UNICODE_CHARACTER_CLASS;
+            int flags = Pattern.UNICODE_CHARACTER_CLASS;
             if (caseInsensitive) {
                 flags |= Pattern.CASE_INSENSITIVE;
             }
@@ -162,8 +162,7 @@ public final class EncodingFactory {
                 assert firstSpaceIndex != -1 : "Invalid line in " + fileName + ": " + line;
 
                 byte[] token = Base64.getDecoder().decode(line.substring(0, firstSpaceIndex).getBytes(UTF_8));
-                int rank = Integer.parseInt(line.substring(firstSpaceIndex + 1));
-                assert rank != MAX_RANK;
+                int rank = parseInt(line.substring(firstSpaceIndex + 1));
 
                 mergeableRanks.put(token, rank);
             }
