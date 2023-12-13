@@ -12,10 +12,10 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
 
-import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
-import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static com.knuddels.jtokkit.Cl100kParser.isValidUTF8;
 import static com.knuddels.jtokkit.Cl100kParser.toUtf8Bytes;
+import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
+import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static java.lang.Character.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
@@ -61,7 +61,7 @@ public class Cl100kParserTest {
                 unicodeMap.put(codePoint, name);
             }
         } catch (Exception e) {
-            throw new IllegalStateException();
+            throw new IllegalStateException(e);
         }
         return unicodeMap;
     }
@@ -199,92 +199,121 @@ public class Cl100kParserTest {
 
     @Test
     public void testIsNumeric() {
+        int count = 0;
         assertFalse(Cl100kParser.isNumeric(-1));
         var pattern = compileRegex("^\\p{N}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isNumeric = Cl100kParser.isNumeric(cp);
+            if (matchesRegex) {
+                count++;
+            }
 
             assertEquals(matchesRegex, isNumeric, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsLetter() {
+        int count = 0;
         assertFalse(Cl100kParser.isLetter(-1));
         var pattern = compileRegex("^\\p{L}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isLetter = Cl100kParser.isLetter(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isLetter, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsUnicodeWhitespace() {
+        int count = 0;
         assertFalse(Cl100kParser.isWhitespace(-1));
         var pattern = compileRegex("^\\s$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isWhitespace = Cl100kParser.isWhitespace(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isWhitespace, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsLetterOrNumeric() {
+        int count = 0;
         assertFalse(Cl100kParser.isLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isLetterOrNumeric = Cl100kParser.isLetterOrNumeric(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isLetterOrNumeric, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsWhitespaceLetterOrNumeric() {
+        int count = 0;
         assertFalse(Cl100kParser.isWhitespaceOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\s\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Cl100kParser.isWhitespaceOrLetterOrNumeric(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsNewlineOrLetterOrNumeric() {
+        int count = 0;
         assertFalse(Cl100kParser.isNewlineOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[\r\n\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Cl100kParser.isNewlineOrLetterOrNumeric(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 
     @Test
     public void testIsNewline() {
+        int count = 0;
         assertFalse(Cl100kParser.isNewline(-1));
         var pattern = compileRegex("^[\r\n]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Cl100kParser.isNewline(cp);
-
+            if (matchesRegex) {
+                count++;
+            }
             assertEquals(matchesRegex, isNewline, "Mismatch at code point: " + cp);
         }
+        System.out.println(count);
     }
 }

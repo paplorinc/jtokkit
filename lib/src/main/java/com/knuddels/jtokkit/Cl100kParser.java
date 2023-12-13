@@ -25,7 +25,7 @@ public class Cl100kParser {
 
     static boolean isLetter(int ch) {
         if (ch < 0xaa) {
-            return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+            return (ch >= 'A') && (ch <= 'z') && ((ch >= 'a') || (ch <= 'Z'));
         } else if (ch <= 0x323af) {
             switch (getType(ch)) {
                 case UPPERCASE_LETTER:
@@ -41,7 +41,7 @@ public class Cl100kParser {
 
     static boolean isNumeric(int ch) {
         if (ch < 0xb2) {
-            return ch >= '0' && ch <= '9';
+            return (ch >= '0') && (ch <= '9');
         } else if (ch <= 0x1fbf9) {
             switch (getType(ch)) {
                 case DECIMAL_DIGIT_NUMBER:
@@ -55,7 +55,7 @@ public class Cl100kParser {
 
     static boolean isLetterOrNumeric(int ch) {
         if (ch < 0xaa) {
-            return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+            return (((ch >= 'A') && (ch <= 'z') && ((ch >= 'a') || (ch <= 'Z'))) || ((ch >= '0') && (ch <= '9')));
         } else if (ch <= 0x323af) {
             switch (getType(ch)) {
                 case UPPERCASE_LETTER:
@@ -78,9 +78,9 @@ public class Cl100kParser {
         } else if (ch < '\u0085') {
             return ch == ' ';
         } else {
-            return ch == '\u0085'
-                    || ch == '\u00A0'
-                    || (ch >= '\u1680' && ch <= '\u3000' && binarySearch(REMAINING_WHITESPACES, ch) >= 0);
+            return (ch == '\u0085')
+                    || (ch == '\u00A0')
+                    || ((ch >= '\u1680') && (ch <= '\u3000') && (binarySearch(REMAINING_WHITESPACES, ch) >= 0));
         }
     }
 
@@ -90,8 +90,8 @@ public class Cl100kParser {
     }
 
     static boolean isNewline(int ch) {
-        return ch == '\n'
-                || ch == '\r';
+        return (ch == '\n')
+                || (ch == '\r');
     }
 
     static boolean isNewlineOrLetterOrNumeric(int ch) {
@@ -109,18 +109,18 @@ public class Cl100kParser {
             if (cp < 0x80) {
                 dst.add((byte) cp);
             } else if (cp < 0x800) {
-                dst.add((byte) (0xc0 | cp >> 0x6));
-                dst.add((byte) (0x80 | cp & 0x3f));
+                dst.add((byte) (0xc0 | (cp >> 0x6)));
+                dst.add((byte) (0x80 | (cp & 0x3f)));
             } else if (cp < MIN_SUPPLEMENTARY_CODE_POINT) {
-                dst.add((byte) (0xe0 | cp >> 0xc));
-                dst.add((byte) (0x80 | cp >> 0x6 & 0x3f));
-                dst.add((byte) (0x80 | cp & 0x3f));
+                dst.add((byte) (0xe0 | (cp >> 0xc)));
+                dst.add((byte) (0x80 | ((cp >> 0x6) & 0x3f)));
+                dst.add((byte) (0x80 | (cp & 0x3f)));
             } else {
-                assert cp < MAX_CODE_POINT + 1 : "Invalid code point: " + cp;
-                dst.add((byte) (0xf0 | cp >> 0x12));
-                dst.add((byte) (0x80 | cp >> 0xc & 0x3f));
-                dst.add((byte) (0x80 | cp >> 0x6 & 0x3f));
-                dst.add((byte) (0x80 | cp & 0x3f));
+                assert cp < (MAX_CODE_POINT + 1) : "Invalid code point: " + cp;
+                dst.add((byte) (0xf0 | (cp >> 0x12)));
+                dst.add((byte) (0x80 | ((cp >> 0xc) & 0x3f)));
+                dst.add((byte) (0x80 | ((cp >> 0x6) & 0x3f)));
+                dst.add((byte) (0x80 | (cp & 0x3f)));
                 i++;
             }
         }
@@ -151,19 +151,19 @@ public class Cl100kParser {
             int startIndex = endIndex;
             int c0 = input.codePointAt(startIndex);
 
-            if (c0 == '\'' && startIndex + 1 < input.length()) {
+            if ((c0 == '\'') && ((startIndex + 1) < input.length())) {
                 int c1 = input.codePointAt(startIndex + 1);
                 if (SDTM.indexOf(c1) >= 0) {
                     // 1) `'[sdtm]` - contractions, such as the suffixes of `he's`, `I'd`, `'tis`, `I'm`
                     endIndex += 2;
                     return toUtf8Bytes(input, startIndex, endIndex, utf8Bytes);
-                } else if (startIndex + 2 < input.length()) {
+                } else if ((startIndex + 2) < input.length()) {
                     // 1) `'(?:ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
                     int lc1 = toLowerCase(c1);
                     int lc2 = toLowerCase(input.codePointAt(startIndex + 2));
-                    if ((lc1 == 'l' && lc2 == 'l')
-                            || (lc1 == 'v' && lc2 == 'e')
-                            || (lc1 == 'r' && lc2 == 'e')) {
+                    if (((lc1 == 'l') && (lc2 == 'l'))
+                            || ((lc1 == 'v') && (lc2 == 'e'))
+                            || ((lc1 == 'r') && (lc2 == 'e'))) {
                         endIndex += 3;
                         return toUtf8Bytes(input, startIndex, endIndex, utf8Bytes);
                     }
@@ -172,14 +172,14 @@ public class Cl100kParser {
 
             int cc0 = charCount(c0);
             int nextIndex = startIndex + cc0;
-            int c1 = nextIndex < input.length() ? input.codePointAt(nextIndex) : -1;
+            int c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
             int cc1 = charCount(c1);
-            if (isLetter(c0) || !isNewlineOrLetterOrNumeric(c0) && isLetter(c1)) {
+            if (isLetter(c0) || (!isNewlineOrLetterOrNumeric(c0) && isLetter(c1))) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 endIndex += cc0;
                 if (isLetter(c1)) {
                     endIndex += cc1;
-                    while (endIndex < input.length() && isLetter(c0 = input.codePointAt(endIndex))) {
+                    while ((endIndex < input.length()) && isLetter(c0 = input.codePointAt(endIndex))) {
                         endIndex += charCount(c0);
                     }
                 }
@@ -191,23 +191,23 @@ public class Cl100kParser {
                 endIndex += cc0;
                 if (isNumeric(c1)) {
                     endIndex += cc1;
-                    if (endIndex < input.length() && isNumeric(c0 = input.codePointAt(endIndex))) {
+                    if ((endIndex < input.length()) && isNumeric(c0 = input.codePointAt(endIndex))) {
                         endIndex += charCount(c0);
                     }
                 }
                 return toUtf8Bytes(input, startIndex, endIndex, utf8Bytes);
             }
 
-            if (!isWhitespaceOrLetterOrNumeric(c0) || (c0 == ' ' && !isWhitespaceOrLetterOrNumeric(c1))) {
+            if (!isWhitespaceOrLetterOrNumeric(c0) || ((c0 == ' ') && !isWhitespaceOrLetterOrNumeric(c1))) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
                 endIndex += cc0;
-                if (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c1)) {
+                if ((endIndex < input.length()) && !isWhitespaceOrLetterOrNumeric(c1)) {
                     endIndex += cc1;
-                    while (endIndex < input.length() && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
+                    while ((endIndex < input.length()) && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
                         endIndex += charCount(c0);
                     }
                 }
-                while (endIndex < input.length() && isNewline(input.codePointAt(endIndex))) {
+                while ((endIndex < input.length()) && isNewline(input.codePointAt(endIndex))) {
                     endIndex++;
                 }
                 return toUtf8Bytes(input, startIndex, endIndex, utf8Bytes);
@@ -244,7 +244,7 @@ public class Cl100kParser {
                 endIndex = lastNewLineIndex + 1;
             } else {
                 assert charCount(input.codePointAt(endIndex - 1)) == 1;
-                if (endIndex < input.length() && (endIndex - startIndex) > 1 && !isWhitespace(c0)) {
+                if ((endIndex < input.length()) && ((endIndex - startIndex) > 1) && !isWhitespace(c0)) {
                     endIndex--;
                 }
             }

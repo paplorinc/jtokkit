@@ -116,7 +116,8 @@ public class Cl100kBaseTest {
                 "ﮀ\n ",
                 "\uD83D\uDE10\uD86B\uDDABX",
                 "෫\uD838\uDD44",
-                "\uD871\uDD79\n  "
+                "\uD871\uDD79\n  ",
+                " \uD83D\uDE08b\n\uD844\uDDAE'ſ\uD84F\uDDB8\uD84C\uDD2CƘ淚"
         );
         var bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder();
         for (var text : texts) {
