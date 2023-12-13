@@ -13,7 +13,7 @@ import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class CompactTokenEncoder {
-    private int[] byteEncoders; // TODO small encoder with two arrays and binary search
+    private int[] byteEncoders;
     private Long2IntMap longEncoders;
     private int length = 0;
 
@@ -224,7 +224,7 @@ public class CompactTokenEncoder {
 
     public int encode(long key) {
         if (byteSize(key) == 1) {
-            return byteEncoders[(int) ((key >> Byte.SIZE) & 0xFF)];
+            return byteEncoders[(int) (key >> Byte.SIZE)];
         } else {
             return longEncoders.getOrDefault(key, MAX_RANK);
         }
