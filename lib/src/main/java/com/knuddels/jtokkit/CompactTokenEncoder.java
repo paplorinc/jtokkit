@@ -7,9 +7,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.IntStream;
 
-import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
+import static com.knuddels.jtokkit.TokenEncoder.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class CompactTokenEncoder {
@@ -82,36 +81,7 @@ public class CompactTokenEncoder {
     }
 
     public static int byteSize(long payload) {
-        return (int) (payload & 0xFF);
-    }
-
-    private static int getMinRankIndex(int[] indexedRanks, int last) {
-        var minRankIndex = -1;
-        var minRank = MAX_RANK;
-
-        var i = 0;
-        for (; i <= last - 2; i += 2) { // Unrolled loop
-            {
-                var r = rank(indexedRanks[i]);
-                if (r < minRank) {
-                    minRankIndex = i;
-                    minRank = r;
-                }
-            }
-            {
-                var r = rank(indexedRanks[i + 1]);
-                if (r < minRank) {
-                    minRankIndex = i + 1;
-                    minRank = r;
-                }
-            }
-        }
-
-        if (i < last && rank(indexedRanks[i]) < minRank) {
-            return i;
-        } else {
-            return minRankIndex;
-        }
+        return (byte) payload;
     }
 
     static long getSubToken(long payload, int startIndex, int endIndex) {
@@ -131,32 +101,8 @@ public class CompactTokenEncoder {
         }
     }
 
-    static int index(int indexedRank) {
-        return indexedRank >>> 20;
-    }
-
-    static int rank(int indexedRank) {
-        return indexedRank & ~(-1 << 20);
-    }
-
-    static int combine(int index, int rank) {
-        assert index < (1 << 12);
-        assert rank < (1 << 20);
-        var result = (index << 20) | rank;
-        assert index == index(result);
-        assert rank == rank(result);
-        return result;
-    }
-
-    static int setRank(int indexedRank, int rank) {
-        assert rank < (1 << 20);
-        var result = indexedRank & (-1 << 20) | rank;
-        assert index(indexedRank) == index(result);
-        assert rank == rank(result);
-        return result;
-    }
-
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
+        assert accepts(utf8Bytes.size());
         var match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
         var encoded = encode(match);
         if (encoded != MAX_RANK) {
@@ -167,57 +113,59 @@ public class CompactTokenEncoder {
         } else {
             var length = byteSize(match);
             assert length > 1 && length < Long.BYTES;
-            var indexedRanks = getIndexedRanks(match, length);
-            var tokenCount = mergeBytesAndGetTokenCount(match, length, indexedRanks);
+            var ranks = getRanks(match, length);
+            var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks);
             if (keepEncodings) {
                 var start = 0;
-                for (var i = 0; i < tokenCount && out.size() < maxTokenCount; i++) {
-                    var end = index(indexedRanks[i + 1]);
-                    var token = encode(match, start, end);
-                    assert token != MAX_RANK;
-                    out.add(token);
-
-                    start = end;
+                while (start < length && ranks[start] == DUMMY_RANK) {
+                    start++;
+                }
+                for (var end = 1; end < ranks.length && out.size() < maxTokenCount; end++) {
+                    if (ranks[end] != DUMMY_RANK) {
+                        var token = encode(match, start, end);
+                        assert token != MAX_RANK;
+                        out.add(token);
+                        start = end;
+                    }
                 }
             }
             return tokenCount;
         }
     }
 
-    int[] getIndexedRanks(long piece, int tokenCount) {
+    int[] getRanks(long piece, int tokenCount) {
         assert tokenCount > 1 : "Already filtered out";
-        var indexedRanks = new int[tokenCount + 1];
+        var ranks = new int[tokenCount + 1];
         for (var i = 0; i < tokenCount - 1; i++) {
-            var encoded = encode(piece, i, i + 2);
-            indexedRanks[i] = combine(i, encoded);
+            ranks[i] = encode(piece, i, i + 2);
         }
-        indexedRanks[tokenCount - 1] = combine(tokenCount - 1, MAX_RANK);
-        indexedRanks[tokenCount] = combine(tokenCount, MAX_RANK);
-        return indexedRanks;
+        ranks[tokenCount - 1] = MAX_RANK;
+        ranks[tokenCount] = MAX_RANK;
+        return ranks;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int remaining, int[] indexedRanks) {
+    int mergeBytesAndGetTokenCount(long piece, int remaining, int[] ranks) {
         assert remaining > 1;
+        int minRankIndex;
         while (true) {
-            var minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
+            minRankIndex = getMinRankIndex(ranks, ranks.length - 3);
             if (minRankIndex < 0) {
                 break;
             }
-            var previousIndex = minRankIndex - 1;
-            var nextIndex = minRankIndex + 1;
-            var nextNextIndex = nextIndex + 1;
-            var nextNextNextIndex = nextNextIndex + 1;
+            var previousIndex = getPreviousIndex(ranks, minRankIndex - 1);
+            var nextIndex = getNextIndex(ranks, minRankIndex + 1);
+            var nextNextIndex = getNextIndex(ranks, nextIndex + 1);
+            var nextNextNextIndex = getNextIndex(ranks, nextNextIndex + 1);
 
-            var newMinRank = getRank(piece, indexedRanks, minRankIndex, nextNextNextIndex, remaining);
-            indexedRanks[minRankIndex] = setRank(indexedRanks[minRankIndex], newMinRank);
+            var newMinRank = nextNextNextIndex < ranks.length ? encode(piece, minRankIndex, nextNextNextIndex) : MAX_RANK;
+            ranks[minRankIndex] = newMinRank;
             if (previousIndex >= 0) {
-                var newPrevMinRank = getRank(piece, indexedRanks, previousIndex, nextNextIndex, remaining);
-                indexedRanks[previousIndex] = setRank(indexedRanks[previousIndex], newPrevMinRank);
+                var newPrevMinRank = nextNextIndex < ranks.length ? encode(piece, previousIndex, nextNextIndex) : MAX_RANK;
+                ranks[previousIndex] = newPrevMinRank;
             }
 
             remaining--;
-            assert IntStream.range(remaining, indexedRanks.length).allMatch(i -> rank(indexedRanks[i]) == MAX_RANK); // remaining ones will always be MAX_RANK values
-            System.arraycopy(indexedRanks, nextNextIndex, indexedRanks, nextIndex, remaining - minRankIndex);
+            ranks[nextIndex] = DUMMY_RANK;
         }
         return remaining;
     }
@@ -241,16 +189,6 @@ public class CompactTokenEncoder {
             var subToken = getSubToken(piece, start, end);
             assert CompactTokenEncoder.accepts(length);
             return encode(subToken);
-        }
-    }
-
-    private int getRank(long piece, int[] indexedRanks, int startIndex, int endIndex, int size) {
-        if (endIndex <= size) {
-            var pieceStartIndex = index(indexedRanks[startIndex]);
-            var pieceEndIndex = index(indexedRanks[endIndex]);
-            return encode(piece, pieceStartIndex, pieceEndIndex);
-        } else {
-            return MAX_RANK;
         }
     }
 

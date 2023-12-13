@@ -9,17 +9,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
-    public static final int MAX_RANK = (1 << 20) - 1;
-    private static final int DUMMY_RANK = Integer.MAX_VALUE;
+    public static final int DUMMY_RANK = Integer.MAX_VALUE;
+    public static final int MAX_RANK = Integer.MAX_VALUE - 1;
     private final Map<ImmutableByteArray, Integer> encoders;
-    public int minTokenSize = Integer.MAX_VALUE;
     public int maxTokenSize = 0;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
         this.encoders = new ConcurrentHashMap<>(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k.length)) {
-                minTokenSize = Math.min(minTokenSize, k.length);
                 maxTokenSize = Math.max(maxTokenSize, k.length);
                 var key = new ImmutableByteArray(k, 0, k.length);
                 encoders.put(key, v);
@@ -31,7 +29,7 @@ final class TokenEncoder {
         return !CompactTokenEncoder.accepts(length);
     }
 
-    private static int getMinRankIndex(int[] ranks, int last) {
+    public static int getMinRankIndex(int[] ranks, int last) {
         var minRankIndex = -1;
         var minRank = MAX_RANK;
 
@@ -65,14 +63,14 @@ final class TokenEncoder {
         return bytes == null ? "·" : new String(bytes, UTF_8);
     }
 
-    private static int getNextIndex(int[] ranks, int nextIndex) {
+    public static int getNextIndex(int[] ranks, int nextIndex) {
         while (nextIndex < ranks.length && ranks[nextIndex] == DUMMY_RANK) {
             nextIndex++;
         }
         return nextIndex;
     }
 
-    private static int getPreviousIndex(int[] ranks, int previousIndex) {
+    public static int getPreviousIndex(int[] ranks, int previousIndex) {
         while (previousIndex >= 0 && ranks[previousIndex] == DUMMY_RANK) {
             previousIndex--;
         }
@@ -80,7 +78,6 @@ final class TokenEncoder {
     }
 
     int encode(ImmutableByteArray payload) {
-        assert payload.length() >= minTokenSize;
         if (payload.length() <= maxTokenSize) {
             var result = encoders.get(payload); // getOrDefault is slower
             return result != null ? result : MAX_RANK;
@@ -103,19 +100,15 @@ final class TokenEncoder {
             var ranks = getRanks(compactTokenEncoder, match, length);
             var tokenCount = mergeBytesAndGetTokenCount(encodedToDecoded, compactTokenEncoder, match, length, ranks);
             if (keepEncodings) {
-//                System.out.println("addTokensAndGetCount resulted in:");
                 var start = 0;
                 while (start < length && ranks[start] == DUMMY_RANK) {
                     start++;
                 }
-                for (var i = 0; i < ranks.length - 1 && out.size() < maxTokenCount; i++) {
-                    var end = i + 1;
+                for (var end = 1; end < ranks.length && out.size() < maxTokenCount; end++) {
                     if (ranks[end] != DUMMY_RANK) {
                         var token = encode(compactTokenEncoder, match, start, end);
                         assert token != MAX_RANK;
                         out.add(token);
-//                        System.out.println("`" + getString(encodedToDecoded, token) + "`");
-
                         start = end;
                     }
                 }
