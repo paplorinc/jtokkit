@@ -9,7 +9,7 @@ import static java.lang.Character.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.binarySearch;
 
-public class Parser {
+public class Cl100kParser {
     private static final String SDTM = "sdtmSDTM";
     private static final String SIMPLE_WHITESPACES = "\t\n\u000B\u000C\r";
     private static final int[] REMAINING_WHITESPACES = "\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000".codePoints().sorted().toArray();

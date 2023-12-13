@@ -236,7 +236,7 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            for (ByteArrayList utf8Bytes : Parser.split(testString)) {
+            for (ByteArrayList utf8Bytes : Cl100kParser.split(testString)) {
                 actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
             }
 

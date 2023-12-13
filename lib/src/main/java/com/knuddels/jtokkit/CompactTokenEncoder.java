@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -52,10 +51,10 @@ public class CompactTokenEncoder {
         assert length > 0 : "Too small byte array: " + new String(bytes, UTF_8);
         assert accepts(length) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
 
-        long finalResult = bytes[start] & 0xFFL;
+        var finalResult = bytes[start] & 0xFFL;
         if (length > 1) {
-            int i = start + 2;
-            long result2 = bytes[start + 1] & 0xFFL;
+            var i = start + 2;
+            var result2 = bytes[start + 1] & 0xFFL;
             for (; i < end - 1; i += 2) {
                 finalResult = (finalResult << (Byte.SIZE * 2)) | (bytes[i] & 0xFFL);
                 result2 = (result2 << (Byte.SIZE * 2)) | (bytes[i + 1] & 0xFFL);
@@ -74,8 +73,8 @@ public class CompactTokenEncoder {
     }
 
     static byte[] toByteArray(long value) {
-        byte[] bytes = new byte[byteSize(value)];
-        for (int i = bytes.length - 1; i >= 0; i--) {
+        var bytes = new byte[byteSize(value)];
+        for (var i = bytes.length - 1; i >= 0; i--) {
             value >>>= Byte.SIZE;
             bytes[i] = (byte) (value & 0xFF);
         }
@@ -86,21 +85,21 @@ public class CompactTokenEncoder {
         return (int) (payload & 0xFF);
     }
 
-    public static int getMinRankIndex(long[] indexedRanks, int last) {
-        int minRankIndex = -1;
-        int minRank = MAX_RANK;
+    private static int getMinRankIndex(int[] indexedRanks, int last) {
+        var minRankIndex = -1;
+        var minRank = MAX_RANK;
 
-        int i = 0;
+        var i = 0;
         for (; i <= last - 2; i += 2) { // Unrolled loop
             {
-                int r = rank(indexedRanks[i]);
+                var r = rank(indexedRanks[i]);
                 if (r < minRank) {
                     minRankIndex = i;
                     minRank = r;
                 }
             }
             {
-                int r = rank(indexedRanks[i + 1]);
+                var r = rank(indexedRanks[i + 1]);
                 if (r < minRank) {
                     minRankIndex = i + 1;
                     minRank = r;
@@ -116,14 +115,14 @@ public class CompactTokenEncoder {
     }
 
     static long getSubToken(long payload, int startIndex, int endIndex) {
-        int byteSize = byteSize(payload);
-        int newLength = endIndex - startIndex;
+        var byteSize = byteSize(payload);
+        var newLength = endIndex - startIndex;
         if (byteSize == newLength) {
             return payload;
         } else {
-            int shift = (1 + byteSize - endIndex) * Byte.SIZE;
-            long mask = -1L >>> -(newLength * Byte.SIZE);
-            long result = (payload >>> shift) & mask;
+            var shift = (1 + byteSize - endIndex) * Byte.SIZE;
+            var mask = -1L >>> -(newLength * Byte.SIZE);
+            var result = (payload >>> shift) & mask;
             result = (result << Byte.SIZE) | newLength;
 
             assert newLength == byteSize(result) : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
@@ -132,9 +131,34 @@ public class CompactTokenEncoder {
         }
     }
 
+    static int index(int indexedRank) {
+        return indexedRank >>> 20;
+    }
+
+    static int rank(int indexedRank) {
+        return indexedRank & ~(-1 << 20);
+    }
+
+    static int combine(int index, int rank) {
+        assert index < (1 << 12);
+        assert rank < (1 << 20);
+        var result = (index << 20) | rank;
+        assert index == index(result);
+        assert rank == rank(result);
+        return result;
+    }
+
+    static int setRank(int indexedRank, int rank) {
+        assert rank < (1 << 20);
+        var result = indexedRank & (-1 << 20) | rank;
+        assert index(indexedRank) == index(result);
+        assert rank == rank(result);
+        return result;
+    }
+
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
-        long match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
-        int encoded = encode(match);
+        var match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
+        var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
                 out.add(encoded);
@@ -143,12 +167,12 @@ public class CompactTokenEncoder {
         } else {
             var length = byteSize(match);
             assert length > 1 && length < Long.BYTES;
-            long[] indexedRanks = getIndexedRanks(match, length);
-            int tokenCount = mergeBytesAndGetTokenCount(match, length, indexedRanks);
+            var indexedRanks = getIndexedRanks(match, length);
+            var tokenCount = mergeBytesAndGetTokenCount(match, length, indexedRanks);
             if (keepEncodings) {
-                int start = 0;
-                for (int i = 0; i < tokenCount && out.size() < maxTokenCount; i++) {
-                    int end = index(indexedRanks[i + 1]);
+                var start = 0;
+                for (var i = 0; i < tokenCount && out.size() < maxTokenCount; i++) {
+                    var end = index(indexedRanks[i + 1]);
                     var token = encode(match, start, end);
                     assert token != MAX_RANK;
                     out.add(token);
@@ -160,10 +184,10 @@ public class CompactTokenEncoder {
         }
     }
 
-    long[] getIndexedRanks(long piece, int tokenCount) {
+    int[] getIndexedRanks(long piece, int tokenCount) {
         assert tokenCount > 1 : "Already filtered out";
-        long[] indexedRanks = new long[tokenCount + 1];
-        for (int i = 0; i < tokenCount - 1; i++) {
+        var indexedRanks = new int[tokenCount + 1];
+        for (var i = 0; i < tokenCount - 1; i++) {
             var encoded = encode(piece, i, i + 2);
             indexedRanks[i] = combine(i, encoded);
         }
@@ -172,10 +196,10 @@ public class CompactTokenEncoder {
         return indexedRanks;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int remaining, long[] indexedRanks) {
+    int mergeBytesAndGetTokenCount(long piece, int remaining, int[] indexedRanks) {
         assert remaining > 1;
         while (true) {
-            int minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
+            var minRankIndex = getMinRankIndex(indexedRanks, remaining - 1);
             if (minRankIndex < 0) {
                 break;
             }
@@ -207,7 +231,7 @@ public class CompactTokenEncoder {
     }
 
     private int encode(long piece, int start, int end) {
-        int length = end - start;
+        var length = end - start;
         var fullByteSize = byteSize(piece);
         if (length == fullByteSize) {
             assert start == 0;
@@ -220,10 +244,10 @@ public class CompactTokenEncoder {
         }
     }
 
-    private int getRank(long piece, long[] parts, int startIndex, int endIndex, int size) {
+    private int getRank(long piece, int[] indexedRanks, int startIndex, int endIndex, int size) {
         if (endIndex <= size) {
-            int pieceStartIndex = index(parts[startIndex]);
-            int pieceEndIndex = index(parts[endIndex]);
+            var pieceStartIndex = index(indexedRanks[startIndex]);
+            var pieceEndIndex = index(indexedRanks[endIndex]);
             return encode(piece, pieceStartIndex, pieceEndIndex);
         } else {
             return MAX_RANK;

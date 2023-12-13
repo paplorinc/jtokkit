@@ -30,7 +30,7 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    @Benchmark
+//    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;

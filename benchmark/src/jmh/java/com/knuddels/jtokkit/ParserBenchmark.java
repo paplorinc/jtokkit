@@ -43,49 +43,49 @@ public class ParserBenchmark {
     //    @Benchmark
     public void benchmarkIsUnicodeWhitespace(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isWhitespace(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isWhitespace(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNumeric(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsUnicodeLetter(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isLetter(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isLetter(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isLetterOrNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isLetterOrNumeric(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsNewline(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isNewline(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNewline(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsWhitespaceOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isWhitespaceOrLetterOrNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isWhitespaceOrLetterOrNumeric(cp)));
         }
     }
 
     //    @Benchmark
     public void benchmarkIsNewlineOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Parser.isNewlineOrLetterOrNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNewlineOrLetterOrNumeric(cp)));
         }
     }
 }

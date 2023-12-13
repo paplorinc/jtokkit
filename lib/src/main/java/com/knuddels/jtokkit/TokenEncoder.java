@@ -6,19 +6,20 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.knuddels.jtokkit.GptBytePairEncoding.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
-    public static final int DUMMY_RANK = Integer.MAX_VALUE;
-    public static final int MAX_RANK = DUMMY_RANK - 1;
+    public static final int MAX_RANK = (1 << 20) - 1;
+    private static final int DUMMY_RANK = Integer.MAX_VALUE;
     private final Map<ImmutableByteArray, Integer> encoders;
+    public int minTokenSize = Integer.MAX_VALUE;
     public int maxTokenSize = 0;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
         this.encoders = new ConcurrentHashMap<>(encoder.size());
         encoder.forEach((k, v) -> {
             if (accepts(k.length)) {
+                minTokenSize = Math.min(minTokenSize, k.length);
                 maxTokenSize = Math.max(maxTokenSize, k.length);
                 var key = new ImmutableByteArray(k, 0, k.length);
                 encoders.put(key, v);
@@ -30,21 +31,21 @@ final class TokenEncoder {
         return !CompactTokenEncoder.accepts(length);
     }
 
-    public static int getMinRankIndex(long[] indexedRanks, int last) {
-        int minRankIndex = -1;
-        int minRank = MAX_RANK;
+    private static int getMinRankIndex(long[] indexedRanks, int last) {
+        var minRankIndex = -1;
+        var minRank = MAX_RANK;
 
-        int i = 0;
+        var i = 0;
         for (; i <= last - 1; i += 2) { // Unrolled loop
             {
-                int r = rank(indexedRanks[i]);
+                var r = rank(indexedRanks[i]);
                 if (r < minRank) {
                     minRankIndex = i;
                     minRank = r;
                 }
             }
             {
-                int r = rank(indexedRanks[i + 1]);
+                var r = rank(indexedRanks[i + 1]);
                 if (r < minRank) {
                     minRankIndex = i + 1;
                     minRank = r;
@@ -78,9 +79,32 @@ final class TokenEncoder {
         return previousIndex;
     }
 
+    static int index(long indexedRank) {
+        return (int) (indexedRank >>> Integer.SIZE);
+    }
+
+    static int rank(long indexedRank) {
+        return (int) indexedRank;
+    }
+
+    static long combine(long index, int rank) {
+        var result = (index << Integer.SIZE) | rank;
+        assert index == index(result);
+        assert rank == rank(result);
+        return result;
+    }
+
+    static long setRank(long indexedRank, int rank) {
+        var result = indexedRank & (-1L << Integer.SIZE) | rank;
+        assert index(indexedRank) == index(result);
+        assert rank == rank(result);
+        return result;
+    }
+
     int encode(ImmutableByteArray payload) {
+        assert payload.length() >= minTokenSize;
         if (payload.length() <= maxTokenSize) {
-            Integer result = encoders.get(payload); // getOrDefault is slower
+            var result = encoders.get(payload); // getOrDefault is slower
             return result != null ? result : MAX_RANK;
         } else {
             return MAX_RANK;
@@ -89,8 +113,8 @@ final class TokenEncoder {
 
     public int addTokensAndGetCount(Map<Integer, byte[]> encodedToDecoded, CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out) {
         assert accepts(utf8Bytes.size());
-        ImmutableByteArray match = new ImmutableByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
-        int encoded = encode(match);
+        var match = new ImmutableByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
+        var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
                 out.add(encoded);
@@ -98,18 +122,18 @@ final class TokenEncoder {
             return 1;
         } else {
             var length = match.length();
-            long[] indexedRanks = getIndexedRanks(compactTokenEncoder, match, length);
-            int tokenCount = mergeBytesAndGetTokenCount(encodedToDecoded, compactTokenEncoder, match, length, indexedRanks);
+            var indexedRanks = getIndexedRanks(compactTokenEncoder, match, length);
+            var tokenCount = mergeBytesAndGetTokenCount(encodedToDecoded, compactTokenEncoder, match, length, indexedRanks);
             if (keepEncodings) {
 //                System.out.println("addTokensAndGetCount resulted in:");
-                int start = 0;
+                var start = 0;
                 while (start < length && indexedRanks[start] == DUMMY_RANK) {
                     start++;
                 }
-                for (int i = 0; i < indexedRanks.length - 1 && out.size() < maxTokenCount; i++) {
+                for (var i = 0; i < indexedRanks.length - 1 && out.size() < maxTokenCount; i++) {
                     var indexedRank = indexedRanks[i + 1];
                     if (indexedRank != DUMMY_RANK) {
-                        int end = index(indexedRank);
+                        var end = index(indexedRank);
 
                         var token = encode(compactTokenEncoder, match, start, end);
                         assert token != MAX_RANK;
@@ -126,8 +150,8 @@ final class TokenEncoder {
 
     long[] getIndexedRanks(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount) {
         assert tokenCount > 1 : "Already filtered out";
-        long[] indexedRanks = new long[tokenCount + 1];
-        for (int i = 0; i < tokenCount - 1; i++) {
+        var indexedRanks = new long[tokenCount + 1];
+        for (var i = 0; i < tokenCount - 1; i++) {
             var encoded = encode(compactTokenEncoder, piece, i, i + 2);
             indexedRanks[i] = combine(i, encoded);
         }
@@ -167,7 +191,7 @@ final class TokenEncoder {
     }
 
     private int encode(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int start, int end) {
-        int length = end - start;
+        var length = end - start;
         if (length == piece.length()) {
             assert start == piece.getStart() && end == piece.getEnd();
             assert accepts(piece.length());
@@ -185,8 +209,8 @@ final class TokenEncoder {
 
     private int getRank(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, long[] indexedRanks, int startIndex, int endIndex) {
         if (endIndex < indexedRanks.length) {
-            int pieceStartIndex = index(indexedRanks[startIndex]);
-            int pieceEndIndex = index(indexedRanks[endIndex]);
+            var pieceStartIndex = index(indexedRanks[startIndex]);
+            var pieceEndIndex = index(indexedRanks[endIndex]);
             return encode(compactTokenEncoder, piece, pieceStartIndex, pieceEndIndex);
         } else {
             return MAX_RANK;

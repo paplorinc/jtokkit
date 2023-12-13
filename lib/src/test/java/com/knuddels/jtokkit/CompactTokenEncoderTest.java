@@ -6,32 +6,33 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.knuddels.jtokkit.CompactTokenEncoder.*;
+import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CompactTokenEncoderTest {
     @Test
     void testFromWithSingleByte() {
-        byte[] bytes = new byte[]{(byte) 0xA5};
-        long result = from(bytes, 0, bytes.length);
+        var bytes = new byte[]{(byte) 0xA5};
+        var result = from(bytes, 0, bytes.length);
         assertEquals(byteSize(result), bytes.length);
         assertArrayEquals(toByteArray(result), bytes);
     }
 
     @Test
     void testFromWithMultipleBytes() {
-        byte[] bytes = new byte[]{(byte) 0xA5, (byte) 0xB4, (byte) 0xC3};
-        long result = from(bytes, 0, bytes.length);
+        var bytes = new byte[]{(byte) 0xA5, (byte) 0xB4, (byte) 0xC3};
+        var result = from(bytes, 0, bytes.length);
         assertEquals(byteSize(result), bytes.length);
         assertArrayEquals(toByteArray(result), bytes);
     }
 
     @Test
     void testGetSubToken() {
-        byte[] bytes = new byte[]{(byte) 0xA5, (byte) 0xB4, (byte) 0xC3};
-        long fullToken = from(bytes, 0, bytes.length);
-        long subToken = getSubToken(fullToken, 1, 3);
-        byte[] expectedSubArray = new byte[]{(byte) 0xB4, (byte) 0xC3};
+        var bytes = new byte[]{(byte) 0xA5, (byte) 0xB4, (byte) 0xC3};
+        var fullToken = from(bytes, 0, bytes.length);
+        var subToken = getSubToken(fullToken, 1, 3);
+        var expectedSubArray = new byte[]{(byte) 0xB4, (byte) 0xC3};
         assertArrayEquals(toByteArray(subToken), expectedSubArray);
     }
 
@@ -39,8 +40,41 @@ class CompactTokenEncoderTest {
     void testEncodeWithLongKey() {
         Map<byte[], Integer> encoder = new HashMap<>();
         encoder.put(new byte[]{(byte) 0xA5, (byte) 0xB4}, 456);
-        CompactTokenEncoder tokenEncoder = new CompactTokenEncoder(encoder);
-        long key = from(new byte[]{(byte) 0xA5, (byte) 0xB4}, 0, 2);
+        var tokenEncoder = new CompactTokenEncoder(encoder);
+        var key = from(new byte[]{(byte) 0xA5, (byte) 0xB4}, 0, 2);
         assertEquals(tokenEncoder.encode(key), 456);
+    }
+
+    @Test
+    public void testCombineAndRetrieve() {
+        var index = 1234;
+        var rank = 567;
+
+        var combined = combine(index, rank);
+
+        assertEquals(index, index(combined));
+        assertEquals(rank, rank(combined));
+
+        var newRank = 89;
+        var updated = setRank(combined, newRank);
+
+        assertEquals(index, index(updated));
+        assertEquals(newRank, rank(updated));
+    }
+
+    @Test
+    public void testCombineAndRetrieveForAllPossibleValues() {
+        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+        encoding.encodedToDecoded.keySet().forEach(rank -> {
+            for (var index = 0; index <= Long.BYTES; index++) {
+                var combined = combine(index, rank);
+                assertEquals(index, index(combined));
+                assertEquals(rank, rank(combined));
+
+                var updated = setRank(combined, MAX_RANK);
+                assertEquals(index, index(updated));
+                assertEquals(MAX_RANK, rank(updated));
+            }
+        });
     }
 }

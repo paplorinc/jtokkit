@@ -10,23 +10,19 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 public class GptBytePairEncoding implements Encoding {
 
+    final Map<Integer, byte[]> encodedToDecoded;
     private final String name;
     private final Pattern pattern;
     private final StringEncoder specialTokensEncoder;
-
     private final CompactTokenEncoder compactTokenEncoder;
     private final TokenEncoder tokenEncoder;
-
-    private final Map<Integer, byte[]> encodedToDecoded;
 //    GptBytePairEncodingOriginal bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder(); // TODO used for testing
 
     GptBytePairEncoding(GptBytePairEncodingParams params) {
@@ -41,22 +37,6 @@ public class GptBytePairEncoding implements Encoding {
 
         this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
-    }
-
-    public static int index(long indexedRank) {
-        return (int) (indexedRank >>> Integer.SIZE);
-    }
-
-    public static int rank(long indexedRank) {
-        return (int) indexedRank;
-    }
-
-    public static long combine(long index, int rank) {
-        return (index << Integer.SIZE) | rank;
-    }
-
-    public static long setRank(long indexedRank, int rank) {
-        return indexedRank & (-1L << Integer.SIZE) | rank;
     }
 
     @Override
@@ -80,7 +60,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     private void checkForSpecialTokens(String text) {
-        for (String specialToken : specialTokensEncoder.getDecodedTokens()) {
+        for (var specialToken : specialTokensEncoder.getDecodedTokens()) {
             if (text.contains(specialToken)) {
                 throw new UnsupportedOperationException("Encoding special tokens is not supported yet.");
             }
@@ -105,10 +85,10 @@ public class GptBytePairEncoding implements Encoding {
 //        Matcher[] reference = {null};
 //        assert (reference[0] = bytePairEncodingOriginal.pattern.matcher(text)) != null;
 
-        IntArrayList out = new IntArrayList();
-        int tokenCount = 0;
+        var out = new IntArrayList();
+        var tokenCount = 0;
         if ("cl100k_base".equals(name)) {
-            for (ByteArrayList utf8Bytes : Parser.split(text)) {
+            for (var utf8Bytes : Cl100kParser.split(text)) {
 //                assert reference[0].find() : "`" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
 //                assert Arrays.equals(reference[0].group().getBytes(UTF_8), utf8Bytes.toByteArray()) : "`" + reference[0].group() + "` != `" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
                 tokenCount += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out);
@@ -117,22 +97,22 @@ public class GptBytePairEncoding implements Encoding {
                 }
             }
         } else {
-            for (Matcher matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
-                ByteArrayList bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
+            for (var matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
+                var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
                 tokenCount += processTokens(maxTokenCount, keepEncodings, bytes, out);
             }
         }
 
         if (maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
-            for (int tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
-                int size = out.size() - tokensToRemove;
-                IntArrayList tokens = new IntArrayList(size);
-                for (int i = 0; i < size; i++) {
+            for (var tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
+                var size = out.size() - tokensToRemove;
+                var tokens = new IntArrayList(size);
+                for (var i = 0; i < size; i++) {
                     tokens.add(out.getInt(i));
                 }
                 // TODO optimize
-                String decoded = decode(tokens);
+                var decoded = decode(tokens);
                 if (text.startsWith(decoded)) {
                     // If decoded text is equal to the head of the original text, we can safely return the tokens
                     return new EncodingResult(tokens, -1, text.length() > decoded.length());
@@ -155,8 +135,8 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public long countBytes(String text) {
-        long matchedCharacterCount = 0L;
-        for (ByteArrayList utf8Bytes : Parser.split(text)) {
+        var matchedCharacterCount = 0L;
+        for (var utf8Bytes : Cl100kParser.split(text)) {
             matchedCharacterCount += utf8Bytes.size();
         }
         return matchedCharacterCount;
@@ -187,8 +167,8 @@ public class GptBytePairEncoding implements Encoding {
     public byte[] decodeBytes(IntList tokens) {
         ByteList out = new ByteArrayList(2 * tokens.size());
         tokens.forEach(token -> {
-            byte[] decodedToken = decodeToken(token);
-            for (byte b : decodedToken) {
+            var decodedToken = decodeToken(token);
+            for (var b : decodedToken) {
                 out.add(b);
             }
         });
@@ -201,8 +181,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     public byte[] decodeToken(int token) {
-        assert token != MAX_RANK;
-        byte[] decodedToken = encodedToDecoded.computeIfAbsent(token, specialTokensEncoder::decodeIfPresent);
+        var decodedToken = encodedToDecoded.computeIfAbsent(token, specialTokensEncoder::decodeIfPresent);
         return requireNonNull(decodedToken);
     }
 }
