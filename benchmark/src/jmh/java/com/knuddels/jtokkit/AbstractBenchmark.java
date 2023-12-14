@@ -30,7 +30,7 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    @Benchmark
+    //    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
@@ -43,7 +43,7 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    @Benchmark
+    //    @Benchmark
     public int benchmarkCl100kBaseTokens(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBase;
@@ -56,12 +56,12 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    @Benchmark
+    //    @Benchmark
     public int benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state) {
         return state.cl100kBaseOriginal.countTokens(state.bigFileContent);
     }
 
-    @Benchmark
+    //    @Benchmark
     public int benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state) {
         return state.cl100kBase.countTokens(state.bigFileContent);
     }
