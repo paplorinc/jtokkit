@@ -14,7 +14,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class CompactTokenEncoder {
     private int[] byteEncoders;
-    private Long2IntMap longEncoders;
+    private Long2IntMap[] longEncoders;
     private int length = 0;
 
     public CompactTokenEncoder(Map<byte[], Integer> encoder) {
@@ -22,7 +22,13 @@ public class CompactTokenEncoder {
             byteEncoders = new int[1 << Byte.SIZE];
             Arrays.fill(byteEncoders, MAX_RANK);
 
-            longEncoders = new Long2IntOpenHashMap(encoder.size());
+            longEncoders = new Long2IntMap[Long.BYTES];
+            for (int i = 2; i < longEncoders.length; i++) {
+                longEncoders[i] = new Long2IntOpenHashMap(encoder.size() / (Long.BYTES - 2));
+                longEncoders[i].defaultReturnValue(MAX_RANK);
+            }
+            assert longEncoders[0] == longEncoders[1];
+
             encoder.forEach((k, v) -> {
                 assert v >= 0 : "Negative token: " + new String(k, UTF_8);
                 if (accepts(k.length)) {
@@ -31,10 +37,12 @@ public class CompactTokenEncoder {
                     var key = from(k, 0, k.length);
                     if (k.length == 1) {
                         var index = (int) key >> Byte.SIZE; // drop length
-                        assert byteEncoders[index] == MAX_RANK : "Duplicate byte token: " + new String(k, UTF_8);
+                        assert byteEncoders[index] == MAX_RANK : "Duplicate token: " + new String(k, UTF_8);
                         byteEncoders[index] = v;
                     } else {
-                        longEncoders.put(key, (int) v);
+                        var longEncoder = longEncoders[k.length];
+                        assert longEncoder.get(key) == MAX_RANK : "Duplicate token: " + new String(k, UTF_8);
+                        longEncoder.put(key, (int) v);
                     }
                     assert encode(key) == v;
                 }
@@ -172,10 +180,11 @@ public class CompactTokenEncoder {
     }
 
     public int encode(long key) {
-        if (byteSize(key) == 1) {
+        var size = byteSize(key);
+        if (size == 1) {
             return byteEncoders[(int) (key >> Byte.SIZE)];
         } else {
-            return longEncoders.getOrDefault(key, MAX_RANK);
+            return longEncoders[size].get(key);
         }
     }
 

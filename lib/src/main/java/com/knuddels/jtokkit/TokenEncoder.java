@@ -117,24 +117,28 @@ final class TokenEncoder {
             return 1;
         } else {
             var length = match.length();
-            initRanks(compactTokenEncoder, match, length, ranks);
-            var tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, length, ranks);
-            if (keepEncodings) {
-                var start = 0;
-                while (start < length && ranks.getInt(start) == DUMMY_RANK) {
-                    start++;
-                }
-                for (var end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
-                    if (ranks.getInt(end) != DUMMY_RANK) {
-                        var token = encode(compactTokenEncoder, match, start, end);
-                        assert token != MAX_RANK : "Token should not be MAX_RANK";
-                        out.add(token);
-                        start = end;
-                    }
+            return addTokensAndGetCountSmall(compactTokenEncoder, maxTokenCount, keepEncodings, out, ranks, match, length);
+        }
+    }
+
+    private int addTokensAndGetCountSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ImmutableByteArray match, int length) {
+        initRanks(compactTokenEncoder, match, length, ranks);
+        var tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, length, ranks);
+        if (keepEncodings) {
+            var start = 0;
+            while (start < length && ranks.getInt(start) == DUMMY_RANK) {
+                start++;
+            }
+            for (var end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
+                if (ranks.getInt(end) != DUMMY_RANK) {
+                    var token = encode(compactTokenEncoder, match, start, end);
+                    assert token != MAX_RANK : "Token should not be MAX_RANK";
+                    out.add(token);
+                    start = end;
                 }
             }
-            return tokenCount;
         }
+        return tokenCount;
     }
 
     void initRanks(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, IntArrayList ranks) {
@@ -149,7 +153,7 @@ final class TokenEncoder {
     }
 
     int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int remaining, IntArrayList ranks) {
-        assert remaining > 1;
+        assert accepts(remaining);
         while (true) {
             var minRankIndex = getMinRankIndex(ranks);
             if (minRankIndex < 0) {
