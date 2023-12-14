@@ -11,6 +11,7 @@ import java.util.Map;
 
 import static com.knuddels.jtokkit.TokenEncoder.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.IntStream.range;
 
 public class CompactTokenEncoder {
     private int[] byteEncoders;
@@ -23,10 +24,7 @@ public class CompactTokenEncoder {
             Arrays.fill(byteEncoders, MAX_RANK);
 
             longEncoders = new Long2IntMap[Long.BYTES];
-            for (int i = 2; i < longEncoders.length; i++) {
-                longEncoders[i] = new Long2IntOpenHashMap(encoder.size() / (Long.BYTES - 2));
-                longEncoders[i].defaultReturnValue(MAX_RANK);
-            }
+            range(2, longEncoders.length).forEach(i -> longEncoders[i] = new Long2IntOpenHashMap());
             assert longEncoders[0] == longEncoders[1];
 
             encoder.forEach((k, v) -> {
@@ -40,13 +38,17 @@ public class CompactTokenEncoder {
                         assert byteEncoders[index] == MAX_RANK : "Duplicate token: " + new String(k, UTF_8);
                         byteEncoders[index] = v;
                     } else {
-                        var longEncoder = longEncoders[k.length];
-                        assert longEncoder.get(key) == MAX_RANK : "Duplicate token: " + new String(k, UTF_8);
-                        longEncoder.put(key, (int) v);
+                        longEncoders[k.length].put(key, (int) v);
                     }
                     assert encode(key) == v;
                 }
             });
+
+            for (int i = 2; i < longEncoders.length; i++) {
+                longEncoders[i] = new Long2IntOpenHashMap(longEncoders[i], .2f);
+                longEncoders[i].defaultReturnValue(MAX_RANK);
+            }
+            assert longEncoders[0] == longEncoders[1];
         }
     }
 

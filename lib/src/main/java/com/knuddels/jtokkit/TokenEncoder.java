@@ -1,29 +1,38 @@
 package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class TokenEncoder {
     public static final int DUMMY_RANK = Integer.MAX_VALUE;
     public static final int MAX_RANK = Integer.MAX_VALUE - 1;
-    private final Map<ImmutableByteArray, Integer> encoders;
-    public int maxTokenSize = 0;
+    private final Object2IntMap<?>[] encoders;
+    private int length = 0;
 
     public TokenEncoder(Map<byte[], Integer> encoder) {
-        this.encoders = new ConcurrentHashMap<>(encoder.size());
-        encoder.forEach((k, v) -> {
-            if (accepts(k.length)) {
-                maxTokenSize = Math.max(maxTokenSize, k.length);
-                var key = new ImmutableByteArray(k, 0, k.length);
-                encoders.put(key, v);
-            }
-        });
+        if (!encoder.isEmpty()) {
+            var tempEncoders = new Int2ObjectAVLTreeMap<Object2IntMap<ImmutableByteArray>>();
+            encoder.forEach((k, v) -> {
+                if (accepts(k.length)) {
+                    length++;
+                    var key = new ImmutableByteArray(k, 0, k.length);
+                    tempEncoders.computeIfAbsent(k.length, integer -> new Object2IntOpenHashMap<>()).put(key, (int) v);
+                }
+            });
+            encoders = new Object2IntMap[tempEncoders.lastIntKey() + 1];
+            tempEncoders.forEach((k, v) -> {
+                encoders[k] = new Object2IntOpenHashMap<>(v, .2f);
+                encoders[k].defaultReturnValue(MAX_RANK);
+            });
+        } else {
+            encoders = new Object2IntMap[0]; // for testing
+        }
     }
 
     static boolean accepts(int length) {
@@ -78,11 +87,6 @@ final class TokenEncoder {
         return minRankIndex;
     }
 
-    private static String getString(Map<Integer, byte[]> encodedToDecoded, long rank) {
-        var bytes = encodedToDecoded.get(rank);
-        return bytes == null ? "·" : new String(bytes, UTF_8);
-    }
-
     public static int getNextIndex(IntArrayList ranks, int nextIndex) {
         while (nextIndex < ranks.size() && ranks.getInt(nextIndex) == DUMMY_RANK) {
             nextIndex++;
@@ -98,9 +102,9 @@ final class TokenEncoder {
     }
 
     int encode(ImmutableByteArray payload) {
-        if (payload.length() <= maxTokenSize) {
-            var result = encoders.get(payload); // getOrDefault is slower
-            return result != null ? result : MAX_RANK;
+        if (payload.length() < encoders.length) {
+            var encoder = encoders[payload.length()];
+            return encoder == null ? MAX_RANK : encoder.getInt(payload);
         } else {
             return MAX_RANK;
         }
@@ -195,6 +199,6 @@ final class TokenEncoder {
     }
 
     public int length() {
-        return encoders.size();
+        return length;
     }
 }
