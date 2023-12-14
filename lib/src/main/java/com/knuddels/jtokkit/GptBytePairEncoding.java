@@ -128,7 +128,7 @@ public class GptBytePairEncoding implements Encoding {
         if (CompactTokenEncoder.accepts(utf8Bytes.size())) {
             return compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         } else if (TokenEncoder.accepts(utf8Bytes.size())) {
-            return tokenEncoder.addTokensAndGetCount(encodedToDecoded, compactTokenEncoder, maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+            return tokenEncoder.addTokensAndGetCount(compactTokenEncoder, maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         } else {
             throw new IllegalStateException();
         }
