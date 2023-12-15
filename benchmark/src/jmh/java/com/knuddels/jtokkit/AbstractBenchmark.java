@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit;
 
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.infra.Blackhole;
 
 @SuppressWarnings("DuplicatedCode")
 public abstract class AbstractBenchmark {
@@ -57,12 +58,16 @@ public abstract class AbstractBenchmark {
     }
 
     @Benchmark
-    public int benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state) {
-        return state.cl100kBaseOriginal.countTokens(state.bigFileContent);
+    public void benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state, Blackhole bh) {
+        for (int i = 0; i < 5; i++) {
+            bh.consume(state.cl100kBase.countTokens(state.bigFileContent));
+        }
     }
 
     @Benchmark
-    public int benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state) {
-        return state.cl100kBase.countTokens(state.bigFileContent);
+    public void benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state, Blackhole bh) {
+        for (int i = 0; i < 5; i++) {
+            bh.consume(state.cl100kBaseOriginal.countTokens(state.bigFileContent));
+        }
     }
 }

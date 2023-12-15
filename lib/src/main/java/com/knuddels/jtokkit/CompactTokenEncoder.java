@@ -168,15 +168,16 @@ public class CompactTokenEncoder {
             var nextNextIndex = getNextIndex(ranks, nextIndex + 1);
             var nextNextNextIndex = getNextIndex(ranks, nextNextIndex + 1);
 
-            var newMinRank = nextNextNextIndex < ranks.size() ? encode(piece, minRankIndex, nextNextNextIndex) : MAX_RANK;
-            ranks.set(minRankIndex, newMinRank);
             if (previousIndex >= 0) {
                 var newPrevMinRank = nextNextIndex < ranks.size() ? encode(piece, previousIndex, nextNextIndex) : MAX_RANK;
                 ranks.set(previousIndex, newPrevMinRank);
             }
+            var newMinRank = nextNextNextIndex < ranks.size() ? encode(piece, minRankIndex, nextNextNextIndex) : MAX_RANK;
+            ranks.set(minRankIndex, newMinRank);
+
+            ranks.set(nextIndex, DUMMY_RANK);
 
             remaining--;
-            ranks.set(nextIndex, DUMMY_RANK);
         }
         return remaining;
     }

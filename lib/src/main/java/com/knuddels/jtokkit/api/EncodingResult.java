@@ -22,7 +22,7 @@ public final class EncodingResult {
      */
     public IntList getTokens() {
         if (tokens.size() != getTokenCount()) {
-            throw new IllegalStateException("Token count does not match token list size");
+            throw new IllegalStateException("Token count does not match token list size (tokenCount=" + tokenCount + ", tokens.size()=" + tokens.size() + ")");
         }
         return tokens;
     }
