@@ -50,7 +50,7 @@ public class Cl100kParser {
             int nextIndex = startIndex + cc0;
             int c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
             int cc1 = charCount(c1);
-            if (isLetter(c0) || (isNotNewlineOrLetterOrNumeric(c0) && isLetter(c1))) {
+            if ((isNotNewlineOrLetterOrNumeric(c0) && isLetter(c1)) || isLetter(c0)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 endIndex += cc0;
                 if (isLetter(c1)) {

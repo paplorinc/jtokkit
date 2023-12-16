@@ -4,15 +4,15 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
 
-//Benchmark                                                                    (dataFolderPath)  Mode  Cnt  Score    Error  Units
-//Cl100kParserBenchmark.benchmarkIsLetter                                                  data    ss   10  0.240 ±  0.002   s/op
-//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                         data    ss   10  0.275 ±  0.018   s/op
-//Cl100kParserBenchmark.benchmarkIsNewline                                                 data    ss   10  0.079 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsNotNewlineOrLetterOrNumeric                             data    ss   10  0.382 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsNotWhitespaceOrLetterOrNumeric                          data    ss   10  0.428 ±  0.002   s/op
-//Cl100kParserBenchmark.benchmarkIsNumeric                                                 data    ss   10  0.117 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsWhitespace                                              data    ss   10  0.221 ±  0.010   s/op
-//Cl100kParserBenchmark.benchmarkToUtf8Conversion                                          data    ss   10  0.161 ±  0.004   s/op
+//Benchmark                                                                    (dataFolderPath)  Mode  Cnt  Score   Error  Units
+//Cl100kParserBenchmark.benchmarkIsLetter                                                  data    ss   10  0.239 ± 0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                         data    ss   10  0.248 ± 0.006   s/op
+//Cl100kParserBenchmark.benchmarkIsNewline                                                 data    ss   10  0.079 ± 0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsNotNewlineOrLetterOrNumeric                             data    ss   10  0.372 ± 0.005   s/op
+//Cl100kParserBenchmark.benchmarkIsNotWhitespaceOrLetterOrNumeric                          data    ss   10  0.427 ± 0.013   s/op
+//Cl100kParserBenchmark.benchmarkIsNumeric                                                 data    ss   10  0.116 ± 0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsWhitespace                                              data    ss   10  0.211 ± 0.037   s/op
+//Cl100kParserBenchmark.benchmarkToUtf8Conversion                                          data    ss   10  0.179 ± 0.031   s/op
 public class Cl100kParserBenchmark {
     @Benchmark
     public void benchmarkIsWhitespace(BenchmarkingState state, Blackhole bh) {
