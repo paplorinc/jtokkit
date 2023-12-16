@@ -84,18 +84,25 @@ public class Cl100kParser {
         }
     }
 
-    static boolean isWhitespaceOrLetterOrNumeric(int ch) {
-        return isWhitespace(ch)
-                || isLetterOrNumeric(ch);
+    static boolean isNewline(int ch) {
+        return (ch == '\r')
+                || (ch == '\n');
     }
 
-    static boolean isNewline(int ch) {
-        return (ch == '\n')
-                || (ch == '\r');
+    static boolean isNotWhitespaceOrLetterOrNumeric(int ch) {
+        if (ch < '0') {
+            return ch != ' ' && (ch > '\r' || ch < '\t');
+        } else {
+            return !isLetterOrNumeric(ch) && !isWhitespace(ch);
+        }
     }
 
     static boolean isNotNewlineOrLetterOrNumeric(int ch) {
-        return ch == ' ' || (ch < '0' ? !isNewline(ch) : !isLetterOrNumeric(ch));
+        if (ch < '0') {
+            return ch == ' ' || !isNewline(ch);
+        } else {
+            return !isLetterOrNumeric(ch);
+        }
     }
 
     public static ByteArrayList toUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
@@ -197,12 +204,12 @@ public class Cl100kParser {
                 return toUtf8Bytes(input, startIndex, endIndex, utf8Bytes);
             }
 
-            if (!isWhitespaceOrLetterOrNumeric(c0) || ((c0 == ' ') && !isWhitespaceOrLetterOrNumeric(c1))) {
+            if (isNotWhitespaceOrLetterOrNumeric(c0) || ((c0 == ' ') && isNotWhitespaceOrLetterOrNumeric(c1))) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
                 endIndex += cc0;
-                if ((endIndex < input.length()) && !isWhitespaceOrLetterOrNumeric(c1)) {
+                if ((endIndex < input.length()) && isNotWhitespaceOrLetterOrNumeric(c1)) {
                     endIndex += cc1;
-                    while ((endIndex < input.length()) && !isWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
+                    while ((endIndex < input.length()) && isNotWhitespaceOrLetterOrNumeric(c0 = input.codePointAt(endIndex))) {
                         endIndex += charCount(c0);
                     }
                 }

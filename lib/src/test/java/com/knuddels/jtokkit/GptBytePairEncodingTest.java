@@ -30,24 +30,27 @@ class GptBytePairEncodingTest {
     }
 
     @Test
+    void bytePairMerge2() {
+        System.out.println("bytePairMerge2");
+        var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        var sum = 0;
+        for (var text : Cl100kBaseTest.getTexts("../")) {
+            sum += encoding.countTokens(text);
+        }
+        System.out.println("most used characters:");
+        assertEquals(25_876_716, sum);
+    }
+
+    @Test
     void bytePairMerge3() {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
         System.out.println(encoding.encode("a b c d e f g h i j k", 5));
 
-        var sum = 0;
-        var texts = Cl100kBaseTest.getTexts("../");
-        for (var text : texts) {
-            var i = encoding.countTokens(text);
-            sum += i;
-        }
-        System.out.println(sum);
-        assertEquals(25_876_716, sum);
-
         var sum1 = 0;
-        for (var x : texts) {
-            var size = encoding.encode(x).size();
-            sum1 += size;
+        for (var x : Cl100kBaseTest.getTexts("../")) {
+            sum1 += encoding.encode(x).size();
         }
         System.out.println(sum1);
         assertEquals(25_876_716, sum1);

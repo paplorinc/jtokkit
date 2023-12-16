@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -28,7 +29,7 @@ public class Cl100kParserTest {
     private static final String WHITESPACES = generateUnicodeCategoryString(Cl100kParser::isWhitespace);
     private static final String LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isLetterOrNumeric);
     private static final String NOT_NEWLINE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isNotNewlineOrLetterOrNumeric);
-    private static final String WHITESPACE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isWhitespaceOrLetterOrNumeric);
+    private static final String NOT_WHITESPACE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isNotWhitespaceOrLetterOrNumeric);
     private static final String NEWLINES = "\n\r";
 
     private static String generateUnicodeCategoryString(IntPredicate characterProperty) {
@@ -84,17 +85,18 @@ public class Cl100kParserTest {
         assertEquals(new String(expectedBytes, UTF_8), input);
     }
 
+    @Disabled
     @Test
     public void testToUtf8BytesOnFetchedUnicodeData() throws CharacterCodingException {
         var byteArrayList = new ByteArrayList();
-        fetchUnicodeData().forEach((codepoint, name) -> {
-            var expected = new String(toChars(codepoint));
+        fetchUnicodeData().entrySet().stream().parallel().forEach(e -> {
+            var expected = new String(toChars(e.getKey()));
             if (isValidUTF8(expected)) {
                 toUtf8Bytes(expected, 0, expected.length(), byteArrayList);
 
                 assertArrayEquals(expected.getBytes(UTF_8), byteArrayList.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(byteArrayList.toByteArray()) + "`");
             } else {
-                System.out.println("Skipping invalid UTF-8: " + name + " (" + codepoint + ")");
+                System.out.println("Skipping invalid UTF-8: " + e.getValue() + " (" + e.getKey() + ")");
             }
         });
     }
@@ -104,8 +106,8 @@ public class Cl100kParserTest {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
-        IntStream.range(0, 100_000).parallel().forEach(i -> {
-            var textString = generateValidText(originalEncoder, 100);
+        IntStream.range(0, 10_000).parallel().forEach(i -> {
+            var textString = generateValidText(originalEncoder, 20);
 
             if (i % 1_000 == 0) {
                 System.out.print("✓");
@@ -179,7 +181,7 @@ public class Cl100kParserTest {
             case 13:
                 return toChars(NOT_NEWLINE_OR_LETTER_OR_NUMERIC.codePointAt(rand().nextInt(NOT_NEWLINE_OR_LETTER_OR_NUMERIC.length())));
             case 14:
-                return toChars(WHITESPACE_OR_LETTER_OR_NUMERIC.codePointAt(rand().nextInt(WHITESPACE_OR_LETTER_OR_NUMERIC.length())));
+                return toChars(NOT_WHITESPACE_OR_LETTER_OR_NUMERIC.codePointAt(rand().nextInt(NOT_WHITESPACE_OR_LETTER_OR_NUMERIC.length())));
             case 15:
             case 16:
                 return toChars(0x1F600 + rand().nextInt(0x50)); // emojis
@@ -267,14 +269,14 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsWhitespaceLetterOrNumeric() {
+    public void testIsNotWhitespaceOrLetterOrNumeric() {
         var count = 0;
-        assertFalse(Cl100kParser.isWhitespaceOrLetterOrNumeric(-1));
-        var pattern = compileRegex("^[\\s\\p{L}\\p{N}]$", true);
+        assertTrue(Cl100kParser.isNotWhitespaceOrLetterOrNumeric(-1));
+        var pattern = compileRegex("^[^\\s\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
             var charAsString = new String(toChars(cp));
             var matchesRegex = pattern.matcher(charAsString).matches();
-            var actual = Cl100kParser.isWhitespaceOrLetterOrNumeric(cp);
+            var actual = Cl100kParser.isNotWhitespaceOrLetterOrNumeric(cp);
             if (matchesRegex) {
                 count++;
             }

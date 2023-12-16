@@ -6,12 +6,12 @@ import org.openjdk.jmh.infra.Blackhole;
 
 //Benchmark                                                            (dataFolderPath)  Mode  Cnt  Score    Error  Units
 //Cl100kParserBenchmark.benchmarkIsLetter                                          data    ss   10  0.239 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                 data    ss   10  0.271 ±  0.018   s/op
+//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                 data    ss   10  0.263 ±  0.001   s/op
 //Cl100kParserBenchmark.benchmarkIsNewline                                         data    ss   10  0.079 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsNotNewlineOrLetterOrNumeric                     data    ss   10  0.353 ±  0.003   s/op
+//Cl100kParserBenchmark.benchmarkIsNotNewlineOrLetterOrNumeric                     data    ss   10  0.382 ±  0.002   s/op
+//Cl100kParserBenchmark.benchmarkIsNotWhitespaceOrLetterOrNumeric                  data    ss   10  0.431 ±  0.006   s/op
 //Cl100kParserBenchmark.benchmarkIsNumeric                                         data    ss   10  0.116 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsWhitespace                                      data    ss   10  0.114 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                     data    ss   10  0.256 ±  0.003   s/op
+//Cl100kParserBenchmark.benchmarkIsWhitespace                                      data    ss   10  0.189 ±  0.001   s/op
 //Cl100kParserBenchmark.benchmarkToUtf8Conversion                                  data    ss   10  0.159 ±  0.002   s/op
 public class Cl100kParserBenchmark {
     @Benchmark
@@ -50,9 +50,9 @@ public class Cl100kParserBenchmark {
     }
 
     @Benchmark
-    public void benchmarkIsWhitespaceOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
+    public void benchmarkIsNotWhitespaceOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isWhitespaceOrLetterOrNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNotWhitespaceOrLetterOrNumeric(cp)));
         }
     }
 
