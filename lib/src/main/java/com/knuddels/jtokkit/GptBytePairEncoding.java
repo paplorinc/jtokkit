@@ -89,14 +89,11 @@ public class GptBytePairEncoding implements Encoding {
         var ranks = new IntArrayList();
         var tokenCount = 0;
         if ("cl100k_base".equals(name)) {
-            for (var utf8Bytes : Cl100kParser.split(text)) {
+            tokenCount = Cl100kParser.split(text, maxTokenCount, utf8Bytes -> {
 //                assert reference[0].find() : "`" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
 //                assert Arrays.equals(reference[0].group().getBytes(UTF_8), utf8Bytes.toByteArray()) : "`" + reference[0].group() + "` != `" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
-                tokenCount += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
-                if (tokenCount >= maxTokenCount) {
-                    break;
-                }
-            }
+                return processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+            });
         } else {
             for (var matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
                 var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
@@ -135,14 +132,14 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public long countBytes(String text) {
-        var matchedCharacterCount = 0L;
-        for (var utf8Bytes : Cl100kParser.split(text)) {
-            matchedCharacterCount += utf8Bytes.size();
-        }
-        return matchedCharacterCount;
+        var matchedCharacterCount = new long[]{0L};
+        Cl100kParser.split(text, Integer.MAX_VALUE, utf8Bytes -> {
+            matchedCharacterCount[0] += utf8Bytes.size();
+            return 0;
+        });
+        return matchedCharacterCount[0];
     }
 
-    // TODO limit regex to max token size?
     @Override
     public int countTokens(String text) {
         return countTokens(text, Integer.MAX_VALUE);

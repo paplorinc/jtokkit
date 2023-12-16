@@ -119,7 +119,7 @@ public class Cl100kParserTest {
             var expected = originalEncoder.pattern.matcher(textString);
 
             var actualEncoded = new ArrayList<>();
-            for (ByteArrayList utf8Bytes : Cl100kParser.split(textString)) {
+            Cl100kParser.split(textString, Integer.MAX_VALUE, utf8Bytes -> {
                 assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
                 var actual = new String(utf8Bytes.toByteArray(), UTF_8);
@@ -129,7 +129,8 @@ public class Cl100kParserTest {
                 assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder));
 
                 actualEncoded.addAll(encoder.encode(actual));
-            }
+                return 0;
+            });
             assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
             assertEquals(originalEncoder.encode(textString), actualEncoded, () -> getMessage(textString, originalEncoder, encoder));

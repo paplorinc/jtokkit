@@ -1,7 +1,6 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.reference.Cl100kBaseTest;
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -19,10 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EncodingFactoryTest {
     static final String originalRegex = GptBytePairEncodingOriginal.getEncoder().pattern.pattern();
-    static final List<String> expectedOriginal = List.of("", "(?i:'s|'t|'re|'ve|'m|'ll|'d)", "[^\\r\\n\\p{L}\\p{N}]?\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*", "\\s*[\\r\\n]+", "\\s+(?!\\S)", "\\s+");
+    static final List<String> expectedOriginal = List.of("", "(?i:'s|'t|'re|'ve|'m|'ll|'d)", "[^\r\n\\p{L}\\p{N}]?\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]+[\r\n]*", "\\s*[\r\n]+", "\\s+(?!\\S)", "\\s+");
 
-    static final String currentRegex = "'(?:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+";
-    static final List<String> currentRegexParts = List.of("", "'(?:[sdmt]|ll|ve|re)", "[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*", "\\s*[\\r\\n]", "\\s+(?!\\S)", "\\s+");
+    static final String currentRegex = "'(?:[sdmt]|ll|ve|re)|[^\r\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\r\n]*|\\s*[\r\n]|\\s+(?!\\S)|\\s+";
+    static final List<String> currentRegexParts = List.of("", "'(?:[sdmt]|ll|ve|re)", "[^\r\n\\p{L}\\p{N}]?+\\p{L}+", "\\p{N}{1,3}", " ?[^\\s\\p{L}\\p{N}]++[\r\n]*", "\\s*[\r\n]", "\\s+(?!\\S)", "\\s+");
 
     static SortedMap<Integer, List<String>> getEncounters(String text, List<String> currentRegexParts, String currentRegex, boolean caseInsensitive) {
         assert currentRegexParts.stream().skip(1).collect(joining("|")).equals(currentRegex) : "Regex mismatch";
@@ -236,9 +235,10 @@ class EncodingFactoryTest {
             List<String> expected = matches(testString, originalPattern);
 
             List<String> actual = new ArrayList<>();
-            for (ByteArrayList utf8Bytes : Cl100kParser.split(testString)) {
+            Cl100kParser.split(testString, Integer.MAX_VALUE, utf8Bytes -> {
                 actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
-            }
+                return 0;
+            });
 
             var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
             var normalizedActual = actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
