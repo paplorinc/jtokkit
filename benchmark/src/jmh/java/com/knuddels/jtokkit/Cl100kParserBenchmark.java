@@ -1,17 +1,18 @@
 package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
 
 //Benchmark                                                                     (dataFolderPath)  Mode  Cnt  Score    Error  Units
-//Cl100kParserBenchmark.benchmarkIsLetter                                                        data    ss   10  0.239 ±  0.003   s/op
-//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                               data    ss   10  0.273 ±  0.015   s/op
-//Cl100kParserBenchmark.benchmarkIsNewline                                                       data    ss   10  0.078 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsNewlineOrLetterOrNumeric                                      data    ss   10  0.242 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsNumeric                                                       data    ss   10  0.121 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsWhitespace                                                    data    ss   10  0.114 ±  0.001   s/op
-//Cl100kParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                                   data    ss   10  0.264 ±  0.005   s/op
-//Cl100kParserBenchmark.benchmarkToUtf8Conversion                                                data    ss   10  0.158 ±  0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsLetter                                                  data    ss   10   0.239 ±  0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                         data    ss   10   0.264 ±  0.033   s/op
+//Cl100kParserBenchmark.benchmarkIsNewline                                                 data    ss   10   0.079 ±  0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsNotNewlineOrLetterOrNumeric                             data    ss   10   0.343 ±  0.012   s/op
+//Cl100kParserBenchmark.benchmarkIsNumeric                                                 data    ss   10   0.116 ±  0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsWhitespace                                              data    ss   10   0.114 ±  0.001   s/op
+//Cl100kParserBenchmark.benchmarkIsWhitespaceOrLetterOrNumeric                             data    ss   10   0.261 ±  0.011   s/op
+//Cl100kParserBenchmark.benchmarkToUtf8Conversion                                          data    ss   10   0.163 ±  0.005   s/op
 public class Cl100kParserBenchmark {
     //    @Benchmark
     public void benchmarkIsWhitespace(BenchmarkingState state, Blackhole bh) {
@@ -55,10 +56,10 @@ public class Cl100kParserBenchmark {
         }
     }
 
-    //    @Benchmark
-    public void benchmarkIsNewlineOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
+    @Benchmark
+    public void benchmarkIsNotNewlineOrLetterOrNumeric(BenchmarkingState state, Blackhole bh) {
         for (var fileContent : state.fileContents) {
-            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNewlineOrLetterOrNumeric(cp)));
+            fileContent.codePoints().forEachOrdered(cp -> bh.consume(Cl100kParser.isNotNewlineOrLetterOrNumeric(cp)));
         }
     }
 

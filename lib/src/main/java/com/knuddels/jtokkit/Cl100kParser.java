@@ -94,9 +94,8 @@ public class Cl100kParser {
                 || (ch == '\r');
     }
 
-    static boolean isNewlineOrLetterOrNumeric(int ch) {
-        return isNewline(ch)
-                || isLetterOrNumeric(ch);
+    static boolean isNotNewlineOrLetterOrNumeric(int ch) {
+        return ch == ' ' || (ch < '0' ? !isNewline(ch) : !isLetterOrNumeric(ch));
     }
 
     public static ByteArrayList toUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
@@ -174,7 +173,7 @@ public class Cl100kParser {
             int nextIndex = startIndex + cc0;
             int c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
             int cc1 = charCount(c1);
-            if (isLetter(c0) || (!isNewlineOrLetterOrNumeric(c0) && isLetter(c1))) {
+            if (isLetter(c0) || (isNotNewlineOrLetterOrNumeric(c0) && isLetter(c1))) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 endIndex += cc0;
                 if (isLetter(c1)) {

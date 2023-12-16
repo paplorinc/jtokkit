@@ -35,7 +35,7 @@ public class GptBytePairEncoding implements Encoding {
         assert compactTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size()
                 : compactTokenEncoder.length() + "+" + tokenEncoder.length() + " != " + params.getEncoder().size();
 
-        this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size());
+        this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size()); // TODO int2Object map
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
     }
 
