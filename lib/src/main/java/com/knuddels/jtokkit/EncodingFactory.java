@@ -60,7 +60,7 @@ public final class EncodingFactory {
     public static Encoding r50kBase() {
         return fromPredefinedParameters(
                 "r50k_base",
-                "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
+                "'(?:[sdmt]|ll|ve|re)| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/r50k_base.tiktoken",
                 SPECIAL_TOKENS_X50K_BASE,
                 false
@@ -75,7 +75,7 @@ public final class EncodingFactory {
     public static Encoding p50kBase() {
         return fromPredefinedParameters(
                 "p50k_base",
-                "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
+                "'(?:[sdmt]|ll|ve|re)| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/p50k_base.tiktoken",
                 SPECIAL_TOKENS_X50K_BASE,
                 false
@@ -90,7 +90,7 @@ public final class EncodingFactory {
     public static Encoding p50kEdit() {
         return fromPredefinedParameters(
                 "p50k_edit",
-                "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
+                "'(?:[sdmt]|ll|ve|re)| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/p50k_base.tiktoken",
                 SPECIAL_TOKENS_P50K_EDIT,
                 false
@@ -105,7 +105,7 @@ public final class EncodingFactory {
     public static Encoding cl100kBase() {
         return fromPredefinedParameters(
                 "cl100k_base",
-                "'(?:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
+                "'(?:[sdmt]|ll|ve|re)|[^\r\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\r\n]*|\\s*[\r\n]|\\s+(?!\\S)|\\s+",
                 "/com/knuddels/jtokkit/cl100k_base.tiktoken",
                 SPECIAL_TOKENS_CL100K_BASE,
                 true
