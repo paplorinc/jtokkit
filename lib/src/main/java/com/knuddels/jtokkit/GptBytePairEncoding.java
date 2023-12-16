@@ -5,11 +5,11 @@ import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.bytes.ByteList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -17,7 +17,7 @@ import static java.util.Objects.requireNonNull;
 
 public class GptBytePairEncoding implements Encoding {
 
-    final Map<Integer, byte[]> encodedToDecoded;
+    final Int2ObjectMap<byte[]> encodedToDecoded;
     private final String name;
     private final Pattern pattern;
     private final StringEncoder specialTokensEncoder;
@@ -35,8 +35,8 @@ public class GptBytePairEncoding implements Encoding {
         assert compactTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size()
                 : compactTokenEncoder.length() + "+" + tokenEncoder.length() + " != " + params.getEncoder().size();
 
-        this.encodedToDecoded = new ConcurrentHashMap<>(params.getEncoder().size()); // TODO int2Object map
-        params.getEncoder().forEach((k, v) -> encodedToDecoded.put(v, k));
+        this.encodedToDecoded = new Int2ObjectOpenHashMap<>(params.getEncoder().size());
+        params.getEncoder().forEach((k, v) -> encodedToDecoded.put((int) v, k));
     }
 
     @Override
