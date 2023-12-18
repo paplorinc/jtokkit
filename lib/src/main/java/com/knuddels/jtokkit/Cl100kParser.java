@@ -8,7 +8,6 @@ import static java.lang.Character.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.binarySearch;
 
-
 public class Cl100kParser {
     private static final String SDTM = "sdtmSDTMſ";
     private static final String SIMPLE_WHITESPACES = "\t\n\u000B\u000C\r";
@@ -22,16 +21,21 @@ public class Cl100kParser {
 
         var tokenCount = 0;
         while (tokenCount < maxTokenCount) {
-            for (var i = 0; i < ch.length && codePoints.hasNext(); i++) {
-                if (ch[i] < 0) {
-                    ch[i] = codePoints.nextInt();
-                }
-            }
             if (ch[0] < 0) {
-                break;
+                if (!codePoints.hasNext()) {
+                    break;
+                }
+                ch[0] = codePoints.nextInt();
             }
+            if (ch[1] < 0 && codePoints.hasNext()) {
+                ch[1] = codePoints.nextInt();
+            }
+            if (codePoints.hasNext()) {
+                ch[2] = codePoints.nextInt();
+            }
+
             utf8Bytes.clear();
-            addUtf8Bytes(ch[0], utf8Bytes); // TODO only add if not already there
+            addUtf8Bytes(ch[0], utf8Bytes);
 
             if (ch[0] == '\'') {
                 if (isShortContraction(ch[1])) {
@@ -41,15 +45,13 @@ public class Cl100kParser {
                     ch[1] = ch[2] = -1;
                     tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, utf8Bytes.size());
                     continue;
-                } else if (ch[2] > 0) {
+                } else if (ch[2] > 0 && isLongContraction(ch[1], ch[2])) {
                     // 1) `'(?:ll|ve|re)` - contractions, such as the suffixes of `you'll`, `we've`, `they're`
-                    if (isLongContraction(ch[1], ch[2])) {
-                        addUtf8Bytes(ch[1], utf8Bytes);
-                        addUtf8Bytes(ch[2], utf8Bytes);
-                        ch[0] = ch[1] = ch[2] = -1;
-                        tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, utf8Bytes.size());
-                        continue;
-                    }
+                    addUtf8Bytes(ch[1], utf8Bytes);
+                    addUtf8Bytes(ch[2], utf8Bytes);
+                    ch[0] = ch[1] = ch[2] = -1;
+                    tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, utf8Bytes.size());
+                    continue;
                 }
             }
 
@@ -62,7 +64,6 @@ public class Cl100kParser {
                     if (isLetter(ch[2])) {
                         addUtf8Bytes(ch[2], utf8Bytes);
                         ch[2] = -1;
-
                         while (codePoints.hasNext() && isLetter(ch[0] = codePoints.nextInt())) {
                             addUtf8Bytes(ch[0], utf8Bytes);
                             ch[0] = -1;
@@ -85,16 +86,14 @@ public class Cl100kParser {
                     ch[1] = -1;
                     if (isNumeric(ch[2])) {
                         addUtf8Bytes(ch[2], utf8Bytes);
-                        ch[2] = -1;
                     } else {
                         ch[0] = ch[2];
-                        ch[2] = -1;
                     }
                 } else {
                     ch[0] = ch[1];
                     ch[1] = ch[2];
-                    ch[2] = -1;
                 }
+                ch[2] = -1;
                 tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, utf8Bytes.size());
             } else if (isNotWhitespaceOrLetterOrNumeric(ch[0]) || ((ch[0] == ' ') && isNotWhitespaceOrLetterOrNumeric(ch[1]))) {
                 // 4) ` ?[^\s\p{L}\p{N}]++[\r\n]*` - punctuation, such as `,`, ` .`, `"`
@@ -118,10 +117,8 @@ public class Cl100kParser {
                     ch[1] = ch[2];
                     ch[2] = -1;
                 }
-                for (var i = 0; i < ch.length && codePoints.hasNext(); i++) {
-                    if (ch[i] < 0) {
-                        ch[i] = codePoints.nextInt();
-                    }
+                if (ch[1] < 0 && codePoints.hasNext()) {
+                    ch[1] = codePoints.nextInt();
                 }
                 if (isNewline(ch[0])) {
                     addUtf8Bytes(ch[0], utf8Bytes);
@@ -129,21 +126,13 @@ public class Cl100kParser {
                     if (isNewline(ch[1])) {
                         addUtf8Bytes(ch[1], utf8Bytes);
                         ch[1] = -1;
-                        if (isNewline(ch[2])) {
-                            addUtf8Bytes(ch[2], utf8Bytes);
-                            ch[2] = -1;
-                            while (codePoints.hasNext() && isNewline(ch[0] = codePoints.nextInt())) {
-                                addUtf8Bytes(ch[0], utf8Bytes);
-                                ch[0] = -1;
-                            }
-                        } else {
-                            ch[0] = ch[2];
-                            ch[2] = -1;
+                        while (codePoints.hasNext() && isNewline(ch[0] = codePoints.nextInt())) {
+                            addUtf8Bytes(ch[0], utf8Bytes);
+                            ch[0] = -1;
                         }
                     } else {
                         ch[0] = ch[1];
                         ch[1] = ch[2];
-                        ch[2] = -1;
                     }
                 }
                 tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, utf8Bytes.size());
@@ -177,22 +166,23 @@ public class Cl100kParser {
                     ch[2] = -1;
                 }
 
-                var lastNewLineIndex = getSplitIndex(utf8Bytes); // TODO bake into previous loops
-                int start = 0;
-                if (lastNewLineIndex >= 0) {
-                    tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, lastNewLineIndex + 1);
-                    start = lastNewLineIndex + 1;
+                var splitIndex = getSplitIndex(utf8Bytes) + 1;
+                if (splitIndex > 0) {
+                    tokenCount += tokenConsumer.apply(utf8Bytes.elements(), 0, splitIndex);
                 }
 
-                if (lastNewLineIndex < utf8Bytes.size() - 1) {
-                    var byteCount = utf8ByteCount(lastWhitespace); // TODO simplify
-                    if (ch[0] >= 0 && !isWhitespace(ch[0]) && utf8Bytes.size() > byteCount) {
-                        utf8Bytes.size(utf8Bytes.size() - byteCount);
-                        ch[1] = ch[0];
-                        ch[0] = lastWhitespace;
+                if (splitIndex < utf8Bytes.size()) {
+                    if (ch[0] >= 0 && !isWhitespace(ch[0])) {
+                        var byteCount = utf8ByteCount(lastWhitespace);
+                        if (utf8Bytes.size() > byteCount) {
+                            utf8Bytes.size(utf8Bytes.size() - byteCount);
+                            ch[1] = ch[0];
+                            ch[0] = lastWhitespace;
+                        }
                     }
-                    if (start < utf8Bytes.size()) {
-                        tokenCount += tokenConsumer.apply(utf8Bytes.elements(), start, utf8Bytes.size());
+
+                    if (splitIndex < utf8Bytes.size()) {
+                        tokenCount += tokenConsumer.apply(utf8Bytes.elements(), splitIndex, utf8Bytes.size());
                     }
                 }
             }
