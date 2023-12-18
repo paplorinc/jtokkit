@@ -1,5 +1,6 @@
 package com.knuddels.jtokkit;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
@@ -112,15 +113,6 @@ public class CompactTokenEncoder {
         throw new IllegalStateException(Arrays.toString(bytes));
     }
 
-    static byte[] toByteArray(long value) {
-        var bytes = new byte[byteSize(value)];
-        for (var i = bytes.length - 1; i >= 0; i--) {
-            value >>>= Byte.SIZE;
-            bytes[i] = (byte) (value & 0xFF);
-        }
-        return bytes;
-    }
-
     public static int byteSize(long payload) {
         return (byte) payload;
     }
@@ -142,9 +134,9 @@ public class CompactTokenEncoder {
         }
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] utf8Bytes, int start, int end, IntList out, IntArrayList ranks) {
-        assert accepts(end - start);
-        var match = from(utf8Bytes, start, end);
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
+        assert accepts(utf8Bytes.size());
+        var match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
         var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {

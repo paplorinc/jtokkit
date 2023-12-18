@@ -72,7 +72,7 @@ public class Cl100kParserTest {
         var input = "\uD81C\uDFE1";
 
         var dst = new ByteArrayList();
-        input.codePoints().forEach(cp -> addUtf8Bytes(cp, dst));
+        addUtf8Bytes(input, 0, input.length(), dst);
 
         var expectedBytes = input.getBytes(UTF_8);
         var actualBytes = dst.toByteArray();
@@ -87,7 +87,8 @@ public class Cl100kParserTest {
             var expected = Character.toString(e.getKey());
             if (isValidUTF8(expected)) {
                 var dst = new ByteArrayList();
-                expected.codePoints().forEach(cp -> addUtf8Bytes(cp, dst));
+                addUtf8Bytes(expected, 0, expected.length(), dst);
+
                 assertArrayEquals(expected.getBytes(UTF_8), dst.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(dst.toByteArray()) + "`");
             } else {
                 System.out.println("Skipping invalid UTF-8: " + e.getValue() + " (" + e.getKey() + ")");
@@ -113,17 +114,17 @@ public class Cl100kParserTest {
             var expected = originalEncoder.pattern.matcher(textString);
 
             var actualEncoded = new ArrayList<>();
-            Cl100kParser.split(textString, Integer.MAX_VALUE, (utf8Bytes, start, end) -> {
+            Cl100kParser.split(textString, utf8Bytes -> {
                 assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
-                var actual = new String(utf8Bytes, start, end - start, UTF_8);
+                var actual = new String(utf8Bytes.toByteArray(), UTF_8);
 
                 var group = expected.group();
                 assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder));
                 assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder));
 
                 actualEncoded.addAll(encoder.encode(actual));
-                return 0;
+                return false;
             });
             assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 

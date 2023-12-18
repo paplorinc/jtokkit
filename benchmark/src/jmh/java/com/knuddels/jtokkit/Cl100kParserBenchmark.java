@@ -3,8 +3,6 @@ package com.knuddels.jtokkit;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.openjdk.jmh.infra.Blackhole;
 
-import static com.knuddels.jtokkit.Cl100kParser.addUtf8Bytes;
-
 //Benchmark                                                                    (dataFolderPath)  Mode  Cnt  Score    Error  Units
 //Cl100kParserBenchmark.benchmarkIsLetter                                                  data    ss   10  0.245 ±  0.001   s/op
 //Cl100kParserBenchmark.benchmarkIsLetterOrNumeric                                         data    ss   10  0.247 ±  0.001   s/op
@@ -68,9 +66,7 @@ public class Cl100kParserBenchmark {
     public void benchmarkToUtf8Conversion(BenchmarkingState state, Blackhole bh) {
         var dst = new ByteArrayList();
         for (var fileContent : state.fileContents) {
-            dst.clear();
-            fileContent.codePoints().forEach(cp -> addUtf8Bytes(cp, dst));
-            bh.consume(dst.size());
+            bh.consume(Cl100kParser.addUtf8Bytes(fileContent, 0, fileContent.length(), dst));
         }
     }
 }

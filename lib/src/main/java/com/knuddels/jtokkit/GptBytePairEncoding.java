@@ -87,19 +87,20 @@ public class GptBytePairEncoding implements Encoding {
 
         var out = new IntArrayList();
         var ranks = new IntArrayList();
-        var tokenCount = 0;
+        int[] tokenCount = {0};
         if ("cl100k_base".equals(name)) {
-            tokenCount = Cl100kParser.split(text, maxTokenCount, (utf8Bytes, start, end) -> {
-//                var s = new String(utf8Bytes, start, end - start, UTF_8);
+            Cl100kParser.split(text, utf8Bytes -> {
+//                var s = new String(utf8Bytes - start, UTF_8);
 //                System.out.println("`" + s + "`");
 //                assert reference[0].find() : "`" + s + "` in `" + text + "`";
-//                assert Arrays.equals(reference[0].group().getBytes(UTF_8), Arrays.copyOfRange(utf8Bytes, start, end)) : "`" + reference[0].group() + "` != `" + s + "` in `" + text + "`";
-                return processTokens(maxTokenCount, keepEncodings, utf8Bytes, start, end, out, ranks);
+//                assert Arrays.equals(reference[0].group().getBytes(UTF_8), Arrays.copyOfRange(utf8Bytes)) : "`" + reference[0].group() + "` != `" + s + "` in `" + text + "`";
+                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+                return tokenCount[0] >= maxTokenCount;
             });
         } else {
-            for (var matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
-                var bytes = matcher.group().getBytes(UTF_8);
-                tokenCount += processTokens(maxTokenCount, keepEncodings, bytes, 0, bytes.length, out, ranks);
+            for (var matcher = pattern.matcher(text); tokenCount[0] < maxTokenCount && matcher.find(); ) {
+                var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
+                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, bytes, out, ranks);
             }
         }
 
@@ -120,25 +121,25 @@ public class GptBytePairEncoding implements Encoding {
             }
         }
 
-        return new EncodingResult(out, tokenCount, false);
+        return new EncodingResult(out, tokenCount[0], false);
     }
 
-    private int processTokens(int maxTokenCount, boolean keepEncodings, byte[] utf8Bytes, int start, int end, IntArrayList out, IntArrayList ranks) {
-        int size = end - start;
+    private int processTokens(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntArrayList out, IntArrayList ranks) {
+        int size = utf8Bytes.size();
         if (CompactTokenEncoder.accepts(size)) {
-            return compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, start, end, out, ranks);
+            return compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         } else {
             assert TokenEncoder.accepts(size);
-            return tokenEncoder.addTokensAndGetCount(compactTokenEncoder, maxTokenCount, keepEncodings, utf8Bytes, start, end, out, ranks);
+            return tokenEncoder.addTokensAndGetCount(compactTokenEncoder, maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         }
     }
 
     @Override
     public long countBytes(String text) {
         var matchedCharacterCount = new long[]{0L};
-        Cl100kParser.split(text, Integer.MAX_VALUE, (utf8Bytes, start, end) -> {
-            matchedCharacterCount[0] += end - start;
-            return 0;
+        Cl100kParser.split(text, utf8Bytes -> {
+            matchedCharacterCount[0] += utf8Bytes.size();
+            return false;
         });
         return matchedCharacterCount[0];
     }

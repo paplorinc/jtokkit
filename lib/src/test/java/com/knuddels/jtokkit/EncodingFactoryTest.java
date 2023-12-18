@@ -245,10 +245,10 @@ class EncodingFactoryTest {
 //            System.out.println("Expected: " + expected);
 
             List<String> actual = new ArrayList<>();
-            Cl100kParser.split(testString, Integer.MAX_VALUE, (utf8Bytes, start, end) -> {
-                assert end > start;
-                actual.add(new String(utf8Bytes, start, end - start, UTF_8));
-                return 0;
+            Cl100kParser.split(testString, utf8Bytes -> {
+                assert !utf8Bytes.isEmpty();
+                actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
+                return false;
             });
 //            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
 //            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList();
