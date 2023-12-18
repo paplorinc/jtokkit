@@ -59,26 +59,57 @@ public class CompactTokenEncoder {
         var length = end - start;
         assert length > 0 : "Too small byte array: " + new String(bytes, UTF_8);
         assert accepts(length) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
-
-        var finalResult = bytes[start] & 0xFFL;
-        if (length > 1) {
-            var i = start + 2;
-            var result2 = bytes[start + 1] & 0xFFL;
-            for (; i < end - 1; i += 2) {
-                finalResult = (finalResult << (Byte.SIZE * 2)) | (bytes[i] & 0xFFL);
-                result2 = (result2 << (Byte.SIZE * 2)) | (bytes[i + 1] & 0xFFL);
+        switch (length) {
+            case 1:
+                return ((bytes[start] & 0xFFL) << Byte.SIZE)
+                        | length;
+            case 2: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE)
+                        | length;
             }
-
-            finalResult = (finalResult << Byte.SIZE) | result2;
-            if (i < end) {
-                finalResult = (finalResult << Byte.SIZE) | (bytes[i] & 0xFFL);
+            case 3: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 3)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE)
+                        | length;
+            }
+            case 4: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 4)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 3)
+                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE)
+                        | length;
+            }
+            case 5: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 5)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 4)
+                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 3)
+                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE)
+                        | length;
+            }
+            case 6: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 6)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 5)
+                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 4)
+                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 3)
+                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 5] & 0xFFL) << Byte.SIZE)
+                        | length;
+            }
+            case 7: {
+                return ((bytes[start] & 0xFFL) << Byte.SIZE * 7)
+                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 6)
+                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 5)
+                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 4)
+                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE * 3)
+                        | ((bytes[start + 5] & 0xFFL) << Byte.SIZE * 2)
+                        | ((bytes[start + 6] & 0xFFL) << Byte.SIZE)
+                        | length;
             }
         }
-        finalResult = (finalResult << Byte.SIZE) | length;
-
-        assert Arrays.equals(Arrays.copyOfRange(bytes, start, end), toByteArray(finalResult))
-                : "Expected: " + Arrays.toString(Arrays.copyOfRange(bytes, start, end)) + ", but got: " + Arrays.toString(toByteArray(finalResult));
-        return finalResult;
+        throw new IllegalStateException(Arrays.toString(bytes));
     }
 
     static byte[] toByteArray(long value) {
