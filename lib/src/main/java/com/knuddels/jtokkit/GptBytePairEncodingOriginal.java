@@ -68,6 +68,7 @@ public final class GptBytePairEncodingOriginal {
         int tokenCount = 0;
         while (matcher.find() && maxTokenCountNotReached(maxTokens, tokenCount)) {
             String group = matcher.group();
+//            System.out.println("`" + group + "`");
             ImmutableByteArray match = ImmutableByteArray.from(group);
             if (encoder.containsDecodedToken(match)) {
                 out.add(encoder.encode(match));

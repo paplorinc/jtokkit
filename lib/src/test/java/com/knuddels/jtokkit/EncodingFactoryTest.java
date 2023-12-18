@@ -7,12 +7,12 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static java.lang.Character.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -141,7 +141,7 @@ class EncodingFactoryTest {
         return testString
                 .replaceAll("\\r", "\\\\r")
                 .replaceAll("\\n", "\\\\n")
-                .replaceAll(" ", "·");
+                .replaceAll(" ", "␣");
     }
 
     @Test
@@ -188,8 +188,8 @@ class EncodingFactoryTest {
     public void testParser() {
         var testStrings = new ArrayList<>(List.of(
                 "\n",
-                "a : b",
                 " ",
+                "a : b",
                 "  a",
                 "\n \n ",
                 "\n \n",
@@ -197,6 +197,9 @@ class EncodingFactoryTest {
                 "\n \n!",
                 "\n \n   ",
                 "\n  !",
+                "  \n\r  \r\n  \r \n  A\nA \n A",
+                ",\n\n",
+                " ***\n\n\n\n",
 
                 "   !",
                 "   A",
@@ -213,7 +216,7 @@ class EncodingFactoryTest {
                 "   \n 0",
                 "   \n *",
 
-                "I paid $124,456,789 to 1234567 people!",
+                "I paid $123,456 to 9876543210 people!",
                 "Unicode snowman: ☃️",
                 "I'm:  0\n",
                 "We'll meet at 3 o'clock.",
@@ -222,29 +225,36 @@ class EncodingFactoryTest {
                 "Hello \n\n World  !",
                 " It's 2:30pm;\n\n\n\nlet's eat, sleep , and code!",
                 "'Thank God, here it is.' But when we took up the trunk...",
+                "user@example.com",
+                "this is a 'quoted' word",
+                "　　a",
+                "'ſ",
+                "'ſ\uD84F\uDDB8\uD84C\uDD2CƘ淚",
+                "\uD83D\uDE29\n",
                 "03½",
                 "* \u05E2"
         ));
         testStrings.addAll(Cl100kBaseTest.getTexts("../"));
 
         var originalPattern = GptBytePairEncodingOriginal.getEncoder().pattern;
-        for (String testString : testStrings) {
-//            System.out.println("Matching: `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + "`...");
-            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
+        IntStream.range(0, testStrings.size()).forEachOrdered(i -> {
+            String testString = testStrings.get(i);
+            System.out.println("Validating #" + i + ": `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + (testString.length() > 100 ? "..." : "") + "`");
 
             List<String> expected = matches(testString, originalPattern);
+//            System.out.println("Expected: " + expected);
 
             List<String> actual = new ArrayList<>();
-            Cl100kParser.split(testString, Integer.MAX_VALUE, utf8Bytes -> {
-                actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
+            Cl100kParser.split(testString, Integer.MAX_VALUE, (utf8Bytes, start, end) -> {
+                assert end > start;
+                actual.add(new String(utf8Bytes, start, end - start, UTF_8));
                 return 0;
             });
-
-            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
-            var normalizedActual = actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).collect(toList());
-            assertEquals(normalizedExpected, normalizedActual, encounters);
+//            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
+//            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList();
+//            assertEquals(normalizedExpected, actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
             assertEquals(expected, actual);
-        }
+        });
     }
 
     private List<String> matches(String input, Pattern pattern) {

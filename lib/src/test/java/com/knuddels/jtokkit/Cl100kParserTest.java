@@ -1,7 +1,6 @@
 package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -13,8 +12,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
 
+import static com.knuddels.jtokkit.Cl100kParser.addUtf8Bytes;
 import static com.knuddels.jtokkit.Cl100kParser.isValidUTF8;
-import static com.knuddels.jtokkit.Cl100kParser.toUtf8Bytes;
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static java.lang.Character.*;
@@ -30,18 +29,15 @@ public class Cl100kParserTest {
     private static final String LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isLetterOrNumeric);
     private static final String NOT_NEWLINE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isNotNewlineOrLetterOrNumeric);
     private static final String NOT_WHITESPACE_OR_LETTER_OR_NUMERIC = generateUnicodeCategoryString(Cl100kParser::isNotWhitespaceOrLetterOrNumeric);
+    private static final List<String> SPECIAL = List.of("'s", "'t", "'re", "'ve", "'m", "'ll", "'d", "'ſ", "'x", "🤚🏾", "😩", "　", "½");
     private static final String NEWLINES = "\n\r";
 
     private static String generateUnicodeCategoryString(IntPredicate characterProperty) {
         return IntStream.range(MIN_CODE_POINT, MAX_CODE_POINT)
-                .filter(Cl100kParserTest::validTestCodePoint)
+                .filter(Character::isDefined)
                 .filter(characterProperty)
                 .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
                 .toString();
-    }
-
-    private static boolean validTestCodePoint(int c) {
-        return isValidCodePoint(c) && isDefined(c);
     }
 
     private static ThreadLocalRandom rand() {
@@ -76,7 +72,7 @@ public class Cl100kParserTest {
         var input = "\uD81C\uDFE1";
 
         var dst = new ByteArrayList();
-        toUtf8Bytes(input, 0, input.length(), dst);
+        input.codePoints().forEach(cp -> addUtf8Bytes(cp, dst));
 
         var expectedBytes = input.getBytes(UTF_8);
         var actualBytes = dst.toByteArray();
@@ -85,16 +81,14 @@ public class Cl100kParserTest {
         assertEquals(new String(expectedBytes, UTF_8), input);
     }
 
-    @Disabled
     @Test
     public void testToUtf8BytesOnFetchedUnicodeData() throws CharacterCodingException {
-        var byteArrayList = new ByteArrayList();
         fetchUnicodeData().entrySet().stream().parallel().forEach(e -> {
-            var expected = new String(toChars(e.getKey()));
+            var expected = Character.toString(e.getKey());
             if (isValidUTF8(expected)) {
-                toUtf8Bytes(expected, 0, expected.length(), byteArrayList);
-
-                assertArrayEquals(expected.getBytes(UTF_8), byteArrayList.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(byteArrayList.toByteArray()) + "`");
+                var dst = new ByteArrayList();
+                expected.codePoints().forEach(cp -> addUtf8Bytes(cp, dst));
+                assertArrayEquals(expected.getBytes(UTF_8), dst.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(dst.toByteArray()) + "`");
             } else {
                 System.out.println("Skipping invalid UTF-8: " + e.getValue() + " (" + e.getKey() + ")");
             }
@@ -119,10 +113,10 @@ public class Cl100kParserTest {
             var expected = originalEncoder.pattern.matcher(textString);
 
             var actualEncoded = new ArrayList<>();
-            Cl100kParser.split(textString, Integer.MAX_VALUE, utf8Bytes -> {
+            Cl100kParser.split(textString, Integer.MAX_VALUE, (utf8Bytes, start, end) -> {
                 assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
 
-                var actual = new String(utf8Bytes.toByteArray(), UTF_8);
+                var actual = new String(utf8Bytes, start, end - start, UTF_8);
 
                 var group = expected.group();
                 assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder));
@@ -164,7 +158,7 @@ public class Cl100kParserTest {
             case 2:
             case 3:
             case 4:
-                return toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a'));
+                return toChars((rand().nextBoolean() ? 'a' : 'A') + rand().nextInt('z' - 'a' + 1));
             case 5:
                 return toChars(PUNCTUATION.codePointAt(rand().nextInt(PUNCTUATION.length())));
             case 6:
@@ -187,11 +181,12 @@ public class Cl100kParserTest {
             case 16:
                 return toChars(0x1F600 + rand().nextInt(0x50)); // emojis
             case 17:
+                return SPECIAL.get(rand().nextInt(SPECIAL.size())).toCharArray();
             case 18:
             case 19:
                 while (true) {
                     var r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
-                    if (validTestCodePoint(r)) {
+                    if (isDefined(r)) {
                         return toChars(r);
                     }
                 }
@@ -201,12 +196,45 @@ public class Cl100kParserTest {
     }
 
     @Test
+    public void testIsApostophed() {
+        var count = 0;
+        var pattern = compileRegex("^(?:'s|'t|'re|'ve|'m|'ll|'d)$", true);
+
+        System.out.println("isShortContraction");
+        for (var cp1 = MIN_CODE_POINT; cp1 <= MAX_CODE_POINT; cp1++) { // Seems 'ſ is also a contraction...
+            var asString = "'" + Character.toString(cp1);
+            var matchesRegex = pattern.matcher(asString).matches();
+            var actual = Cl100kParser.isShortContraction(cp1);
+            if (matchesRegex) {
+                count++;
+            }
+            assertEquals(matchesRegex, actual, "Mismatch at code point: `" + asString + "` (" + cp1 + ")");
+        }
+
+        if (false) { // Takes too long
+            System.out.println("isLongContraction");
+            for (var cp1 = MIN_CODE_POINT; cp1 <= MAX_CODE_POINT; cp1++) {
+                for (var cp2 = MIN_CODE_POINT; cp2 <= MAX_CODE_POINT; cp2++) {
+                    var asString = "'" + Character.toString(cp1) + Character.toString(cp2);
+                    var matchesRegex = pattern.matcher(asString).matches();
+                    var actual = Cl100kParser.isLongContraction(cp1, cp2);
+                    if (matchesRegex) {
+                        count++;
+                    }
+                    assertEquals(matchesRegex, actual, "Mismatch at code point: `" + asString + "` (" + cp1 + ", " + cp2 + ")");
+                }
+            }
+            System.out.println(count);
+        }
+    }
+
+    @Test
     public void testIsNumeric() {
         var count = 0;
         assertFalse(Cl100kParser.isNumeric(-1));
         var pattern = compileRegex("^\\p{N}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isNumeric(cp);
             if (matchesRegex) {
@@ -224,7 +252,7 @@ public class Cl100kParserTest {
         assertFalse(Cl100kParser.isLetter(-1));
         var pattern = compileRegex("^\\p{L}$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isLetter(cp);
             if (matchesRegex) {
@@ -241,7 +269,7 @@ public class Cl100kParserTest {
         assertFalse(Cl100kParser.isWhitespace(-1));
         var pattern = compileRegex("^\\s$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isWhitespace(cp);
             if (matchesRegex) {
@@ -258,7 +286,7 @@ public class Cl100kParserTest {
         assertFalse(Cl100kParser.isLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isLetterOrNumeric(cp);
             if (matchesRegex) {
@@ -272,10 +300,10 @@ public class Cl100kParserTest {
     @Test
     public void testIsNotWhitespaceOrLetterOrNumeric() {
         var count = 0;
-        assertTrue(Cl100kParser.isNotWhitespaceOrLetterOrNumeric(-1));
+        assertFalse(Cl100kParser.isNotWhitespaceOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[^\\s\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isNotWhitespaceOrLetterOrNumeric(cp);
             if (matchesRegex) {
@@ -289,10 +317,10 @@ public class Cl100kParserTest {
     @Test
     public void testIsNotNewlineOrLetterOrNumeric() {
         var count = 0;
-        assertTrue(Cl100kParser.isNotNewlineOrLetterOrNumeric(-1));
+        assertFalse(Cl100kParser.isNotNewlineOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[^\r\n\\p{L}\\p{N}]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var actual = Cl100kParser.isNotNewlineOrLetterOrNumeric(cp);
             if (matchesRegex) {
@@ -309,7 +337,7 @@ public class Cl100kParserTest {
         assertFalse(Cl100kParser.isNewline(-1));
         var pattern = compileRegex("^[\r\n]$", true);
         for (var cp = MIN_CODE_POINT; cp <= MAX_CODE_POINT; cp++) {
-            var charAsString = new String(toChars(cp));
+            var charAsString = Character.toString(cp);
             var matchesRegex = pattern.matcher(charAsString).matches();
             var isNewline = Cl100kParser.isNewline(cp);
             if (matchesRegex) {

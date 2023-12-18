@@ -1,6 +1,5 @@
 package com.knuddels.jtokkit;
 
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
@@ -112,9 +111,9 @@ public class CompactTokenEncoder {
         }
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
-        assert accepts(utf8Bytes.size());
-        var match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, byte[] utf8Bytes, int start, int end, IntList out, IntArrayList ranks) {
+        assert accepts(end - start);
+        var match = from(utf8Bytes, start, end);
         var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
@@ -127,16 +126,16 @@ public class CompactTokenEncoder {
             initRanks(match, length, ranks);
             var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks);
             if (keepEncodings) {
-                var start = 0;
-                while (start < length && ranks.getInt(start) == DUMMY_RANK) {
-                    start++;
+                var i = 0;
+                while (i < length && ranks.getInt(i) == DUMMY_RANK) {
+                    i++;
                 }
-                for (var end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
-                    if (ranks.getInt(end) != DUMMY_RANK) {
-                        var token = encode(match, start, end);
+                for (var j = 1; j < ranks.size() && out.size() < maxTokenCount; j++) {
+                    if (ranks.getInt(j) != DUMMY_RANK) {
+                        var token = encode(match, i, j);
                         assert token != MAX_RANK : "Token should not be MAX_RANK";
                         out.add(token);
-                        start = end;
+                        i = j;
                     }
                 }
             }
