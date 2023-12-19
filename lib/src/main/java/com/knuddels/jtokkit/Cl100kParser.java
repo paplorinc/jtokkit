@@ -89,15 +89,20 @@ public class Cl100kParser {
                     }
                 }
 
-                if (lastNewLineIndex >= startIndex) {
+                if (lastNewLineIndex > -1) {
+                    var finalEndIndex = endIndex;
                     endIndex = lastNewLineIndex + 1;
-                    finished = fragmentConsumer.test(addUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
-                    // TODO consume rest as well
-                } else {
-                    assert charCount(input.codePointAt(endIndex - 1)) == 1;
-                    if (endIndex < input.length() && (endIndex - startIndex) > 1 && !isWhitespace(c0)) {
-                        endIndex--;
+                    if (endIndex < finalEndIndex) {
+                        assert startIndex < endIndex;
+                        finished = fragmentConsumer.test(addUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                        startIndex = endIndex;
+                        endIndex = finalEndIndex;
                     }
+                }
+                if (lastNewLineIndex + 1 < endIndex && !isWhitespace(c0)) {
+                    endIndex--;
+                }
+                if (startIndex < endIndex) {
                     finished = fragmentConsumer.test(addUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
                 }
             }

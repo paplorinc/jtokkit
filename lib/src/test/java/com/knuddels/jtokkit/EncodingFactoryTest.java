@@ -197,6 +197,7 @@ class EncodingFactoryTest {
                 "\n \n!",
                 "\n \n   ",
                 "\n  !",
+                "\n A",
                 "  \n\r  \r\n  \r \n  A\nA \n A",
                 ",\n\n",
                 " ***\n\n\n\n",
@@ -242,7 +243,8 @@ class EncodingFactoryTest {
             System.out.println("Validating #" + i + ": `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + (testString.length() > 100 ? "..." : "") + "`");
 
             List<String> expected = matches(testString, originalPattern);
-//            System.out.println("Expected: " + expected);
+//            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList();
+//            System.out.println("Expected: " + normalizedExpected);
 
             List<String> actual = new ArrayList<>();
             Cl100kParser.split(testString, utf8Bytes -> {
@@ -251,7 +253,6 @@ class EncodingFactoryTest {
                 return false;
             });
 //            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
-//            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList();
 //            assertEquals(normalizedExpected, actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
             assertEquals(expected, actual);
         });

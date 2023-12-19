@@ -32,7 +32,7 @@ public class BenchmarkingState {
         fileContents = BenchmarkUtils.loadData(dataFolderPath);
         bigFileContent = Files.readString(Path.of("/Users/lorinc/IdeaProjects/jtokkit/benchmark/data/test_8_20000.txt"), UTF_8);
         expectedFileContentsCl100kBaseTokenCount = fileContents.stream()
-                .mapToInt(x -> cl100kBase.encode(x).size())
+                .mapToInt(x -> cl100kBaseOriginal.encode(x).size())
                 .sum();
         expectedFileContentsCl100kBaseByteCount = fileContents.stream()
                 .mapToInt(s -> s.getBytes(UTF_8).length)
