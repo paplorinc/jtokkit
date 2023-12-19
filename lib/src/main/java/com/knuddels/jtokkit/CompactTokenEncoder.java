@@ -60,57 +60,24 @@ public class CompactTokenEncoder {
         var length = end - start;
         assert length > 0 : "Too small byte array: " + new String(bytes, UTF_8);
         assert accepts(length) : "Too big byte array: " + new String(bytes, start, end, UTF_8);
-        switch (length) {
-            case 1:
-                return ((bytes[start] & 0xFFL) << Byte.SIZE)
-                        | length;
-            case 2: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE)
-                        | length;
+
+        if (length == 1) {
+            return ((bytes[start] & 0xFFL) << Byte.SIZE) | length;
+        } else {
+            var result1 = bytes[start] & 0xFFL;
+            var result2 = bytes[start + 1] & 0xFFL;
+            for (start += 2; start <= end - 2; start += 2) {
+                result1 = (result1 << (Byte.SIZE * 2)) | (bytes[start] & 0xFFL);
+                result2 = (result2 << (Byte.SIZE * 2)) | (bytes[start + 1] & 0xFFL);
             }
-            case 3: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 3)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE)
-                        | length;
-            }
-            case 4: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 4)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 3)
-                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE)
-                        | length;
-            }
-            case 5: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 5)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 4)
-                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 3)
-                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE)
-                        | length;
-            }
-            case 6: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 6)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 5)
-                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 4)
-                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 3)
-                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 5] & 0xFFL) << Byte.SIZE)
-                        | length;
-            }
-            case 7: {
-                return ((bytes[start] & 0xFFL) << Byte.SIZE * 7)
-                        | ((bytes[start + 1] & 0xFFL) << Byte.SIZE * 6)
-                        | ((bytes[start + 2] & 0xFFL) << Byte.SIZE * 5)
-                        | ((bytes[start + 3] & 0xFFL) << Byte.SIZE * 4)
-                        | ((bytes[start + 4] & 0xFFL) << Byte.SIZE * 3)
-                        | ((bytes[start + 5] & 0xFFL) << Byte.SIZE * 2)
-                        | ((bytes[start + 6] & 0xFFL) << Byte.SIZE)
-                        | length;
+
+            result1 = (result1 << Byte.SIZE) | result2;
+            if (start < end) {
+                return (((result1 << Byte.SIZE) | (bytes[start] & 0xFFL)) << Byte.SIZE) | length;
+            } else {
+                return (result1 << Byte.SIZE) | length;
             }
         }
-        throw new IllegalStateException(Arrays.toString(bytes));
     }
 
     public static int byteSize(long payload) {

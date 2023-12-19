@@ -1,9 +1,6 @@
 package com.knuddels.jtokkit;
 
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.io.IOException;
@@ -11,16 +8,15 @@ import java.io.IOException;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 //Benchmark                                                          Mode  Cnt      Score     Error  Units
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_0      ss   10    326.283 ± 757.502  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_1      ss   10   2362.108 ± 315.128  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_2      ss   10   2432.817 ± 233.735  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_3      ss   10   2493.408 ± 246.531  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_4      ss   10   2561.212 ± 268.099  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_5      ss   10   2604.675 ± 294.316  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_6      ss   10   2633.225 ± 229.965  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_7      ss   10   2795.637 ± 230.083  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_all    ss   10  15528.771 ± 886.308  us/op
-
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_0                           N/A    ss   10    317.700 ±  734.055  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_1                           N/A    ss   10    566.596 ± 1144.486  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_2                           N/A    ss   10    905.221 ± 1438.740  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_3                           N/A    ss   10   1237.829 ± 1221.581  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_4                           N/A    ss   10   2756.825 ± 1017.957  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_5                           N/A    ss   10   3174.625 ±  981.126  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_6                           N/A    ss   10   3337.850 ±  994.994  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_7                           N/A    ss   10   3601.079 ±  934.189  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_all                         N/A    ss   10  11656.679 ± 3320.852  us/op
 @State(Scope.Benchmark)
 @OutputTimeUnit(MICROSECONDS)
 public class CompactTokenEncoderBenchmark {
@@ -34,63 +30,63 @@ public class CompactTokenEncoderBenchmark {
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_0(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(i);
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_1(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 1));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_2(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 2));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_3(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 3));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_4(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 4));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_5(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 5));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_6(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 6));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_7(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 7));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_all(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 1));
