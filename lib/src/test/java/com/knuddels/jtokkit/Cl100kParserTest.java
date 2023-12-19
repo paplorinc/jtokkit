@@ -15,7 +15,6 @@ import java.util.stream.IntStream;
 import static com.knuddels.jtokkit.Cl100kParser.addUtf8Bytes;
 import static com.knuddels.jtokkit.Cl100kParser.isValidUTF8;
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
-import static com.knuddels.jtokkit.EncodingFactoryTest.normalizeStringForTesting;
 import static java.lang.Character.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
@@ -63,8 +62,10 @@ public class Cl100kParserTest {
         return unicodeMap;
     }
 
-    private static String getMessage(String textString, GptBytePairEncodingOriginal originalEncoder, GptBytePairEncoding encoder) {
-        return "`" + textString + "` should have mapped to: " + originalEncoder.encode(textString) + ", but was: " + encoder.encode(textString);
+    private static String getMessage(String textString, GptBytePairEncodingOriginal originalEncoder, GptBytePairEncoding encoder, int maxTokenCount) {
+        var expected = originalEncoder.encode(textString, maxTokenCount).getTokens();
+        var actual = encoder.encode(textString, maxTokenCount).getTokens();
+        return "`" + textString + "` should have mapped to: " + expected + " for maxTokenCount = " + maxTokenCount + ", but was: " + actual;
     }
 
     @Test
@@ -103,6 +104,7 @@ public class Cl100kParserTest {
 
         IntStream.range(0, 10_000).parallel().forEach(i -> {
             var textString = generateValidText(originalEncoder, 20);
+            int maxTokenCount = rand().nextInt(1, 2 * textString.length());
 
             if (i % 1_000 == 0) {
                 System.out.print("✓");
@@ -113,40 +115,40 @@ public class Cl100kParserTest {
 
             var expected = originalEncoder.pattern.matcher(textString);
 
-            var actualEncoded = new ArrayList<>();
             Cl100kParser.split(textString, utf8Bytes -> {
-                assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
+                assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
 
                 var actual = new String(utf8Bytes.toByteArray(), UTF_8);
 
                 var group = expected.group();
-                assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder));
-                assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder));
+                //assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
+                assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
 
-                actualEncoded.addAll(encoder.encode(actual));
                 return false;
             });
-            assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder));
+            assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
 
-            assertEquals(originalEncoder.encode(textString), actualEncoded, () -> getMessage(textString, originalEncoder, encoder));
+            var expectedTokens = originalEncoder.encode(textString, maxTokenCount).getTokens();
+            var actualTokens = encoder.encode(textString, maxTokenCount).getTokens();
+            assertEquals(expectedTokens, actualTokens, () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
         });
     }
 
-    private String generateValidText(GptBytePairEncodingOriginal originalEncoder, int stringLength) {
+    private String generateValidText(GptBytePairEncodingOriginal originalEncoder, int maxStringLength) {
         String textString;
         do {
-            textString = generateRandomString(stringLength);
+            textString = generateRandomString(maxStringLength);
         } while (!Objects.equals(originalEncoder.decode(originalEncoder.encode(textString)), textString));
         return textString;
     }
 
-    private String generateRandomString(int stringLength) {
-        var length = rand().nextInt(1, stringLength);
+    private String generateRandomString(int maxStringLength) {
+        var length = rand().nextInt(1, maxStringLength);
         return rand()
                 .ints(length, 0, 20)
                 .mapToObj(this::getRandomCharFromCategory)
                 .map(String::valueOf)
-                .map(obj -> rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase())
+                .map(obj -> rand().nextBoolean() ? obj : (rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase()))
                 .collect(joining());
     }
 

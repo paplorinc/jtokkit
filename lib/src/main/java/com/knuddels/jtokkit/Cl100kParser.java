@@ -99,11 +99,13 @@ public class Cl100kParser {
                         endIndex = finalEndIndex;
                     }
                 }
-                if (lastNewLineIndex + 1 < endIndex && !isWhitespace(c0)) {
-                    endIndex--;
-                }
-                if (startIndex < endIndex) {
-                    finished = fragmentConsumer.test(addUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                if (!finished) {
+                    if (lastNewLineIndex + 1 < endIndex && !isWhitespace(c0)) {
+                        endIndex--;
+                    }
+                    if (startIndex < endIndex) {
+                        finished = fragmentConsumer.test(addUtf8Bytes(input, startIndex, endIndex, utf8Bytes));
+                    }
                 }
             }
         }
