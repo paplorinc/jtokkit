@@ -2,6 +2,7 @@ package com.knuddels.jtokkit;
 
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
@@ -102,7 +103,7 @@ final class TokenEncoder {
         return previousIndex;
     }
 
-    private static void removeNode(Int2ObjectAVLTreeMap<Int2ObjectAVLTreeMap<RankNode>> rankMap, RankNode nextNode) {
+    private static void removeNode(Int2ObjectSortedMap<Int2ObjectSortedMap<RankNode>> rankMap, RankNode nextNode) {
         var nodeMap = rankMap.get(nextNode.rank);
         if (nodeMap.size() == 1) {
             assert nodeMap.containsKey(nextNode.index);
@@ -143,7 +144,7 @@ final class TokenEncoder {
     private int addTokensAndGetCountLarge(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, ImmutableByteArray match, int length) {
         assert length > 1 : "Already filtered out";
 
-        var rankMap = new Int2ObjectAVLTreeMap<Int2ObjectAVLTreeMap<RankNode>>();
+        var rankMap = new Int2ObjectAVLTreeMap<Int2ObjectSortedMap<RankNode>>();
 
         RankNode head = null;
         RankNode prevNode = null;

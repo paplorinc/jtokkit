@@ -1,18 +1,18 @@
 package com.knuddels.jtokkit;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import com.knuddels.jtokkit.reference.Cl100kBaseTest;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import java.io.IOException;
+import java.util.List;
 
 class Profiling {
+    private static final List<String> texts = Cl100kBaseTest.getTexts("");
+
     public static void main2(String[] args) throws IOException {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();
-        var bigFileContent = Files.readString(Path.of("/Users/lorinc/IdeaProjects/jtokkit/benchmark/data/test_8_20000.txt"), UTF_8);
-        var sum = 0;
-        for (int i = 0; i < 5; i++) {
-            sum += encoding.countTokens(bigFileContent);
+        var sum = 0L;
+        for (String text : texts) {
+            sum += encoding.countTokens(text);
         }
         System.out.println(sum);
     }

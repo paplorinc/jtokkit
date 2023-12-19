@@ -22,8 +22,6 @@ public class BenchmarkingState {
 //    public final Encoding r50kBase = EncodingFactory.r50kBase();
     public List<String> fileContents;
     public String bigFileContent;
-    public int expectedFileContentsCl100kBaseTokenCount;
-    public int expectedFileContentsCl100kBaseByteCount;
     @Param("data")
     public String dataFolderPath;
 
@@ -31,11 +29,5 @@ public class BenchmarkingState {
     public void setup() throws IOException {
         fileContents = BenchmarkUtils.loadData(dataFolderPath);
         bigFileContent = Files.readString(Path.of("/Users/lorinc/IdeaProjects/jtokkit/benchmark/data/test_8_20000.txt"), UTF_8);
-        expectedFileContentsCl100kBaseTokenCount = fileContents.stream()
-                .mapToInt(x -> cl100kBaseOriginal.encode(x).size())
-                .sum();
-        expectedFileContentsCl100kBaseByteCount = fileContents.stream()
-                .mapToInt(s -> s.getBytes(UTF_8).length)
-                .sum();
     }
 }

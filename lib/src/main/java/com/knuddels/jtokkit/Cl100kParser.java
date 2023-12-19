@@ -24,7 +24,6 @@ public class Cl100kParser {
             var cc0 = charCount(c0);
             var nextIndex = startIndex + cc0;
             var c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
-            var cc1 = charCount(c1);
 
             if ((c0 == '\'') && c1 > 0) {
                 if (isShortContraction(c1)) {
@@ -40,6 +39,7 @@ public class Cl100kParser {
                 }
             }
 
+            var cc1 = charCount(c1);
             if ((isNotNewlineOrLetterOrNumeric(c0) && isLetter(c1)) || isLetter(c0)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 endIndex += cc0;
@@ -134,7 +134,8 @@ public class Cl100kParser {
 
     static boolean isLetter(int ch) {
         if (ch < 0xaa) {
-            return (ch >= 'A') && (ch <= 'z') && ((ch >= 'a') || (ch <= 'Z'));
+            return ((ch >= 'a') && (ch <= 'z'))
+                    || ((ch >= 'A') && (ch <= 'Z'));
         } else if (ch <= 0x323af) {
             switch (getType(ch)) {
                 case UPPERCASE_LETTER:
@@ -164,7 +165,9 @@ public class Cl100kParser {
 
     static boolean isLetterOrNumeric(int ch) {
         if (ch < 0xaa) {
-            return (((ch >= 'A') && (ch <= 'z') && ((ch >= 'a') || (ch <= 'Z'))) || ((ch >= '0') && (ch <= '9')));
+            return ((ch >= 'a') && (ch <= 'z'))
+                    || ((ch >= 'A') && (ch <= 'Z'))
+                    || ((ch >= '0') && (ch <= '9'));
         } else if (ch <= 0x323af) {
             switch (getType(ch)) {
                 case UPPERCASE_LETTER:

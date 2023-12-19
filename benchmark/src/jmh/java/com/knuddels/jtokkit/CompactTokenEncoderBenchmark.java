@@ -7,16 +7,16 @@ import java.io.IOException;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-//Benchmark                                                          Mode  Cnt      Score     Error  Units
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_0                           N/A    ss   10    317.700 ±  734.055  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_1                           N/A    ss   10    566.596 ± 1144.486  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_2                           N/A    ss   10    905.221 ± 1438.740  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_3                           N/A    ss   10   1237.829 ± 1221.581  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_4                           N/A    ss   10   2756.825 ± 1017.957  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_5                           N/A    ss   10   3174.625 ±  981.126  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_6                           N/A    ss   10   3337.850 ±  994.994  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_7                           N/A    ss   10   3601.079 ±  934.189  us/op
-//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_all                         N/A    ss   10  11656.679 ± 3320.852  us/op
+//Benchmark                                                                    (dataFolderPath)  Mode  Cnt      Score      Error  Units
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_0                           N/A    ss   10    318.412 ±  738.509  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_1                           N/A    ss   10    572.717 ± 1165.916  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_2                           N/A    ss   10    880.404 ± 1394.809  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_3                           N/A    ss   10   1268.179 ± 1281.460  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_4                           N/A    ss   10   2766.896 ± 1021.066  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_5                           N/A    ss   10   3169.208 ± 1029.913  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_6                           N/A    ss   10   3321.242 ±  971.647  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_7                           N/A    ss   10   3617.500 ±  918.894  us/op
+//CompactTokenEncoderBenchmark.benchmarkCompactTokenEncoderFrom_all                         N/A    ss   10  11705.063 ± 3366.454  us/op
 @State(Scope.Benchmark)
 @OutputTimeUnit(MICROSECONDS)
 public class CompactTokenEncoderBenchmark {

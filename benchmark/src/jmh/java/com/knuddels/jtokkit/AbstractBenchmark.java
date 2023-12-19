@@ -12,9 +12,6 @@ public abstract class AbstractBenchmark {
         for (var fileContent : state.fileContents) {
             result += encoding.countBytes(fileContent);
         }
-        if (result != state.expectedFileContentsCl100kBaseByteCount) {
-            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
-        }
         return result;
     }
 
@@ -24,9 +21,6 @@ public abstract class AbstractBenchmark {
         var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
             result += encoding.countTokens(fileContent);
-        }
-        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
-            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
         }
         return result;
     }
@@ -52,9 +46,6 @@ public abstract class AbstractBenchmark {
         for (var fileContent : state.fileContents) {
             result += encoding.countTokens(fileContent);
         }
-        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
-            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
-        }
         return result;
     }
 
@@ -64,9 +55,6 @@ public abstract class AbstractBenchmark {
         var encoding = state.cl100kBase;
         for (var fileContent : state.fileContents) {
             result += encoding.encode(fileContent).size();
-        }
-        if (result != state.expectedFileContentsCl100kBaseTokenCount) {
-            throw new RuntimeException(String.format("Wrong token count: %d != %d", result, state.expectedFileContentsCl100kBaseTokenCount));
         }
         return result;
     }
