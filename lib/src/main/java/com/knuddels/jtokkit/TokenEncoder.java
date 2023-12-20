@@ -164,6 +164,10 @@ final class TokenEncoder {
 
         assert accepts(length);
         while (true) {
+            if (length <= 2) {
+                assert rankMap.get(rankMap.firstIntKey()).get(rankMap.get(rankMap.firstIntKey()).firstIntKey()).rank == MAX_RANK;
+                break;
+            }
             var minKey = rankMap.get(rankMap.firstIntKey());
             var minNode = minKey.get(minKey.firstIntKey());
             if (minNode.rank == MAX_RANK) {
@@ -241,9 +245,13 @@ final class TokenEncoder {
         ranks.add(MAX_RANK);
     }
 
-    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int remaining, IntArrayList ranks) {
-        assert accepts(remaining);
+    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int length, IntArrayList ranks) {
+        assert accepts(length);
         while (true) {
+            if (length <= 2) {
+                assert getMinRankIndex(ranks) < 0;
+                break;
+            }
             var minRankIndex = getMinRankIndex(ranks);
             if (minRankIndex < 0) {
                 break;
@@ -262,9 +270,9 @@ final class TokenEncoder {
 
             ranks.set(nextIndex, DUMMY_RANK);
 
-            remaining--;
+            length--;
         }
-        return remaining;
+        return length;
     }
 
     private int encode(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int start, int end) {

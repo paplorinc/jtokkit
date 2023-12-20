@@ -144,10 +144,14 @@ public class CompactTokenEncoder {
         ranks.add(MAX_RANK);
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int remaining, IntArrayList ranks) {
-        assert remaining > 1;
+    int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks) {
+        assert length > 1;
         int minRankIndex;
         while (true) {
+            if (length <= 2) {
+                assert getMinRankIndex(ranks) < 0;
+                break;
+            }
             minRankIndex = getMinRankIndex(ranks);
             if (minRankIndex < 0) {
                 break;
@@ -166,9 +170,9 @@ public class CompactTokenEncoder {
 
             ranks.set(nextIndex, DUMMY_RANK);
 
-            remaining--;
+            length--;
         }
-        return remaining;
+        return length;
     }
 
     public int encode(long key) {

@@ -32,14 +32,14 @@ public abstract class AbstractBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state, Blackhole bh) {
         for (int i = 0; i < 5; i++) {
             bh.consume(state.cl100kBaseOriginal.countTokens(state.bigFileContent));
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
