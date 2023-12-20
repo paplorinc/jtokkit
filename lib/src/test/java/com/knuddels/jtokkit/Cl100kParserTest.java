@@ -100,10 +100,18 @@ public class Cl100kParserTest {
     @Test
     public void testParserAndEncoderWithRandomStrings() {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
-        var encoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+        var normalEncoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        System.setProperty("VERY_LARGE_TOKENIZER_BYTE_THRESHOLD", String.valueOf(Integer.MAX_VALUE));
+        var arrayEncoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        System.setProperty("VERY_LARGE_TOKENIZER_BYTE_THRESHOLD", String.valueOf(0));
+        var mapEncoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
+
+        var singleTokenStrings = originalEncoder.encoder.getDecodedTokens().stream().map(x -> new String(x.getRawArray(), UTF_8)).toList();
 
         IntStream.range(0, 10_000).parallel().forEach(i -> {
-            var textString = generateValidText(originalEncoder, 20);
+            var textString = generateValidText(originalEncoder, 10, singleTokenStrings);
             int maxTokenCount = rand().nextInt(1, 2 * textString.length());
 
             if (i % 1_000 == 0) {
@@ -113,46 +121,78 @@ public class Cl100kParserTest {
                 System.out.println();
             }
 
-            var expected = originalEncoder.pattern.matcher(textString);
+            var expectedMatcher = originalEncoder.pattern.matcher(textString);
 
+            // Parser
             Cl100kParser.split(textString, utf8Bytes -> {
-                assertTrue(expected.find(), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
-
+                assertTrue(expectedMatcher.find(), () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
+                var expected = expectedMatcher.group();
                 var actual = new String(utf8Bytes.toByteArray(), UTF_8);
-
-                var group = expected.group();
-                //assertEquals(normalizeStringForTesting(group), normalizeStringForTesting(actual), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
-                assertEquals(group, actual, () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
-
+                assertEquals(expected, actual, () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
                 return false;
             });
-            assertFalse(expected.find(), () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
+            assertFalse(expectedMatcher.find(), () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
 
-            var expectedTokens = originalEncoder.encode(textString, maxTokenCount).getTokens();
-            var actualTokens = encoder.encode(textString, maxTokenCount).getTokens();
-            assertEquals(expectedTokens, actualTokens, () -> getMessage(textString, originalEncoder, encoder, maxTokenCount));
+            // Encoder
+            {
+                var expectedTokens = originalEncoder.encode(textString, maxTokenCount).getTokens();
+                var actualTokens = normalEncoder.encode(textString, maxTokenCount).getTokens();
+                assertEquals(expectedTokens, actualTokens, () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
+            }
+            // Encoder array
+            {
+                var expectedTokensArray = originalEncoder.encode(textString, maxTokenCount).getTokens();
+                var actualTokensArray = arrayEncoder.encode(textString, maxTokenCount).getTokens();
+                assertEquals(expectedTokensArray, actualTokensArray, () -> getMessage(textString, originalEncoder, arrayEncoder, maxTokenCount));
+            }
+            // Encoder map
+            {
+                var expectedTokensMap = originalEncoder.encode(textString, maxTokenCount).getTokens();
+                var actualTokensMap = mapEncoder.encode(textString, maxTokenCount).getTokens();
+                assertEquals(expectedTokensMap, actualTokensMap, () -> getMessage(textString, originalEncoder, mapEncoder, maxTokenCount));
+            }
+
+            // CountTokens
+            {
+                var expectedTokenCount = originalEncoder.countTokens(textString);
+                var actualTokenCount = normalEncoder.countTokens(textString);
+                assertEquals(expectedTokenCount, actualTokenCount, () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
+            }
+            // CountTokens array
+            {
+                var expectedTokensCountArray = originalEncoder.countTokens(textString);
+                var actualTokensCountArray = arrayEncoder.countTokens(textString);
+                assertEquals(expectedTokensCountArray, actualTokensCountArray, () -> getMessage(textString, originalEncoder, arrayEncoder, maxTokenCount));
+            }
+            // CountTokens map
+            {
+                var expectedTokensCountMap = originalEncoder.countTokens(textString);
+                var actualTokensCountMap = mapEncoder.countTokens(textString);
+                assertEquals(expectedTokensCountMap, actualTokensCountMap, () -> getMessage(textString, originalEncoder, mapEncoder, maxTokenCount));
+            }
+
         });
     }
 
-    private String generateValidText(GptBytePairEncodingOriginal originalEncoder, int maxStringLength) {
+    private String generateValidText(GptBytePairEncodingOriginal originalEncoder, int maxStringLength, List<String> singleTokenStrings) {
         String textString;
         do {
-            textString = generateRandomString(maxStringLength);
+            textString = generateRandomString(maxStringLength, singleTokenStrings);
         } while (!Objects.equals(originalEncoder.decode(originalEncoder.encode(textString)), textString));
         return textString;
     }
 
-    private String generateRandomString(int maxStringLength) {
+    private String generateRandomString(int maxStringLength, List<String> singleTokenStrings) {
         var length = rand().nextInt(1, maxStringLength);
         return rand()
                 .ints(length, 0, 20)
-                .mapToObj(this::getRandomCharFromCategory)
+                .mapToObj(category -> getRandomCharFromCategory(category, singleTokenStrings))
                 .map(String::valueOf)
                 .map(obj -> rand().nextBoolean() ? obj : (rand().nextBoolean() ? obj.toUpperCase() : obj.toLowerCase()))
                 .collect(joining());
     }
 
-    private char[] getRandomCharFromCategory(int category) {
+    private char[] getRandomCharFromCategory(int category, List<String> singleTokenStrings) {
         switch (category) {
             case 0:
                 return new char[]{' '};
@@ -186,6 +226,7 @@ public class Cl100kParserTest {
             case 17:
                 return SPECIAL.get(rand().nextInt(SPECIAL.size())).toCharArray();
             case 18:
+                return singleTokenStrings.get(rand().nextInt(singleTokenStrings.size())).toCharArray();
             case 19:
                 while (true) {
                     var r = rand().nextInt(MIN_CODE_POINT, MAX_CODE_POINT);
