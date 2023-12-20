@@ -3,6 +3,8 @@ package com.knuddels.jtokkit.reference;
 import com.knuddels.jtokkit.EncodingFactory;
 import com.knuddels.jtokkit.GptBytePairEncodingOriginal;
 import com.knuddels.jtokkit.api.Encoding;
+import it.unimi.dsi.fastutil.ints.Int2LongAVLTreeMap;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -99,6 +101,34 @@ public class Cl100kBaseTest {
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens(), "Encoding result does not match expected value for input: " + input);
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
+    }
+
+    @Disabled
+    @Test
+    public void encodingSpeeds() {
+        var input = new StringBuilder();
+        var measurements = new Int2LongAVLTreeMap();
+
+        var iterations = 20;
+        for (double i = 1.0; i < 3_000; i = Math.max(i + 1, i * 1.01)) {
+            while (input.length() < i) {
+                input.append("a");
+            }
+            String inputString = input.toString();
+
+            for (int j = 0; j < 10 * iterations; j++) {
+                var warmup = ENCODING.encode(inputString);
+                assert !warmup.isEmpty();
+            }
+            var startTime = System.nanoTime();
+            for (int j = 0; j < iterations; j++) {
+                var encodingResult = ENCODING.encode(inputString);
+                assert !encodingResult.isEmpty();
+            }
+            var endTime = System.nanoTime();
+            measurements.put((int) i, ((endTime - startTime) / iterations));
+        }
+        measurements.forEach((i, t) -> System.out.println(i + "\t" + t));
     }
 
     @Test
