@@ -87,18 +87,15 @@ public class CompactTokenEncoder {
     static long getSubToken(long payload, int startIndex, int endIndex) {
         var byteSize = byteSize(payload);
         var newLength = endIndex - startIndex;
-        if (byteSize == newLength) {
-            return payload;
-        } else {
-            var shift = (1 + byteSize - endIndex) * Byte.SIZE;
-            var mask = -1L >>> -(newLength * Byte.SIZE);
-            var result = (payload >>> shift) & mask;
-            result = (result << Byte.SIZE) | newLength;
+        assert newLength < byteSize;
+        var shift = (1 + byteSize - endIndex) * Byte.SIZE;
+        var mask = -1L >>> -(newLength * Byte.SIZE);
+        var result = (payload >>> shift) & mask;
+        result = (result << Byte.SIZE) | newLength;
 
-            assert newLength == byteSize(result) : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
+        assert newLength == byteSize(result) : "Expected byte size: " + newLength + ", but got: " + byteSize(result) + " for result: " + result;
 
-            return result;
-        }
+        return result;
     }
 
     int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
@@ -113,14 +110,10 @@ public class CompactTokenEncoder {
         } else {
             var length = byteSize(match);
             assert length > 1 && length < Long.BYTES;
-            initRanks(match, length, ranks);
-            var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks);
+            var validRanks = initRanks(match, length, ranks);
+            var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks, validRanks);
             if (keepEncodings) {
-                var start = 0;
-                while (start < length && ranks.getInt(start) == DUMMY_RANK) {
-                    start++;
-                }
-                for (var end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
+                for (int start = 0, end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
                     if (ranks.getInt(end) != DUMMY_RANK) {
                         var token = encode(match, start, end);
                         assert token != MAX_RANK : "Token should not be MAX_RANK";
@@ -133,27 +126,31 @@ public class CompactTokenEncoder {
         }
     }
 
-    void initRanks(long piece, int tokenCount, IntArrayList ranks) {
+    int initRanks(long piece, int tokenCount, IntArrayList ranks) {
+        var validRanks = 0;
         assert tokenCount > 1 : "Already filtered out";
         ranks.clear();
         ranks.ensureCapacity(tokenCount + 1);
         for (var i = 0; i < tokenCount + 1; i++) {
             var encoded = encode(piece, i, i + 2);
+            if (encoded != MAX_RANK) {
+                validRanks++;
+            }
             ranks.add(encoded);
         }
+        return validRanks;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks) {
+    int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks, int validRanks) {
         assert accepts(length);
         while (true) {
-            if (length <= 2) {
+            if (validRanks == 0) {
                 assert getMinRankIndex(ranks) < 0;
                 break;
             }
             var minRankIndex = getMinRankIndex(ranks);
-            if (minRankIndex < 0) {
-                break;
-            }
+            assert minRankIndex >= 0;
+
             var previousIndex = getPreviousIndex(ranks, minRankIndex - 1);
             var nextIndex = getNextIndex(ranks, minRankIndex + 1);
             var nextNextIndex = getNextIndex(ranks, nextIndex + 1);
@@ -161,13 +158,19 @@ public class CompactTokenEncoder {
 
             if (previousIndex >= 0) {
                 assert ranks.getInt(previousIndex) != DUMMY_RANK;
-                var rank = encode(piece, previousIndex, nextNextIndex);
-                ranks.set(previousIndex, rank);
+                var newRank = encode(piece, previousIndex, nextNextIndex);
+                int oldRank = ranks.set(previousIndex, newRank);
+                validRanks += getValidRankChange(oldRank, newRank);
             }
-            var rank = encode(piece, minRankIndex, nextNextNextIndex);
-            ranks.set(minRankIndex, rank);
+            assert ranks.getInt(minRankIndex) != DUMMY_RANK;
+            var newRank = encode(piece, minRankIndex, nextNextNextIndex);
+            var oldRank = ranks.set(minRankIndex, newRank);
+            validRanks += getValidRankChange(oldRank, newRank);
 
-            ranks.set(nextIndex, DUMMY_RANK);
+            var oldDeletedRank = ranks.set(nextIndex, DUMMY_RANK);
+            if (oldDeletedRank != MAX_RANK) {
+                validRanks--;
+            }
 
             length--;
         }

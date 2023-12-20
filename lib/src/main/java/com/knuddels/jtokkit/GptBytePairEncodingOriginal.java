@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 
 public final class GptBytePairEncodingOriginal {
     public final Pattern pattern;
+    final TokenEncoderOriginal<ImmutableByteArray, Integer> encoder;
     private final String name;
-    private final TokenEncoderOriginal<ImmutableByteArray, Integer> encoder;
     private final TokenEncoderOriginal<String, Integer> specialTokensEncoder;
 
     public GptBytePairEncodingOriginal(String name, Pattern pattern, Map<byte[], Integer> encoder, Map<String, Integer> specialTokensEncoder) {
@@ -26,7 +26,6 @@ public final class GptBytePairEncodingOriginal {
         var encoder = EncodingFactory.loadMergeableRanks("/com/knuddels/jtokkit/cl100k_base.tiktoken");
         return new GptBytePairEncodingOriginal("cl100k_base", regex, encoder, EncodingFactory.SPECIAL_TOKENS_CL100K_BASE);
     }
-
 
     public List<Integer> encode(final String text) {
         return encodeInternal(text, null).getTokens();
@@ -212,7 +211,7 @@ public final class GptBytePairEncodingOriginal {
         return encoder.encodeIfPresent(encoderIndex);
     }
 
-    private byte[] decodeToken(final int token) {
+    public byte[] decodeToken(final int token) {
         final Optional<ImmutableByteArray> decodedToken = encoder.decodeIfPresent(token);
         if (decodedToken.isPresent()) {
             return decodedToken.get().getRawArray();
@@ -236,7 +235,7 @@ public final class GptBytePairEncodingOriginal {
         }
     }
 
-    private static final class ImmutableByteArray {
+    static final class ImmutableByteArray {
         private final byte[] array;
 
         /*
@@ -312,7 +311,7 @@ public final class GptBytePairEncodingOriginal {
         }
     }
 
-    private final static class TokenEncoderOriginal<K, V> {
+    final static class TokenEncoderOriginal<K, V> {
 
         private final Map<K, V> decodedToEncoded = new HashMap<>();
         private final Map<V, K> encodedToDecoded = new HashMap<>();

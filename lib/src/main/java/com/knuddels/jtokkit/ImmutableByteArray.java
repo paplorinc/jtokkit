@@ -42,6 +42,7 @@ class ImmutableByteArray {
 
     @Override
     public int hashCode() {
+        // TODO optimize
         assert !CompactTokenEncoder.accepts(length()) : "Hashing small arrays is not supported";
         int result = 1;
         for (int i = start; i < end; i++) {
