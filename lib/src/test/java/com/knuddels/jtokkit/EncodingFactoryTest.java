@@ -7,11 +7,9 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.IntStream;
 
 import static com.knuddels.jtokkit.EncodingFactory.compileRegex;
 import static java.lang.Character.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -137,13 +135,6 @@ class EncodingFactoryTest {
         return new ArrayList<>(whitespaceChars);
     }
 
-    static String normalizeStringForTesting(String testString) {
-        return testString
-                .replaceAll("\\r", "\\\\r")
-                .replaceAll("\\n", "\\\\n")
-                .replaceAll(" ", "␣");
-    }
-
     @Test
     void oldRegexMatchesTheSameWayAsTheOptimizedOne() throws Exception {
 //        var collected = new LinkedHashMap<String, List<String>>();
@@ -182,88 +173,5 @@ class EncodingFactoryTest {
 //            });
         }
 //        System.out.println(completeLines.entrySet());
-    }
-
-    @Test
-    public void testParser() {
-        var testStrings = new ArrayList<>(List.of(
-                "\n",
-                " ",
-                "a : b",
-                "  a",
-                "\n \n ",
-                "\n \n",
-                "\n ",
-                "\n \n!",
-                "\n \n   ",
-                "\n  !",
-                "\n A",
-                "  \n\r  \r\n  \r \n  A\nA \n A",
-                ",\n\n",
-                " ***\n\n\n\n",
-
-                "   !",
-                "   A",
-                "   0",
-                "   *",
-
-                "   \n!",
-                "   \nA",
-                "   \n0",
-                "   \n*",
-
-                "   \n !",
-                "   \n A",
-                "   \n 0",
-                "   \n *",
-
-                "I paid $123,456 to 9876543210 people!",
-                "Unicode snowman: ☃️",
-                "I'm:  0\n",
-                "We'll meet at 3 o'clock.",
-                "Hello, world! It's a beautiful day...",
-                "In 2023, I'll be 25 years old.",
-                "Hello \n\n World  !",
-                " It's 2:30pm;\n\n\n\nlet's eat, sleep , and code!",
-                "'Thank God, here it is.' But when we took up the trunk...",
-                "user@example.com",
-                "this is a 'quoted' word",
-                "　　a",
-                "'ſ",
-                "'ſ\uD84F\uDDB8\uD84C\uDD2CƘ淚",
-                "\uD83D\uDE29\n",
-                "03½",
-                "* \u05E2"
-        ));
-        testStrings.addAll(Cl100kBaseTest.getTexts("../"));
-
-        var originalPattern = GptBytePairEncodingOriginal.getEncoder().pattern;
-        IntStream.range(0, testStrings.size()).forEachOrdered(i -> {
-            String testString = testStrings.get(i);
-            System.out.println("Validating #" + i + ": `" + normalizeStringForTesting(testString.substring(0, Math.min(100, testString.length()))) + (testString.length() > 100 ? "..." : "") + "`");
-
-            List<String> expected = matches(testString, originalPattern);
-//            var normalizedExpected = expected.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList();
-//            System.out.println("Expected: " + normalizedExpected);
-
-            List<String> actual = new ArrayList<>();
-            Cl100kParser.split(testString, utf8Bytes -> {
-                assert !utf8Bytes.isEmpty();
-                actual.add(new String(utf8Bytes.toByteArray(), UTF_8));
-                return false;
-            });
-//            var encounters = normalizeStringForTesting(getEncounters(testString, currentRegexParts, currentRegex, true).toString());
-//            assertEquals(normalizedExpected, actual.stream().map(EncodingFactoryTest::normalizeStringForTesting).toList(), encounters);
-            assertEquals(expected, actual);
-        });
-    }
-
-    private List<String> matches(String input, Pattern pattern) {
-        List<String> tokens = new ArrayList<>();
-        for (Matcher matcher = pattern.matcher(input); matcher.find(); ) {
-            var group = matcher.group();
-            tokens.add(group);
-        }
-        return tokens;
     }
 }

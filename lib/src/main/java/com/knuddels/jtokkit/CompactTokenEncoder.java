@@ -44,7 +44,7 @@ public class CompactTokenEncoder {
                 }
             });
 
-            for (int i = 2; i < longEncoders.length; i++) {
+            for (var i = 2; i < longEncoders.length; i++) {
                 longEncoders[i] = new Long2IntOpenHashMap(longEncoders[i], .2f);
                 longEncoders[i].defaultReturnValue(MAX_RANK);
             }
@@ -116,16 +116,16 @@ public class CompactTokenEncoder {
             initRanks(match, length, ranks);
             var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks);
             if (keepEncodings) {
-                var i = 0;
-                while (i < length && ranks.getInt(i) == DUMMY_RANK) {
-                    i++;
+                var start = 0;
+                while (start < length && ranks.getInt(start) == DUMMY_RANK) {
+                    start++;
                 }
-                for (var j = 1; j < ranks.size() && out.size() < maxTokenCount; j++) {
-                    if (ranks.getInt(j) != DUMMY_RANK) {
-                        var token = encode(match, i, j);
+                for (var end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
+                    if (ranks.getInt(end) != DUMMY_RANK) {
+                        var token = encode(match, start, end);
                         assert token != MAX_RANK : "Token should not be MAX_RANK";
                         out.add(token);
-                        i = j;
+                        start = end;
                     }
                 }
             }
@@ -137,22 +137,20 @@ public class CompactTokenEncoder {
         assert tokenCount > 1 : "Already filtered out";
         ranks.clear();
         ranks.ensureCapacity(tokenCount + 1);
-        for (var i = 0; i < tokenCount - 1; i++) {
-            ranks.add(encode(piece, i, i + 2));
+        for (var i = 0; i < tokenCount + 1; i++) {
+            var encoded = encode(piece, i, i + 2);
+            ranks.add(encoded);
         }
-        ranks.add(MAX_RANK);
-        ranks.add(MAX_RANK);
     }
 
     int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks) {
-        assert length > 1;
-        int minRankIndex;
+        assert accepts(length);
         while (true) {
             if (length <= 2) {
                 assert getMinRankIndex(ranks) < 0;
                 break;
             }
-            minRankIndex = getMinRankIndex(ranks);
+            var minRankIndex = getMinRankIndex(ranks);
             if (minRankIndex < 0) {
                 break;
             }
@@ -162,11 +160,12 @@ public class CompactTokenEncoder {
             var nextNextNextIndex = getNextIndex(ranks, nextNextIndex + 1);
 
             if (previousIndex >= 0) {
-                var newPrevMinRank = nextNextIndex < ranks.size() ? encode(piece, previousIndex, nextNextIndex) : MAX_RANK;
-                ranks.set(previousIndex, newPrevMinRank);
+                assert ranks.getInt(previousIndex) != DUMMY_RANK;
+                var rank = encode(piece, previousIndex, nextNextIndex);
+                ranks.set(previousIndex, rank);
             }
-            var newMinRank = nextNextNextIndex < ranks.size() ? encode(piece, minRankIndex, nextNextNextIndex) : MAX_RANK;
-            ranks.set(minRankIndex, newMinRank);
+            var rank = encode(piece, minRankIndex, nextNextNextIndex);
+            ranks.set(minRankIndex, rank);
 
             ranks.set(nextIndex, DUMMY_RANK);
 
@@ -185,15 +184,16 @@ public class CompactTokenEncoder {
     }
 
     private int encode(long piece, int start, int end) {
-        var length = end - start;
         var fullByteSize = byteSize(piece);
-        if (length == fullByteSize) {
+        if (end > fullByteSize) {
+            return MAX_RANK;
+        } else if (end - start == fullByteSize) {
             assert start == 0;
             assert accepts(fullByteSize);
             return encode(piece);
         } else {
             var subToken = getSubToken(piece, start, end);
-            assert CompactTokenEncoder.accepts(length);
+            assert CompactTokenEncoder.accepts(end - start);
             return encode(subToken);
         }
     }

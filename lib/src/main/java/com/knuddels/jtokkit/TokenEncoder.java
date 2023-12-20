@@ -113,15 +113,6 @@ final class TokenEncoder {
         }
     }
 
-    int encode(ImmutableByteArray payload) {
-        if (payload.length() < encoders.length) {
-            var encoder = encoders[payload.length()];
-            return encoder == null ? MAX_RANK : encoder.getInt(payload);
-        } else {
-            return MAX_RANK;
-        }
-    }
-
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
         assert accepts(utf8Bytes.size());
         var match = new ImmutableByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
@@ -149,7 +140,7 @@ final class TokenEncoder {
         RankNode head = null;
         RankNode prevNode = null;
         for (var i = 0; i < length + 1; i++) {
-            var rank = i < length - 1 ? encode(compactTokenEncoder, match, i, i + 2) : MAX_RANK;
+            var rank = encode(compactTokenEncoder, match, i, i + 2);
             var node = new RankNode(rank, i);
             if (head == null) {
                 head = node;
@@ -180,13 +171,13 @@ final class TokenEncoder {
             var nextNextNextNode = nextNextNode != null ? nextNextNode.next : null;
 
             if (previousNode != null) {
-                var newPrevMinRank = nextNextNode != null ? encode(compactTokenEncoder, match, previousNode.index, nextNextNode.index) : MAX_RANK;
+                var newPrevMinRank = encode(compactTokenEncoder, match, previousNode.index, nextNextNode != null ? nextNextNode.index : Integer.MAX_VALUE);
                 removeNode(rankMap, previousNode);
                 previousNode.rank = newPrevMinRank;
                 rankMap.computeIfAbsent(newPrevMinRank, k -> new Int2ObjectAVLTreeMap<>()).put(previousNode.index, previousNode);
             }
 
-            var newMinRank = nextNextNextNode != null ? encode(compactTokenEncoder, match, minNode.index, nextNextNextNode.index) : MAX_RANK;
+            var newMinRank = encode(compactTokenEncoder, match, minNode.index, nextNextNextNode != null ? nextNextNextNode.index : Integer.MAX_VALUE);
             removeNode(rankMap, minNode);
             minNode.rank = newMinRank;
             rankMap.computeIfAbsent(newMinRank, k -> new Int2ObjectAVLTreeMap<>()).put(minNode.index, minNode);
@@ -238,11 +229,10 @@ final class TokenEncoder {
         assert tokenCount > 1 : "Already filtered out";
         ranks.clear();
         ranks.ensureCapacity(tokenCount + 1);
-        for (var i = 0; i < tokenCount - 1; i++) {
-            ranks.add(encode(compactTokenEncoder, piece, i, i + 2));
+        for (var i = 0; i < tokenCount + 1; i++) {
+            var encoded = encode(compactTokenEncoder, piece, i, i + 2);
+            ranks.add(encoded);
         }
-        ranks.add(MAX_RANK);
-        ranks.add(MAX_RANK);
     }
 
     int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int length, IntArrayList ranks) {
@@ -262,11 +252,12 @@ final class TokenEncoder {
             var nextNextNextIndex = getNextIndex(ranks, nextNextIndex + 1);
 
             if (previousIndex >= 0) {
-                var newPrevMinRank = nextNextIndex < ranks.size() ? encode(compactTokenEncoder, piece, previousIndex, nextNextIndex) : MAX_RANK;
-                ranks.set(previousIndex, newPrevMinRank);
+                assert ranks.getInt(previousIndex) != DUMMY_RANK;
+                var rank = encode(compactTokenEncoder, piece, previousIndex, nextNextIndex);
+                ranks.set(previousIndex, rank);
             }
-            var newMinRank = nextNextNextIndex < ranks.size() ? encode(compactTokenEncoder, piece, minRankIndex, nextNextNextIndex) : MAX_RANK;
-            ranks.set(minRankIndex, newMinRank);
+            var rank = encode(compactTokenEncoder, piece, minRankIndex, nextNextNextIndex);
+            ranks.set(minRankIndex, rank);
 
             ranks.set(nextIndex, DUMMY_RANK);
 
@@ -275,19 +266,27 @@ final class TokenEncoder {
         return length;
     }
 
+    int encode(ImmutableByteArray payload) {
+        if (payload.length() < encoders.length) {
+            var encoder = encoders[payload.length()];
+            return encoder == null ? MAX_RANK : encoder.getInt(payload);
+        } else {
+            return MAX_RANK;
+        }
+    }
+
     private int encode(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int start, int end) {
-        var length = end - start;
-        if (length == piece.length()) {
+        if (end > piece.length()) {
+            return MAX_RANK;
+        } else if (end - start == piece.length()) {
             assert start == piece.getStart() && end == piece.getEnd();
             assert accepts(piece.length());
             return encode(piece);
         } else {
-            start += piece.getStart();
-            end += piece.getStart();
-            if (CompactTokenEncoder.accepts(length)) {
-                return compactTokenEncoder.encode(CompactTokenEncoder.from(piece.array, start, end));
+            if (CompactTokenEncoder.accepts(end - start)) {
+                return compactTokenEncoder.encode(CompactTokenEncoder.from(piece.array, start + piece.getStart(), end + piece.getStart()));
             } else {
-                return encode(new ImmutableByteArray(piece.array, start, end));
+                return encode(new ImmutableByteArray(piece.array, start + piece.getStart(), end + piece.getStart()));
             }
         }
     }
