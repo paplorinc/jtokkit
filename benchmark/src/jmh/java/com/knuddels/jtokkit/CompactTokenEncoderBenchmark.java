@@ -1,9 +1,6 @@
 package com.knuddels.jtokkit;
 
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.io.IOException;
@@ -33,63 +30,14 @@ public class CompactTokenEncoderBenchmark {
         }
     }
 
-    //@Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_0(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(i);
         }
     }
 
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_1(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 1));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_2(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 2));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_3(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 3));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_4(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 4));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_5(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 5));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_6(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 6));
-        }
-    }
-
-    //@Benchmark
-    public void benchmarkCompactTokenEncoderFrom_7(Blackhole bh) {
-        for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
-            bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 7));
-        }
-    }
-
-    //@Benchmark
+    @Benchmark
     public void benchmarkCompactTokenEncoderFrom_all(Blackhole bh) {
         for (int i = 0; i < MAX_BYTE_ARRAY_LENGTH; i++) {
             bh.consume(CompactTokenEncoder.from(BYTE_ARRAY, i, i + 1));

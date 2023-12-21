@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @State(Scope.Thread)
-public abstract class AbstractMultiThreadedBenchmark /*extends AbstractBenchmark*/ {
+public abstract class AbstractMultiThreadedBenchmark extends AbstractBenchmark {
 
     private final int threads;
     private ExecutorService executor;

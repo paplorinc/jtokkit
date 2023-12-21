@@ -8,22 +8,22 @@ import java.util.List;
 
 @SuppressWarnings("DuplicatedCode")
 public abstract class AbstractBenchmark {
-    //@Benchmark
+    @Benchmark
     public void benchmarkP50kBase(final BenchmarkingState state, final Blackhole blackhole) {
         blackhole.consume(encodeAll(state.p50kBase, state.fileContents));
     }
 
-    //@Benchmark
+    @Benchmark
     public void benchmarkR50kBase(final BenchmarkingState state, final Blackhole blackhole) {
         blackhole.consume(encodeAll(state.r50kBase, state.fileContents));
     }
 
-    //@Benchmark
+    @Benchmark
     public void benchmarkP50kEdit(final BenchmarkingState state, final Blackhole blackhole) {
         blackhole.consume(encodeAll(state.p50kEdit, state.fileContents));
     }
 
-    //@Benchmark
+    @Benchmark
     public void benchmarkCl100kBase(final BenchmarkingState state, final Blackhole blackhole) {
         blackhole.consume(encodeAll(state.cl100kBase, state.fileContents));
     }
@@ -37,7 +37,7 @@ public abstract class AbstractBenchmark {
      */
     protected abstract List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents);
 
-    //@Benchmark
+    @Benchmark
     public long benchmarkCl100kBaseCountBytes(BenchmarkingState state) {
         var result = 0L;
         var encoding = state.cl100kBase;
@@ -57,21 +57,21 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    //@Benchmark
+    @Benchmark
     public void benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state, Blackhole bh) {
         for (int i = 0; i < 5; i++) {
             bh.consume(state.cl100kBase.countTokens(state.bigFileContent));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public void benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state, Blackhole bh) {
         for (int i = 0; i < 5; i++) {
             bh.consume(state.cl100kBaseOriginal.countTokens(state.bigFileContent));
         }
     }
 
-    //    @Benchmark
+    @Benchmark
     public long benchmarkCl100kBaseTokenCountOriginal(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBaseOriginal;
