@@ -20,7 +20,7 @@ public class GptBytePairEncoding implements Encoding {
     final Int2ObjectMap<byte[]> encodedToDecoded;
     private final String name;
     private final Pattern pattern;
-    private final StringEncoder specialTokensEncoder;
+    private final SpecialEncoder specialTokensEncoder;
     private final CompactTokenEncoder compactTokenEncoder;
     private final TokenEncoder tokenEncoder;
 //    GptBytePairEncodingOriginal bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder(); // TODO used for testing
@@ -28,7 +28,7 @@ public class GptBytePairEncoding implements Encoding {
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
-        this.specialTokensEncoder = new StringEncoder(params.getSpecialTokensEncoder());
+        this.specialTokensEncoder = new SpecialEncoder(params.getSpecialTokensEncoder());
 
         this.compactTokenEncoder = new CompactTokenEncoder(params.getEncoder());
         this.tokenEncoder = new TokenEncoder(params.getEncoder());
@@ -54,17 +54,9 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
-        checkForSpecialTokens(text);
+        specialTokensEncoder.checkForSpecialTokens(text);
 
         return encodeOrdinaryInternal(text, maxTokenCount, keepEncodings);
-    }
-
-    private void checkForSpecialTokens(String text) {
-        for (var specialToken : specialTokensEncoder.getDecodedTokens()) {
-            if (text.contains(specialToken)) {
-                throw new UnsupportedOperationException("Encoding special tokens is not supported yet.");
-            }
-        }
     }
 
     @Override
