@@ -20,11 +20,11 @@ final class TokenEncoder {
     public TokenEncoder(Map<byte[], Integer> encoder) {
         if (!encoder.isEmpty()) {
             VERY_LARGE_TOKENIZER_BYTE_THRESHOLD = Integer.parseInt(System.getProperty("VERY_LARGE_TOKENIZER_BYTE_THRESHOLD", "1000"));
-            var tempEncoders = new Int2ObjectAVLTreeMap<Object2IntMap<ImmutableByteArray>>();
+            var tempEncoders = new Int2ObjectAVLTreeMap<Object2IntMap<ByteArray>>();
             encoder.forEach((k, v) -> {
                 if (accepts(k.length)) {
                     length++;
-                    var key = new ImmutableByteArray(k, 0, k.length);
+                    var key = new ByteArray(k, 0, k.length);
                     tempEncoders.computeIfAbsent(k.length, integer -> new Object2IntOpenHashMap<>()).put(key, (int) v);
                 }
             });
@@ -128,7 +128,7 @@ final class TokenEncoder {
 
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
         assert accepts(utf8Bytes.size());
-        var match = new ImmutableByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
+        var match = new ByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
         var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
@@ -145,7 +145,7 @@ final class TokenEncoder {
         }
     }
 
-    private int addTokensAndGetCountLarge(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, ImmutableByteArray match, int length) {
+    private int addTokensAndGetCountLarge(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, ByteArray match, int length) {
         assert length > 1 : "Already filtered out";
 
         var rankMap = new Int2ObjectAVLTreeMap<Int2ObjectSortedMap<RankNode>>();
@@ -225,7 +225,7 @@ final class TokenEncoder {
         return length;
     }
 
-    private int addTokensAndGetCountSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ImmutableByteArray match, int length) {
+    private int addTokensAndGetCountSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ByteArray match, int length) {
         var validRanks = initRanks(compactTokenEncoder, match, length, ranks);
         var tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, length, ranks, validRanks);
         if (keepEncodings) {
@@ -241,7 +241,7 @@ final class TokenEncoder {
         return tokenCount;
     }
 
-    int initRanks(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int tokenCount, IntArrayList ranks) {
+    int initRanks(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int tokenCount, IntArrayList ranks) {
         assert tokenCount > 1 : "Already filtered out";
         ranks.clear();
         ranks.ensureCapacity(tokenCount + 1);
@@ -256,7 +256,7 @@ final class TokenEncoder {
         return validRanks;
     }
 
-    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int length, IntArrayList ranks, int validRanks) {
+    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int length, IntArrayList ranks, int validRanks) {
         assert accepts(length);
         while (true) {
             if (validRanks == 0) {
@@ -292,7 +292,7 @@ final class TokenEncoder {
         return length;
     }
 
-    int encode(ImmutableByteArray payload) {
+    int encode(ByteArray payload) {
         if (payload.length() < encoders.length) {
             var encoder = encoders[payload.length()];
             return encoder == null ? MAX_RANK : encoder.getInt(payload);
@@ -301,7 +301,7 @@ final class TokenEncoder {
         }
     }
 
-    private int encode(CompactTokenEncoder compactTokenEncoder, ImmutableByteArray piece, int start, int end) {
+    private int encode(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int start, int end) {
         if (end > piece.length()) {
             return MAX_RANK;
         } else if (end - start == piece.length()) {
@@ -312,7 +312,7 @@ final class TokenEncoder {
             if (CompactTokenEncoder.accepts(end - start)) {
                 return compactTokenEncoder.encode(CompactTokenEncoder.from(piece.array, start + piece.getStart(), end + piece.getStart()));
             } else {
-                return encode(new ImmutableByteArray(piece.array, start + piece.getStart(), end + piece.getStart()));
+                return encode(new ByteArray(piece.array, start + piece.getStart(), end + piece.getStart()));
             }
         }
     }
