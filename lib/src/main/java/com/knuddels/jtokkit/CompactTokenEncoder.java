@@ -160,12 +160,16 @@ public class CompactTokenEncoder {
                 assert ranks.getInt(previousIndex) != DUMMY_RANK;
                 var newRank = encode(piece, previousIndex, nextNextIndex);
                 int oldRank = ranks.set(previousIndex, newRank);
-                validRanks += getValidRankChange(oldRank, newRank);
+                if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {
+                    validRanks -= (newRank == MAX_RANK) ? 1 : -1;
+                }
             }
             assert ranks.getInt(minRankIndex) != DUMMY_RANK;
             var newRank = encode(piece, minRankIndex, nextNextNextIndex);
             var oldRank = ranks.set(minRankIndex, newRank);
-            validRanks += getValidRankChange(oldRank, newRank);
+            if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {
+                validRanks--;
+            }
 
             var oldDeletedRank = ranks.set(nextIndex, DUMMY_RANK);
             if (oldDeletedRank != MAX_RANK) {

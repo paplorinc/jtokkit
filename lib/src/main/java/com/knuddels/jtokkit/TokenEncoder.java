@@ -114,18 +114,6 @@ final class TokenEncoder {
         }
     }
 
-    public static int getValidRankChange(int oldRank, int newRank) {
-        var isCurrentMaxRank = newRank == MAX_RANK;
-        var isPreviousMaxRank = oldRank == MAX_RANK;
-        if (isCurrentMaxRank && !isPreviousMaxRank) {
-            return -1;
-        } else if (!isCurrentMaxRank && isPreviousMaxRank) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
     public int addTokensAndGetCount(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
         assert accepts(utf8Bytes.size());
         var match = new ByteArray(utf8Bytes.elements(), 0, utf8Bytes.size());
@@ -187,14 +175,18 @@ final class TokenEncoder {
 
             if (previousNode != null) {
                 var newRank = encode(compactTokenEncoder, match, previousNode.index, nextNextNode != null ? nextNextNode.index : Integer.MAX_VALUE);
-                validRanks += getValidRankChange(previousNode.rank, newRank);
+                if ((newRank == MAX_RANK) != (previousNode.rank == MAX_RANK)) {
+                    validRanks -= (newRank == MAX_RANK) ? 1 : -1;
+                }
                 removeNode(rankMap, previousNode);
                 previousNode.rank = newRank;
                 rankMap.computeIfAbsent(newRank, k -> new Int2ObjectAVLTreeMap<>()).put(previousNode.index, previousNode);
             }
 
             var newRank = encode(compactTokenEncoder, match, minNode.index, nextNextNextNode != null ? nextNextNextNode.index : Integer.MAX_VALUE);
-            validRanks += getValidRankChange(minNode.rank, newRank);
+            if ((newRank == MAX_RANK) != (minNode.rank == MAX_RANK)) {
+                validRanks--;
+            }
             removeNode(rankMap, minNode);
             minNode.rank = newRank;
             rankMap.computeIfAbsent(newRank, k -> new Int2ObjectAVLTreeMap<>()).put(minNode.index, minNode);
@@ -275,12 +267,16 @@ final class TokenEncoder {
                 assert ranks.getInt(previousIndex) != DUMMY_RANK;
                 var newRank = encode(compactTokenEncoder, piece, previousIndex, nextNextIndex);
                 int oldRank = ranks.set(previousIndex, newRank);
-                validRanks += getValidRankChange(oldRank, newRank);
+                if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {
+                    validRanks -= (newRank == MAX_RANK) ? 1 : -1;
+                }
             }
             assert ranks.getInt(minRankIndex) != DUMMY_RANK;
             var newRank = encode(compactTokenEncoder, piece, minRankIndex, nextNextNextIndex);
             var oldRank = ranks.set(minRankIndex, newRank);
-            validRanks += getValidRankChange(oldRank, newRank);
+            if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {
+                validRanks--;
+            }
 
             var oldDeletedRank = ranks.set(nextIndex, DUMMY_RANK);
             if (oldDeletedRank != MAX_RANK) {
