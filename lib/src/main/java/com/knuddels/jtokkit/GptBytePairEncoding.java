@@ -10,8 +10,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
-import java.util.Arrays;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -25,7 +23,6 @@ public class GptBytePairEncoding implements Encoding {
     private final SpecialEncoder specialTokensEncoder;
     private final CompactTokenEncoder compactTokenEncoder;
     private final TokenEncoder tokenEncoder;
-    GptBytePairEncodingOriginal bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder(); // TODO used for testing
 
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
@@ -76,25 +73,8 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
-        Matcher[] reference = {null};
-        assert (reference[0] = bytePairEncodingOriginal.pattern.matcher(text)) != null;
-
         var out = new IntArrayList();
-        var ranks = new IntArrayList();
-        int[] tokenCount = {0};
-        if ("cl100k_base".equals(name)) {
-            Cl100kParser.split(text, utf8Bytes -> {
-                assert reference[0].find() : "`" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
-                assert Arrays.equals(reference[0].group().getBytes(UTF_8), utf8Bytes.toByteArray()) : "`" + reference[0].group() + "` != `" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
-                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
-                return tokenCount[0] >= maxTokenCount;
-            });
-        } else {
-            for (var matcher = pattern.matcher(text); tokenCount[0] < maxTokenCount && matcher.find(); ) {
-                var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
-                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, bytes, out, ranks);
-            }
-        }
+        int tokenCount = encodeOrdinaryInternal(text, maxTokenCount, keepEncodings, out);
 
         if (maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
@@ -104,7 +84,6 @@ public class GptBytePairEncoding implements Encoding {
                 for (var i = 0; i < size; i++) {
                     tokens.add(out.getInt(i));
                 }
-                // TODO optimize
                 var decoded = decode(tokens);
                 if (text.startsWith(decoded)) {
                     // If decoded text is equal to the head of the original text, we can safely return the tokens
@@ -113,10 +92,20 @@ public class GptBytePairEncoding implements Encoding {
             }
         }
 
-        return new EncodingResult(out, tokenCount[0], false);
+        return new EncodingResult(out, tokenCount, false);
     }
 
-    private int processTokens(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntArrayList out, IntArrayList ranks) {
+    int encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings, IntArrayList out) {
+        int tokenCount = 0;
+        var ranks = new IntArrayList();
+        for (var matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
+            var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
+            tokenCount += processTokens(maxTokenCount, keepEncodings, bytes, out, ranks);
+        }
+        return tokenCount;
+    }
+
+    int processTokens(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntArrayList out, IntArrayList ranks) {
         int size = utf8Bytes.size();
         if (CompactTokenEncoder.accepts(size)) {
             return compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);

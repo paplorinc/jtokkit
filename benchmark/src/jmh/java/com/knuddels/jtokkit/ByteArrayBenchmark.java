@@ -1,6 +1,9 @@
 package com.knuddels.jtokkit;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.ArrayList;
@@ -38,7 +41,7 @@ public class ByteArrayBenchmark {
         }
     }
 
-    @Benchmark
+    //    @Benchmark
     public void benchmarkHashCode(Blackhole bh) {
         for (var byteArray : byteArrays) {
             bh.consume(byteArray.hashCode());
