@@ -17,15 +17,15 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class BenchmarkingState {
     public final GptBytePairEncodingOriginal cl100kBaseOriginal = GptBytePairEncodingOriginal.getEncoder();
     public final Encoding cl100kBase = EncodingFactory.cl100kBase();
-    //    public final Encoding p50kBase = EncodingFactory.p50kBase();
-//    public final Encoding p50kEdit = EncodingFactory.p50kEdit();
-//    public final Encoding r50kBase = EncodingFactory.r50kBase();
+    public final Encoding p50kBase = EncodingFactory.p50kBase();
+    public final Encoding p50kEdit = EncodingFactory.p50kEdit();
+    public final Encoding r50kBase = EncodingFactory.r50kBase();
     public List<String> fileContents;
     public String bigFileContent;
     @Param("data")
     public String dataFolderPath;
 
-    @Setup()
+    @Setup
     public void setup() throws IOException {
         fileContents = BenchmarkUtils.loadData(dataFolderPath);
         bigFileContent = Files.readString(Path.of("/Users/lorinc/IdeaProjects/jtokkit/benchmark/data/test_8_20000.txt"), UTF_8);
