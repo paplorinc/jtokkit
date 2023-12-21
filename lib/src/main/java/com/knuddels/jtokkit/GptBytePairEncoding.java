@@ -10,6 +10,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
+import java.util.Arrays;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -23,7 +25,7 @@ public class GptBytePairEncoding implements Encoding {
     private final SpecialEncoder specialTokensEncoder;
     private final CompactTokenEncoder compactTokenEncoder;
     private final TokenEncoder tokenEncoder;
-//    GptBytePairEncodingOriginal bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder(); // TODO used for testing
+    GptBytePairEncodingOriginal bytePairEncodingOriginal = GptBytePairEncodingOriginal.getEncoder(); // TODO used for testing
 
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
@@ -35,7 +37,7 @@ public class GptBytePairEncoding implements Encoding {
         assert compactTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size()
                 : compactTokenEncoder.length() + "+" + tokenEncoder.length() + " != " + params.getEncoder().size();
 
-        this.encodedToDecoded = new Int2ObjectOpenHashMap<>(params.getEncoder().size());
+        this.encodedToDecoded = new Int2ObjectOpenHashMap<>(params.getEncoder().size(), 0.4f);
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put((int) v, k));
     }
 
@@ -74,18 +76,16 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
-//        Matcher[] reference = {null};
-//        assert (reference[0] = bytePairEncodingOriginal.pattern.matcher(text)) != null;
+        Matcher[] reference = {null};
+        assert (reference[0] = bytePairEncodingOriginal.pattern.matcher(text)) != null;
 
         var out = new IntArrayList();
         var ranks = new IntArrayList();
         int[] tokenCount = {0};
         if ("cl100k_base".equals(name)) {
             Cl100kParser.split(text, utf8Bytes -> {
-//                var s = new String(utf8Bytes - start, UTF_8);
-//                System.out.println("`" + s + "`");
-//                assert reference[0].find() : "`" + s + "` in `" + text + "`";
-//                assert Arrays.equals(reference[0].group().getBytes(UTF_8), Arrays.copyOfRange(utf8Bytes)) : "`" + reference[0].group() + "` != `" + s + "` in `" + text + "`";
+                assert reference[0].find() : "`" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
+                assert Arrays.equals(reference[0].group().getBytes(UTF_8), utf8Bytes.toByteArray()) : "`" + reference[0].group() + "` != `" + new String(utf8Bytes.toByteArray(), UTF_8) + "` in `" + text + "`";
                 tokenCount[0] += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
                 return tokenCount[0] >= maxTokenCount;
             });
@@ -158,13 +158,8 @@ public class GptBytePairEncoding implements Encoding {
 
     @Override
     public byte[] decodeBytes(IntList tokens) {
-        ByteList out = new ByteArrayList(2 * tokens.size());
-        tokens.forEach(token -> {
-            var decodedToken = decodeToken(token);
-            for (var b : decodedToken) {
-                out.add(b);
-            }
-        });
+        ByteList out = new ByteArrayList(10 * tokens.size());
+        tokens.forEach(token -> out.addElements(out.size(), decodeToken(token)));
         return out.toByteArray();
     }
 

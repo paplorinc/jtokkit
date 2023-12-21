@@ -45,7 +45,7 @@ public class CompactTokenEncoder {
             });
 
             for (var i = 2; i < longEncoders.length; i++) {
-                longEncoders[i] = new Long2IntOpenHashMap(longEncoders[i], .2f);
+                longEncoders[i] = new Long2IntOpenHashMap(longEncoders[i], .4f);
                 longEncoders[i].defaultReturnValue(MAX_RANK);
             }
             assert longEncoders[0] == longEncoders[1];

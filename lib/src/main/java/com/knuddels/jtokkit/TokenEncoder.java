@@ -30,7 +30,7 @@ final class TokenEncoder {
             });
             encoders = new Object2IntMap[tempEncoders.lastIntKey() + 1];
             tempEncoders.forEach((k, v) -> {
-                encoders[k] = new Object2IntOpenHashMap<>(v, .2f);
+                encoders[k] = new Object2IntOpenHashMap<>(v, .4f);
                 encoders[k].defaultReturnValue(MAX_RANK);
             });
         } else {

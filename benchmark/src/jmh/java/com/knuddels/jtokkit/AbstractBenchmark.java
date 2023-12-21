@@ -81,7 +81,7 @@ public abstract class AbstractBenchmark {
         return result;
     }
 
-    //@Benchmark
+    @Benchmark
     public int benchmarkCl100kBaseTokens(BenchmarkingState state) {
         var result = 0;
         var encoding = state.cl100kBase;
