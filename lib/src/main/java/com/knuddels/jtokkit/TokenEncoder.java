@@ -29,6 +29,7 @@ final class TokenEncoder {
                     tempEncoders.computeIfAbsent(k.length, integer -> new Object2IntOpenHashMap<>()).put(key, (int) v);
                 }
             });
+            //noinspection unchecked
             encoders = new Object2IntMap[tempEncoders.lastIntKey() + 1];
             tempEncoders.forEach((k, v) -> {
                 encoders[k] = new Object2IntOpenHashMap<>(v, .4f);
@@ -43,7 +44,7 @@ final class TokenEncoder {
         return !CompactTokenEncoder.accepts(length);
     }
 
-    public static int getMinRankIndex(IntArrayList ranks) {
+    public static int getMinRankIndex(IntList ranks) {
         var minRankIndex = -1;
         var minRank = MAX_RANK;
 
@@ -91,14 +92,14 @@ final class TokenEncoder {
         return minRankIndex;
     }
 
-    public static int getNextIndex(IntArrayList ranks, int nextIndex) {
+    public static int getNextIndex(IntList ranks, int nextIndex) {
         while (nextIndex < ranks.size() && ranks.getInt(nextIndex) == DUMMY_RANK) {
             nextIndex++;
         }
         return nextIndex;
     }
 
-    public static int getPreviousIndex(IntArrayList ranks, int previousIndex) {
+    public static int getPreviousIndex(IntList ranks, int previousIndex) {
         while (previousIndex >= 0 && ranks.getInt(previousIndex) == DUMMY_RANK) {
             previousIndex--;
         }
@@ -125,8 +126,23 @@ final class TokenEncoder {
     }
 
     private int addTokensAndGetCountSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ByteArray match, int length) {
-        var validRanks = initRanks(compactTokenEncoder, match, length, ranks);
-        var tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, length, ranks, validRanks);
+        assert length > 1 : "Already filtered out";
+        ranks.clear();
+
+        var validRanks = 0;
+        var minRankIndex = -1;
+        for (int i = 0, minRank = MAX_RANK; i < length + 1; i++) {
+            var encoded = encode(compactTokenEncoder, match, i, i + 2);
+            if (encoded != MAX_RANK) {
+                validRanks++;
+                if (encoded < minRank) {
+                    minRankIndex = i;
+                    minRank = encoded;
+                }
+            }
+            ranks.add(encoded);
+        }
+        var tokenCount = mergeBytesAndGetTokenCount(compactTokenEncoder, match, length, ranks, validRanks, minRankIndex);
         if (keepEncodings) {
             for (int start = 0, end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
                 if (ranks.getInt(end) != DUMMY_RANK) {
@@ -140,29 +156,8 @@ final class TokenEncoder {
         return tokenCount;
     }
 
-    int initRanks(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int tokenCount, IntArrayList ranks) {
-        assert tokenCount > 1 : "Already filtered out";
-        ranks.clear();
-        ranks.ensureCapacity(tokenCount + 1);
-        var validRanks = 0;
-        for (var i = 0; i < tokenCount + 1; i++) {
-            var encoded = encode(compactTokenEncoder, piece, i, i + 2);
-            if (encoded != MAX_RANK) {
-                validRanks++;
-            }
-            ranks.add(encoded);
-        }
-        return validRanks;
-    }
-
-    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int length, IntArrayList ranks, int validRanks) {
-        assert accepts(length);
-        while (true) {
-            if (validRanks == 0) {
-                assert getMinRankIndex(ranks) < 0;
-                break;
-            }
-            var minRankIndex = getMinRankIndex(ranks);
+    int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int length, IntList ranks, int validRanks, int minRankIndex) {
+        while (validRanks > 0) {
             assert minRankIndex >= 0;
 
             var previousIndex = getPreviousIndex(ranks, minRankIndex - 1);
@@ -191,17 +186,21 @@ final class TokenEncoder {
             }
 
             length--;
+
+            minRankIndex = getMinRankIndex(ranks);
         }
+        assert getMinRankIndex(ranks) < 0;
         return length;
     }
 
     int encode(ByteArray payload) {
         if (payload.length() < encoders.length) {
             var encoder = encoders[payload.length()];
-            return encoder == null ? MAX_RANK : encoder.getInt(payload);
-        } else {
-            return MAX_RANK;
+            if (encoder != null) {
+                return encoder.getInt(payload);
+            }
         }
+        return MAX_RANK;
     }
 
     int encode(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int start, int end) {

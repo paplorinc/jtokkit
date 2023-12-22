@@ -31,7 +31,7 @@ dependencies {
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
     maxParallelForks = 4
-    jvmArgs("-Xmx4g")
+    jvmArgs("-Xmx4g") // TODO remove
 }
 
 publishing {

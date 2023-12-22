@@ -17,22 +17,22 @@ import static java.util.Objects.requireNonNull;
 
 public class GptBytePairEncoding implements Encoding {
 
-    final Int2ObjectMap<byte[]> encodedToDecoded;
     private final String name;
     private final Pattern pattern;
-    private final SpecialEncoder specialTokensEncoder;
-    private final CompactTokenEncoder compactTokenEncoder;
-    private final TokenEncoder tokenEncoder;
+    private final CompactTokenEncoder compactEncoder;
+    private final TokenEncoder encoder;
+    private final SpecialEncoder specialEncoder;
+    private final Int2ObjectMap<byte[]> encodedToDecoded;
 
     GptBytePairEncoding(GptBytePairEncodingParams params) {
         this.name = params.getName();
         this.pattern = params.getPattern();
-        this.specialTokensEncoder = new SpecialEncoder(params.getSpecialTokensEncoder());
+        this.specialEncoder = new SpecialEncoder(params.getSpecialTokensEncoder());
 
-        this.compactTokenEncoder = new CompactTokenEncoder(params.getEncoder());
-        this.tokenEncoder = new TokenEncoder(params.getEncoder());
-        assert compactTokenEncoder.length() + tokenEncoder.length() == params.getEncoder().size()
-                : compactTokenEncoder.length() + "+" + tokenEncoder.length() + " != " + params.getEncoder().size();
+        this.compactEncoder = new CompactTokenEncoder(params.getEncoder());
+        this.encoder = new TokenEncoder(params.getEncoder());
+        assert compactEncoder.length() + encoder.length() == params.getEncoder().size()
+                : compactEncoder.length() + "+" + encoder.length() + " != " + params.getEncoder().size();
 
         this.encodedToDecoded = new Int2ObjectOpenHashMap<>(params.getEncoder().size(), 0.4f);
         params.getEncoder().forEach((k, v) -> encodedToDecoded.put((int) v, k));
@@ -53,7 +53,7 @@ public class GptBytePairEncoding implements Encoding {
             return new EncodingResult(IntArrayList.of(), -1, false);
         }
 
-        specialTokensEncoder.checkForSpecialTokens(text);
+        specialEncoder.checkForSpecialTokens(text);
 
         return encodeOrdinaryInternal(text, maxTokenCount, keepEncodings);
     }
@@ -74,9 +74,9 @@ public class GptBytePairEncoding implements Encoding {
         }
 
         var out = new IntArrayList();
-        int tokenCount = encodeOrdinaryInternal(text, maxTokenCount, keepEncodings, out);
+        var tokenCount = encodeOrdinaryInternal(text, maxTokenCount, keepEncodings, out);
 
-        if (maxTokenCount != Integer.MAX_VALUE) {
+        if (keepEncodings && maxTokenCount != Integer.MAX_VALUE) {
             // Make sure we didn't break the multibyte character
             for (var tokensToRemove = 0; tokensToRemove <= out.size(); tokensToRemove++) {
                 var size = out.size() - tokensToRemove;
@@ -96,7 +96,7 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     int encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings, IntArrayList out) {
-        int tokenCount = 0;
+        var tokenCount = 0;
         var ranks = new IntArrayList();
         for (var matcher = pattern.matcher(text); tokenCount < maxTokenCount && matcher.find(); ) {
             var bytes = ByteArrayList.wrap(matcher.group().getBytes(UTF_8));
@@ -106,12 +106,12 @@ public class GptBytePairEncoding implements Encoding {
     }
 
     int processTokens(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntArrayList out, IntArrayList ranks) {
-        int size = utf8Bytes.size();
+        var size = utf8Bytes.size();
         if (CompactTokenEncoder.accepts(size)) {
-            return compactTokenEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+            return compactEncoder.addTokensAndGetCount(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         } else {
             assert TokenEncoder.accepts(size);
-            return tokenEncoder.addTokensAndGetCount(compactTokenEncoder, maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+            return encoder.addTokensAndGetCount(compactEncoder, maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
         }
     }
 
@@ -157,8 +157,8 @@ public class GptBytePairEncoding implements Encoding {
         return name;
     }
 
-    public byte[] decodeToken(int token) {
-        var decodedToken = encodedToDecoded.computeIfAbsent(token, specialTokensEncoder::decodeIfPresent);
-        return requireNonNull(decodedToken);
+    private byte[] decodeToken(int token) {
+        var decodedToken = encodedToDecoded.computeIfAbsent(token, specialEncoder::decodeIfPresent);
+        return requireNonNull(decodedToken, "Unknown token for decoding: " + token);
     }
 }

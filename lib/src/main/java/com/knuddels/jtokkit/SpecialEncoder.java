@@ -12,7 +12,6 @@ final class SpecialEncoder {
 
     public SpecialEncoder(Map<String, Integer> encoder) {
         this.encodedToDecoded = new ConcurrentHashMap<>(encoder.size());
-
         for (Map.Entry<String, Integer> entry : encoder.entrySet()) {
             String key = entry.getKey();
             Integer value = entry.getValue();
@@ -23,15 +22,14 @@ final class SpecialEncoder {
         }
     }
 
-
     public byte[] decodeIfPresent(Integer encodedToken) {
-        var result = encodedToDecoded.get(encodedToken);
+        String result = encodedToDecoded.get(encodedToken);
         return result != null ? result.getBytes(UTF_8) : null;
     }
 
     public void checkForSpecialTokens(String text) {
         if (text.contains(SPECIAL_START) && text.contains(SPECIAL_END)) {
-            for (var specialToken : encodedToDecoded.values()) {
+            for (String specialToken : encodedToDecoded.values()) {
                 if (text.contains(specialToken)) {
                     throw new UnsupportedOperationException("Encoding special tokens is not supported yet.");
                 }

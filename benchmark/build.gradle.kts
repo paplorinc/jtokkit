@@ -18,9 +18,10 @@ dependencies {
 }
 
 jmh {
-    warmupIterations.set(1)
-    iterations.set(5)
-    fork.set(2)
-    benchmarkMode.set(listOf("ss"))
-    // profilers.set(listOf("stack"))
+    warmupIterations = 1
+    iterations = 5
+    fork = 2
+    benchmarkMode = listOf("ss")
+    includes = listOf("SingleThreadedBenchmark")
+    // profilers = listOf("stack")
 }

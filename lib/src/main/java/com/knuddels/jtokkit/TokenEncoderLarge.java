@@ -33,11 +33,7 @@ final class TokenEncoderLarge {
         }
 
         assert TokenEncoder.accepts(length);
-        while (true) {
-            if (validRanks == 0) {
-                assert rankMap.get(rankMap.firstIntKey()).get(rankMap.get(rankMap.firstIntKey()).firstIntKey()).rank == MAX_RANK;
-                break;
-            }
+        while (validRanks > 0) {
             var minKey = rankMap.get(rankMap.firstIntKey());
             var minNode = minKey.get(minKey.firstIntKey());
             assert minNode.rank != MAX_RANK;
@@ -78,6 +74,8 @@ final class TokenEncoderLarge {
 
             length--;
         }
+        assert rankMap.get(rankMap.firstIntKey()).get(rankMap.get(rankMap.firstIntKey()).firstIntKey()).rank == MAX_RANK;
+
 
         if (keepEncodings) {
             while (head.next != null && out.size() < maxTokenCount) {

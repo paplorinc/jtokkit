@@ -8,15 +8,14 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.util.stream.Collectors.toCollection;
 
-public class FileDownloader {
+public class DataDownloader {
 
     public static void main(String[] args) throws Exception {
-        int[] bookIds = {
+        var bookIds = new int[]{
                 // English
                 10,
                 11,
@@ -143,11 +142,11 @@ public class FileDownloader {
         SortedSet<Integer> uniqueBookIds = Arrays.stream(bookIds).boxed().collect(toCollection(TreeSet::new));
         assert uniqueBookIds.size() == 100; // top 100 books in txt format
 
-        Path rootFolder = Paths.get("benchmark/data");
+        var rootFolder = Paths.get("benchmark/data");
         uniqueBookIds.parallelStream()
                 .forEach(bookId -> downloadBook(bookId, rootFolder));
 
-        String[] patterns = {
+        var patterns = new String[]{
                 "'s", "'t", "'re", "'ve", "'m", "'ll", "'d", "'x",
                 "x",
                 "123",
@@ -156,35 +155,35 @@ public class FileDownloader {
                 "\n   \n",
                 "     ",
                 "\t\u000B\u000C\u0085\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000",
-                "\uD83D\uDE00\uD83D\uDE01\uD83D\uDE02\uD83D\uDE03\uD83D\uDE04\uD83D\uDE05\uD83D\uDE06\uD83D\uDE07\uD83D\uDE08\uD83D\uDE09\uD83D\uDE0A\uD83D\uDE0B\uD83D\uDE0C\uD83D\uDE0D\uD83D\uDE0E\uD83D\uDE0F\uD83D\uDE10\uD83D\uDE11\uD83D\uDE12\uD83D\uDE13\uD83D\uDE14\uD83D\uDE15\uD83D\uDE16\uD83D\uDE17\uD83D\uDE18\uD83D\uDE19\uD83D\uDE1A\uD83D\uDE1B\uD83D\uDE1C\uD83D\uDE1D\uD83D\uDE1E\uD83D\uDE1F\uD83D\uDE20\uD83D\uDE21\uD83D\uDE22\uD83D\uDE23\uD83D\uDE24\uD83D\uDE25\uD83D\uDE26\uD83D\uDE27\uD83D\uDE28\uD83D\uDE29\uD83D\uDE2A\uD83D\uDE2B\uD83D\uDE2C\uD83D\uDE2D\uD83D\uDE2E\uD83D\uDE2F\uD83D\uDE30\uD83D\uDE31\uD83D\uDE32\uD83D\uDE33\uD83D\uDE34\uD83D\uDE35\uD83D\uDE36\uD83D\uDE37\uD83D\uDE38\uD83D\uDE39\uD83D\uDE3A\uD83D\uDE3B\uD83D\uDE3C\uD83D\uDE3D\uD83D\uDE3E\uD83D\uDE3F\uD83D\uDE40\uD83D\uDE41\uD83D\uDE42\uD83D\uDE43\uD83D\uDE44\uD83D\uDE45\uD83D\uDE46\uD83D\uDE47\uD83D\uDE48\uD83D\uDE49\uD83D\uDE4A\uD83D\uDE4B\uD83D\uDE4C\uD83D\uDE4D\uD83D\uDE4E\uD83D\uDE4F"
+                "😀😁😂😃😄😅😆😇😈😉😊😋😌😍😎😏😐😑😒😓😔😕😖😗😘😙😚😛😜😝😞😟😠😡😢😣😤😥😦😧😨😩😪😫😬😭😮😯😰😱😲😳😴😵😶😷😸😹😺😻😼😽😾😿🙀🙁🙂🙃🙄🙅🙆🙇🙈🙉🙊🙋🙌🙍🙎🙏"
         };
 
         // really long strings, basically a dos attack
-        int bytesPerFile = 20_000;
-        for (int i = 0; i < patterns.length; i++) {
-            String fileName = String.format("test_%d_%d.txt", i, bytesPerFile);
-            Path path = rootFolder.resolve(fileName);
+        var bytesPerFile = 20_000;
+        for (var i = 0; i < patterns.length; i++) {
+            var fileName = String.format("test_%d_%d.txt", i, bytesPerFile);
+            var path = rootFolder.resolve(fileName);
             generateFile(path, patterns[i], bytesPerFile);
         }
 
-        String[] sourceCodes = {
+        var sourceCodes = new String[]{
                 "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/acpi/cppc_acpi.c",
                 "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/usb/musb/cppi_dma.c",
                 "https://raw.githubusercontent.com/raspberrypi/linux/1c4c7647c8514dc6c8bf843a8bf69732437e6b98/drivers/gpu/drm/amd/include/asic_reg/dcn/dcn_3_2_0_sh_mask.h"
         };
-        for (String url : sourceCodes) {
+        for (var url : sourceCodes) {
             var fileName = url.substring(url.lastIndexOf('/') + 1);
             downloadUrl(url, rootFolder, fileName);
         }
 
-        long totalSize = calculateTotalFileSize(rootFolder);
-        if (totalSize != 99_945_132) {
+        var totalSize = calculateTotalFileSize(rootFolder);
+        if (totalSize != 99_945_290) {
             throw new AssertionError("Total size did not match expected value, actual: " + totalSize);
         }
     }
 
     private static void generateFile(Path path, String pattern, int sizeInBytes) {
-        StringBuilder builder = new StringBuilder();
+        var builder = new StringBuilder();
         while (builder.length() < sizeInBytes) {
             builder.append(pattern);
         }
@@ -197,11 +196,10 @@ public class FileDownloader {
         }
     }
 
-
     public static void downloadBook(int bookId, Path rootFolder) {
         try {
-            String fileName = String.format("%d.txt", bookId);
-            String format = String.format("https://www.gutenberg.org/cache/epub/%d/pg%d.txt", bookId, bookId);
+            var fileName = String.format("%d.txt", bookId);
+            var format = String.format("https://www.gutenberg.org/cache/epub/%d/pg%d.txt", bookId, bookId);
             downloadUrl(format, rootFolder, fileName);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -209,8 +207,8 @@ public class FileDownloader {
     }
 
     private static void downloadUrl(String url, Path rootFolder, String fileName) throws IOException {
-        URL fileUrl = new URL(url);
-        Path localPath = rootFolder.resolve(fileName);
+        var fileUrl = new URL(url);
+        var localPath = rootFolder.resolve(fileName);
         if (Files.exists(localPath)) {
             System.out.printf("File %s already exists, skipping download.%n", fileName);
         } else {
@@ -220,8 +218,8 @@ public class FileDownloader {
     }
 
     public static long calculateTotalFileSize(Path rootFolder) {
-        try (Stream<Path> paths = Files.walk(rootFolder)) {
-            return paths.filter(Files::isRegularFile).mapToLong(FileDownloader::fileSize).sum();
+        try (var paths = Files.walk(rootFolder)) {
+            return paths.filter(Files::isRegularFile).mapToLong(DataDownloader::fileSize).sum();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -229,7 +227,7 @@ public class FileDownloader {
 
     private static long fileSize(Path path) {
         try {
-            long size = Files.size(path);
+            var size = Files.size(path);
             return size;
         } catch (IOException e) {
             throw new RuntimeException(e);

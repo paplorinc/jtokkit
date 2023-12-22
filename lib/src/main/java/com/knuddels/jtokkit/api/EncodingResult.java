@@ -43,10 +43,10 @@ public final class EncodingResult {
 
     @Override
     public String toString() {
-        return "EncodingResult{" +
-                "tokens=" + tokens +
-                ", tokenCount=" + tokenCount +
-                ", truncated=" + truncated +
-                '}';
+        return "EncodingResult{"
+                + "tokens=" + tokens
+                + ", tokenCount=" + tokenCount
+                + ", truncated=" + truncated
+                + '}';
     }
 }

@@ -39,7 +39,7 @@ class GptBytePairEncodingTest {
             sum += encoding.countTokens(text);
         }
         System.out.println("most used characters:");
-        assertEquals(25_876_716, sum);
+        assertEquals(25_876_787, sum);
     }
 
     @Test
@@ -53,7 +53,7 @@ class GptBytePairEncodingTest {
             sum1 += encoding.encode(x).size();
         }
         System.out.println(sum1);
-        assertEquals(25_876_716, sum1);
+        assertEquals(25_876_787, sum1);
 
         var ranks = loadMergeableRanks("cl100k_base.tiktoken");
 

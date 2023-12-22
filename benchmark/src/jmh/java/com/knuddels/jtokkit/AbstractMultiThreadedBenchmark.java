@@ -32,11 +32,11 @@ public abstract class AbstractMultiThreadedBenchmark extends AbstractBenchmark {
         executor.shutdown();
     }
 
-    //    @Override
+    @Override
     protected List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents) {
         final var futures = fileContents.stream()
                 .map(it -> CompletableFuture.supplyAsync(() -> encoding.encode(it), executor))
-                .collect(Collectors.toList());
+                .toList();
 
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
