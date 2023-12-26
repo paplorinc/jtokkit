@@ -128,6 +128,7 @@ final class TokenEncoder {
     private int calculateTokensSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ByteArray match, int length) {
         assert length > 1 : "Already filtered out";
         ranks.clear();
+        ranks.ensureCapacity(length + 1);
 
         var validRanks = 0;
         var minRankIndex = -1;
@@ -157,6 +158,8 @@ final class TokenEncoder {
     }
 
     int mergeBytesAndGetTokenCount(CompactTokenEncoder compactTokenEncoder, ByteArray piece, int length, IntList ranks, int validRanks, int minRankIndex) {
+        assert minRankIndex == getMinRankIndex(ranks);
+        assert accepts(length);
         while (validRanks > 0) {
             assert minRankIndex >= 0;
 

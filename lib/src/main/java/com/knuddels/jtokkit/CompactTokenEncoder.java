@@ -117,6 +117,7 @@ public class CompactTokenEncoder {
     private int calculateTokens(int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, long match, int length) {
         assert length > 1 && length < Long.BYTES;
         ranks.clear();
+        ranks.ensureCapacity(length + 1);
 
         var validRanks = 0;
         var minRankIndex = -1;
@@ -146,6 +147,7 @@ public class CompactTokenEncoder {
     }
 
     int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks, int validRanks, int minRankIndex) {
+        assert minRankIndex == getMinRankIndex(ranks);
         assert accepts(length);
         while (validRanks > 0) {
             assert minRankIndex >= 0;
