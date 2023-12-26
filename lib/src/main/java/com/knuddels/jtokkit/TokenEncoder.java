@@ -9,7 +9,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.util.Map;
 
-import static com.knuddels.jtokkit.TokenEncoderLarge.addTokensAndGetCountLarge;
+import static com.knuddels.jtokkit.TokenEncoderLarge.calculateTokensLarge;
 
 final class TokenEncoder {
     public static final int DUMMY_RANK = Integer.MAX_VALUE;
@@ -118,14 +118,14 @@ final class TokenEncoder {
         } else {
             var length = match.length();
             if (length < VERY_LARGE_TOKENIZER_BYTE_THRESHOLD) {
-                return addTokensAndGetCountSmall(compactTokenEncoder, maxTokenCount, keepEncodings, out, ranks, match, length);
+                return calculateTokensSmall(compactTokenEncoder, maxTokenCount, keepEncodings, out, ranks, match, length);
             } else {
-                return addTokensAndGetCountLarge(this, compactTokenEncoder, maxTokenCount, keepEncodings, out, match, length);
+                return calculateTokensLarge(this, compactTokenEncoder, maxTokenCount, keepEncodings, out, match, length);
             }
         }
     }
 
-    private int addTokensAndGetCountSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ByteArray match, int length) {
+    private int calculateTokensSmall(CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, ByteArray match, int length) {
         assert length > 1 : "Already filtered out";
         ranks.clear();
 

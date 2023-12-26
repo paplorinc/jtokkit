@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import static com.knuddels.jtokkit.TokenEncoder.MAX_RANK;
 
 final class TokenEncoderLarge {
-    static int addTokensAndGetCountLarge(TokenEncoder tokenEncoder, CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, ByteArray match, int length) {
+    static int calculateTokensLarge(TokenEncoder tokenEncoder, CompactTokenEncoder compactTokenEncoder, int maxTokenCount, boolean keepEncodings, IntList out, ByteArray match, int length) {
         assert length > 1 : "Already filtered out";
 
         var rankMap = new Int2ObjectAVLTreeMap<Int2ObjectSortedMap<RankNode>>();

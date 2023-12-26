@@ -109,46 +109,45 @@ public class CompactTokenEncoder {
             return 1;
         } else {
             var length = byteSize(match);
-            assert length > 1 && length < Long.BYTES;
-            var validRanks = initRanks(match, length, ranks);
-            var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks, validRanks);
-            if (keepEncodings) {
-                for (int start = 0, end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
-                    if (ranks.getInt(end) != DUMMY_RANK) {
-                        var token = encode(match, start, end);
-                        assert token != MAX_RANK : "Token should not be MAX_RANK";
-                        out.add(token);
-                        start = end;
-                    }
-                }
-            }
-            return tokenCount;
+
+            return calculateTokens(maxTokenCount, keepEncodings, out, ranks, match, length);
         }
     }
 
-    int initRanks(long piece, int tokenCount, IntArrayList ranks) {
-        var validRanks = 0;
-        assert tokenCount > 1 : "Already filtered out";
+    private int calculateTokens(int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, long match, int length) {
+        assert length > 1 && length < Long.BYTES;
         ranks.clear();
-        ranks.ensureCapacity(tokenCount + 1);
-        for (var i = 0; i < tokenCount + 1; i++) {
-            var encoded = encode(piece, i, i + 2);
+
+        var validRanks = 0;
+        var minRankIndex = -1;
+        for (int i = 0, minRank = MAX_RANK; i < length + 1; i++) {
+            var encoded = encode(match, i, i + 2);
             if (encoded != MAX_RANK) {
                 validRanks++;
+                if (encoded < minRank) {
+                    minRankIndex = i;
+                    minRank = encoded;
+                }
             }
             ranks.add(encoded);
         }
-        return validRanks;
+        var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks, validRanks, minRankIndex);
+        if (keepEncodings) {
+            for (int start = 0, end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
+                if (ranks.getInt(end) != DUMMY_RANK) {
+                    var token = encode(match, start, end);
+                    assert token != MAX_RANK : "Token should not be MAX_RANK";
+                    out.add(token);
+                    start = end;
+                }
+            }
+        }
+        return tokenCount;
     }
 
-    int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks, int validRanks) {
+    int mergeBytesAndGetTokenCount(long piece, int length, IntArrayList ranks, int validRanks, int minRankIndex) {
         assert accepts(length);
-        while (true) {
-            if (validRanks == 0) {
-                assert getMinRankIndex(ranks) < 0;
-                break;
-            }
-            var minRankIndex = getMinRankIndex(ranks);
+        while (validRanks > 0) {
             assert minRankIndex >= 0;
 
             var previousIndex = getPreviousIndex(ranks, minRankIndex - 1);
@@ -177,7 +176,10 @@ public class CompactTokenEncoder {
             }
 
             length--;
+
+            minRankIndex = getMinRankIndex(ranks);
         }
+        assert getMinRankIndex(ranks) < 0;
         return length;
     }
 
