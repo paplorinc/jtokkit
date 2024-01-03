@@ -2,7 +2,7 @@ package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.GptBytePairEncodingParams;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
+import com.knuddels.jtokkit.api.IntArrayList;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,8 +14,8 @@ import java.util.regex.Pattern;
 import static java.lang.Integer.parseInt;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class EncodingFactory {
-    public static final Map<String, Integer> SPECIAL_TOKENS_CL100K_BASE;
+class EncodingFactory {
+    static final Map<String, Integer> SPECIAL_TOKENS_CL100K_BASE; // TODO
     private static final Map<String, Integer> SPECIAL_TOKENS_X50K_BASE;
     private static final Map<String, Integer> SPECIAL_TOKENS_P50K_EDIT;
 
@@ -26,13 +26,13 @@ public final class EncodingFactory {
     private static final String ENDOFPROMPT = "<|endofprompt|>";
 
     static {
-        final Map<String, Integer> map = new HashMap<>();
+        Map<String, Integer> map = new HashMap<>();
         map.put(ENDOFTEXT, 50256);
         SPECIAL_TOKENS_X50K_BASE = Collections.unmodifiableMap(map);
     }
 
     static {
-        final Map<String, Integer> map = new HashMap<>();
+        Map<String, Integer> map = new HashMap<>();
         map.put(ENDOFTEXT, 50256);
         map.put(FIM_PREFIX, 50281);
         map.put(FIM_MIDDLE, 50282);
@@ -41,7 +41,7 @@ public final class EncodingFactory {
     }
 
     static {
-        final Map<String, Integer> map = new HashMap<>();
+        Map<String, Integer> map = new HashMap<>();
         map.put(ENDOFTEXT, 100257);
         map.put(FIM_PREFIX, 100258);
         map.put(FIM_MIDDLE, 100259);
@@ -106,7 +106,7 @@ public final class EncodingFactory {
     public static Encoding cl100kBase() {
         // "'(?:[sdmt]|ll|ve|re)|[^\r\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\r\n]*|\\s*[\r\n]|\\s+(?!\\S)|\\s+"
         Map<byte[], Integer> mergeableRanks = loadMergeableRanks("/com/knuddels/jtokkit/cl100k_base.tiktoken");
-        final GptBytePairEncodingParams params = new GptBytePairEncodingParams("cl100k_base", null, mergeableRanks, SPECIAL_TOKENS_CL100K_BASE);
+        GptBytePairEncodingParams params = new GptBytePairEncodingParams("cl100k_base", null, mergeableRanks, SPECIAL_TOKENS_CL100K_BASE);
         return new Cl100kGptBytePairEncoding(params);
     }
 
@@ -116,20 +116,20 @@ public final class EncodingFactory {
      * @param parameters the GPT BytePairEncoding parameters
      * @return an {@link Encoding} instance for the given GPT BytePairEncoding parameters
      */
-    public static Encoding fromParameters(final GptBytePairEncodingParams parameters) {
+    public static Encoding fromParameters(GptBytePairEncodingParams parameters) {
         return new GptBytePairEncoding(parameters);
     }
 
     private static Encoding fromPredefinedParameters(
-            final String name,
-            final String patternString,
-            final String fileName,
-            final Map<String, Integer> specialTokens,
+            String name,
+            String patternString,
+            String fileName,
+            Map<String, Integer> specialTokens,
             boolean caseInsensitive
     ) {
         Pattern regex = compileRegex(patternString, caseInsensitive);
         Map<byte[], Integer> mergeableRanks = loadMergeableRanks(fileName);
-        final GptBytePairEncodingParams params = new GptBytePairEncodingParams(name, regex, mergeableRanks, specialTokens);
+        GptBytePairEncodingParams params = new GptBytePairEncodingParams(name, regex, mergeableRanks, specialTokens);
         return fromParameters(params);
     }
 
@@ -140,20 +140,24 @@ public final class EncodingFactory {
                 flags |= Pattern.CASE_INSENSITIVE;
             }
             return Pattern.compile(patternString, flags);
-        } catch (final IllegalArgumentException exception) {
+        } catch (IllegalArgumentException exception) {
             // Workaround for Android where an IllegalArgumentException is thrown when using UNICODE_CHARACTER_CLASS
-            return Pattern.compile(patternString);
+            int flags = 0;
+            if (caseInsensitive) {
+                flags = Pattern.CASE_INSENSITIVE;
+            }
+            return Pattern.compile(patternString, flags);
         }
     }
 
-    public static Map<byte[], Integer> loadMergeableRanks(final String fileName) {
-        try (final InputStream in = EncodingFactory.class.getResourceAsStream(fileName)) {
+    public static Map<byte[], Integer> loadMergeableRanks(String fileName) {
+        try (InputStream in = EncodingFactory.class.getResourceAsStream(fileName)) {
             if (in == null) {
                 throw new IllegalStateException("Could not find " + fileName + " in resources");
             }
 
-            final Map<byte[], Integer> mergeableRanks = new LinkedHashMap<>(); // keep order to optimize collisions
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
+            Map<byte[], Integer> mergeableRanks = new LinkedHashMap<>(); // keep order to optimize collisions
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 int firstSpaceIndex = line.indexOf(' ');
@@ -166,7 +170,7 @@ public final class EncodingFactory {
             }
 
             return mergeableRanks;
-        } catch (final IOException e) {
+        } catch (IOException e) {
             throw new IllegalStateException("Could not load " + fileName + " from resources", e);
         }
     }
@@ -178,10 +182,10 @@ public final class EncodingFactory {
 
         @Override
         int encodeOrdinaryInternal(String text, int maxTokenCount, boolean keepEncodings, IntArrayList out) {
-            var ranks = new IntArrayList();
             int[] tokenCount = {0};
+            IntArrayList ranks = new IntArrayList();
             Cl100kParser.split(text, utf8Bytes -> {
-                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, utf8Bytes, out, ranks);
+                tokenCount[0] += processTokens(maxTokenCount, keepEncodings, out, ranks, utf8Bytes.rawArray(), utf8Bytes.size());
                 return tokenCount[0] >= maxTokenCount;
             });
             return tokenCount[0];

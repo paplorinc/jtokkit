@@ -1,7 +1,5 @@
 package com.knuddels.jtokkit.api;
 
-import it.unimi.dsi.fastutil.ints.IntList;
-
 public interface Encoding {
 
     /**
@@ -26,7 +24,7 @@ public interface Encoding {
      * @return the list of token ids
      * @throws UnsupportedOperationException if the text contains special tokens which are not supported for now
      */
-    IntList encode(String text);
+    IntArrayList encode(String text);
 
     /**
      * Encodes the given text into a list of token ids.
@@ -77,7 +75,7 @@ public interface Encoding {
      * @param text the text to encode
      * @return the list of token ids
      */
-    IntList encodeOrdinary(String text);
+    IntArrayList encodeOrdinary(String text);
 
     /**
      * Encodes the given text into a list of token ids, ignoring special tokens.
@@ -106,31 +104,23 @@ public interface Encoding {
      */
     EncodingResult encodeOrdinary(String text, int maxTokens);
 
-    int countTokens(String text);
-
-    int countTokens(String text, int maxValue);
-
-    long countBytes(String text); // TODO for benchmarking
-
     /**
      * Encodes the given text into a list of token ids and returns the amount of tokens.
-     * This is a convenience method for {@link #encodeOrdinary(String)}, if all you want is to
-     * know the amount of tokens. It is not more performant than {@link #encodeOrdinary(String)},
-     * so prefer to use {@link #encodeOrdinary(String)} if you actually need the tokens.
+     * It is more performant than {@link #encode(String)}.
      * <pre>
      * Encoding encoding = EncodingRegistry.getEncoding(EncodingType.CL100K_BASE);
-     * encoding.countTokensOrdinary("hello world");
+     * encoding.countTokens("hello world");
      * // returns 2
      *
-     * encoding.countTokensOrdinary("hello &lt;|endoftext|&gt; world");
-     * // returns 8
+     * encoding.countTokens("hello &lt;|endoftext|&gt; world");
+     * // raises an UnsupportedOperationException
      * </pre>
      *
      * @param text the text to count tokens for
      * @return the amount of tokens
      * @throws UnsupportedOperationException if the text contains special tokens which are not supported for now
      */
-    int countTokensOrdinary(String text);
+    int countTokens(String text);
 
     /**
      * Decodes the given list of token ids into a text.
@@ -147,7 +137,7 @@ public interface Encoding {
      * @return the decoded text
      * @throws IllegalArgumentException if the list contains invalid token ids
      */
-    String decode(IntList tokens);
+    String decode(IntArrayList tokens);
 
     /**
      * Decodes the given list of token ids into a byte array.
@@ -164,7 +154,7 @@ public interface Encoding {
      * @return the decoded byte array
      * @throws IllegalArgumentException if the list contains invalid token ids
      */
-    byte[] decodeBytes(IntList tokens);
+    byte[] decodeBytes(IntArrayList tokens);
 
     /**
      * Returns the name of this encoding. This is the name which is used to identify

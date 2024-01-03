@@ -1,6 +1,5 @@
 package com.knuddels.jtokkit;
 
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 
 import java.util.Arrays;
 import java.util.function.Predicate;
@@ -16,14 +15,14 @@ public class Cl100kParser {
 
     public static void split(String input, Predicate<ByteArrayList> fragmentConsumer) {
         assert isValidUTF8(input) : "Input is not UTF-8: " + input;
-        var utf8Bytes = new ByteArrayList();
-        var finished = false;
-        for (var endIndex = 0; endIndex < input.length() && !finished; ) {
-            var startIndex = endIndex;
-            var c0 = input.codePointAt(startIndex);
-            var cc0 = charCount(c0);
-            var nextIndex = startIndex + cc0;
-            var c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
+        ByteArrayList utf8Bytes = new ByteArrayList();
+        boolean finished = false;
+        for (int endIndex = 0; endIndex < input.length() && !finished; ) {
+            int startIndex = endIndex;
+            int c0 = input.codePointAt(startIndex);
+            int cc0 = charCount(c0);
+            int nextIndex = startIndex + cc0;
+            int c1 = (nextIndex < input.length()) ? input.codePointAt(nextIndex) : -1;
 
             if ((c0 == '\'') && c1 > 0) {
                 if (isShortContraction(c1)) {
@@ -39,7 +38,7 @@ public class Cl100kParser {
                 }
             }
 
-            var cc1 = charCount(c1);
+            int cc1 = charCount(c1);
             if ((isNotNewlineOrLetterOrNumeric(c0) && isLetter(c1)) || isLetter(c0)) {
                 // 2) `[^\r\n\p{L}\p{N}]?+\p{L}+` - words such as ` of`, `th`, `It`, ` not`
                 endIndex += cc0;
@@ -78,7 +77,7 @@ public class Cl100kParser {
                 // 6) `\s+(?!\S)` - whitespaces such as `               ` or ` `
                 // 7) `\s+` - unmatched remaining spaces, such as ` `
                 assert isWhitespace(c0) : "Invalid character: " + Arrays.toString(toChars(c0));
-                var lastNewLineIndex = isNewline(c0) ? endIndex : -1;
+                int lastNewLineIndex = isNewline(c0) ? endIndex : -1;
                 endIndex += cc0;
                 if (isWhitespace(c1)) {
                     lastNewLineIndex = isNewline(c1) ? endIndex : lastNewLineIndex;
@@ -90,7 +89,7 @@ public class Cl100kParser {
                 }
 
                 if (lastNewLineIndex > -1) {
-                    var finalEndIndex = endIndex;
+                    int finalEndIndex = endIndex;
                     endIndex = lastNewLineIndex + 1;
                     if (endIndex < finalEndIndex) {
                         assert startIndex < endIndex;
@@ -122,8 +121,8 @@ public class Cl100kParser {
                 || ((ch1 == 'r') && (ch2 == 'e'))) {
             return true;
         } else {
-            var lch1 = toUpperCase(ch1);
-            var lch2 = toUpperCase(ch2);
+            int lch1 = toUpperCase(ch1);
+            int lch2 = toUpperCase(ch2);
             return ((lch1 == 'L') && (lch2 == 'L'))
                     || ((lch1 == 'V') && (lch2 == 'E'))
                     || ((lch1 == 'R') && (lch2 == 'E'));
@@ -134,7 +133,7 @@ public class Cl100kParser {
         return UTF_8.newEncoder().canEncode(input);
     }
 
-    static boolean isLetter(int ch) {
+    public static boolean isLetter(int ch) {
         if (ch < 0xaa) {
             return ((ch >= 'a') && (ch <= 'z'))
                     || ((ch >= 'A') && (ch <= 'Z'));
@@ -151,7 +150,7 @@ public class Cl100kParser {
         return false;
     }
 
-    static boolean isNumeric(int ch) {
+    public static boolean isNumeric(int ch) {
         if (ch < 0xb2) {
             return (ch >= '0') && (ch <= '9');
         } else if (ch <= 0x1fbf9) {
@@ -186,7 +185,7 @@ public class Cl100kParser {
         return false;
     }
 
-    static boolean isWhitespace(int ch) {
+    public static boolean isWhitespace(int ch) {
         if (ch <= '\r') {
             return SIMPLE_WHITESPACES.indexOf(ch) >= 0;
         } else if (ch < '\u0085') {
@@ -203,7 +202,7 @@ public class Cl100kParser {
                 || (ch == '\n');
     }
 
-    static boolean isNotWhitespaceOrLetterOrNumeric(int ch) {
+    public static boolean isNotWhitespaceOrLetterOrNumeric(int ch) {
         if (ch < '0') {
             return ch >= 0 && ch != ' ' && (ch > '\r' || ch < '\t');
         } else {
@@ -211,7 +210,7 @@ public class Cl100kParser {
         }
     }
 
-    static boolean isNotNewlineOrLetterOrNumeric(int ch) {
+    public static boolean isNotNewlineOrLetterOrNumeric(int ch) {
         if (ch < '0') {
             return ch >= 0 && (ch == ' ' || !isNewline(ch));
         } else {
@@ -221,8 +220,8 @@ public class Cl100kParser {
 
     static ByteArrayList addUtf8Bytes(String input, int start, int end, ByteArrayList dst) {
         dst.clear();
-        for (var i = start; i < end; i++) {
-            var cp = input.codePointAt(i);
+        for (int i = start; i < end; i++) {
+            int cp = input.codePointAt(i);
             if (cp < 0x80) {
                 dst.add((byte) cp);
             } else if (cp < 0x800) {

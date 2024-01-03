@@ -1,6 +1,5 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.reference.Cl100kBaseTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -163,7 +162,7 @@ class EncodingFactoryTest {
         assertEquals(7, encounters.size());
 
         Map<String, SortedMap<Integer, List<String>>> completeLines = new TreeMap<>();
-        for (var text : Cl100kBaseTest.getTexts("../")) {
+        for (var text : Cl100kTest.getTexts("../")) {
 //            text.lines().forEach(line -> {
 //                var t = line + "\n";
             var actual = getEncounters(text, currentRegexParts, currentRegex, true);

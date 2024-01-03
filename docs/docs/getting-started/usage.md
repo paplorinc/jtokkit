@@ -48,7 +48,7 @@ Optional<Encoding> encoding = registry.getEncodingForModel("gpt_4");
 You can use an `Encoding` to encode and decode text:
 
 ```java
-IntList encoded = encoding.encode("This is a sample sentence.");
+IntArrayList encoded = encoding.encode("This is a sample sentence.");
 // encoded = [2028, 374, 264, 6205, 11914, 13]
 
 String decoded = encoding.decode(encoded);
@@ -98,13 +98,13 @@ tokens to the specified length. They will automatically handle unicode character
 truncation by removing those tokens from the end of the list.
 
 ```java
-IntList encoded = encoding.encode("This is a sample sentence.", 3);
+IntArrayList encoded = encoding.encode("This is a sample sentence.", 3);
 // encoded = [2028, 374, 264]
 
 String decoded = encoding.decode(encoded);
 // decoded = "This is a"
 
-IntList encoded = encoding.encode("I love 🍕", 4);
+IntArrayList encoded = encoding.encode("I love 🍕", 4);
 // encoded = [40, 3021]
 
 String decoded = encoding.decode(encoded);

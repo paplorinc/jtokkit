@@ -1,11 +1,11 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.IntArrayList;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 //Benchmark                                                                    (dataFolderPath)  Mode  Cnt      Score      Error  Units
 //SingleThreadedBenchmark.benchmarkCl100kBaseCountBytes                                    data    ss   10      0.597 ±    0.005   s/op
@@ -28,22 +28,22 @@ public class SingleThreadedBenchmark extends AbstractBenchmark {
 
     @Benchmark
     public void benchmarkCl100kBaseTokenCountBigFileContent(BenchmarkingState state, Blackhole bh) {
-        for (int i = 0; i < 5; i++) {
-            bh.consume(state.cl100kBase.countTokens(state.bigFileContent));
+        for (var fileContent : state.bigFileContents) {
+            bh.consume(state.cl100kBase.countTokens(fileContent));
         }
     }
 
     @Benchmark
     public void benchmarkCl100kBaseTokenCountBigFileContentOriginal(BenchmarkingState state, Blackhole bh) {
-        for (int i = 0; i < 5; i++) {
-            bh.consume(state.cl100kBaseOriginal.countTokens(state.bigFileContent));
+        for (var fileContent : state.bigFileContents) {
+            bh.consume(state.cl100kBaseOriginal.countTokens(fileContent));
         }
     }
 
     @Override
-    protected List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents) {
+    protected List<IntArrayList> encodeAll(Encoding encoding, List<String> fileContents) {
         return fileContents.stream()
                 .map(encoding::encode)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

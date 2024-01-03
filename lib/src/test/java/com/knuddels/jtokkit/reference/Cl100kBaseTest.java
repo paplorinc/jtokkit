@@ -1,144 +1,66 @@
 package com.knuddels.jtokkit.reference;
 
 import com.knuddels.jtokkit.Cl100kParser;
-import com.knuddels.jtokkit.EncodingFactory;
+import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.GptBytePairEncodingOriginal;
 import com.knuddels.jtokkit.api.Encoding;
-import it.unimi.dsi.fastutil.ints.Int2LongAVLTreeMap;
-import org.junit.jupiter.api.Disabled;
+import com.knuddels.jtokkit.api.EncodingType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import static com.knuddels.jtokkit.Cl100kTest.normalizeStringForTesting;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class Cl100kBaseTest {
+class Cl100kBaseTest {
 
-    private static final Encoding ENCODING = EncodingFactory.cl100kBase();
+    private static final Encoding ENCODING = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
 
-    public static List<String> getTexts(String prefix) {
-        return loadData(prefix, "benchmark/data");
-    }
-
-    public static List<String> loadData(String prefix, String folder) {
-        try {
-            var folderPath = Paths.get(prefix, folder);
-            var fileContents = new ArrayList<String>();
-            try (var files = Files.walk(folderPath)) {
-                files.forEach(file -> {
-                    if (Files.isRegularFile(file)) {
-                        try {
-                            fileContents.add(Files.readString(file, UTF_8));
-                        } catch (IOException exception) {
-                            throw new RuntimeException("Error while reading file at " + file, exception);
-                        }
-                    }
-                });
-            }
-
-            fileContents.addAll(getBasePromptsKeys(prefix));
-
-            return fileContents;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static List<String> getBasePromptsKeys(String prefix) throws IOException {
-        var result = new ArrayList<String>();
-        var csvPath = Paths.get(prefix + "lib/src/test/resources/base_prompts.csv");
-        try (var br = Files.newBufferedReader(csvPath, UTF_8)) {
-            br.readLine(); // Skip header
-
-            String line;
-            while ((line = br.readLine()) != null) {
-                var values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                // Add only the first column, handling quoted strings
-                result.add(values[0].replaceAll("\"", ""));
-            }
-        }
-        return result;
-    }
-
-    static String normalizeStringForTesting(String testString) {
-        return testString
-                .replaceAll("\\r", "\\\\r")
-                .replaceAll("\\n", "\\\\n")
-                .replaceAll(" ", "␣");
+    Encoding getEncoding() {
+        return ENCODING;
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodesCorrectly(
-            final String input,
-            final String output
+    void cl100kBaseEncodesCorrectly(
+            String input,
+            String output
     ) {
         var expected = TestUtils.parseEncodingString(output);
-        var actual = ENCODING.encode(input);
+        var actual = getEncoding().encode(input);
 
         assertEquals(expected, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodesStable(final String input) {
-        var actual = ENCODING.decode(ENCODING.encode(input));
+    void cl100kBaseEncodesStable(String input) {
+        var actual = getEncoding().decode(getEncoding().encode(input));
 
         assertEquals(input, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodesCorrectlyWithMaxTokensSet(
-            final String input,
-            final String output,
-            final String outputMaxTokens10
+    void cl100kBaseEncodesCorrectlyWithMaxTokensSet(
+            String input,
+            String output,
+            String outputMaxTokens10
     ) {
         var expected = TestUtils.parseEncodingString(output);
         var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
-        var encodingResult = ENCODING.encode(input, 10);
+        var encodingResult = getEncoding().encode(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens(), "Encoding result does not match expected value for input: " + input);
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
-    }
-
-    @Disabled
-    @Test
-    public void encodingSpeeds() {
-        var input = new StringBuilder();
-        var measurements = new Int2LongAVLTreeMap();
-
-        var iterations = 20;
-        for (double i = 1.0; i < 3_000; i = Math.max(i + 1, i * 1.01)) {
-            while (input.length() < i) {
-                input.append("a");
-            }
-            String inputString = input.toString();
-
-            for (int j = 0; j < 10 * iterations; j++) {
-                var warmup = ENCODING.encode(inputString);
-                assert !warmup.isEmpty();
-            }
-            var startTime = System.nanoTime();
-            for (int j = 0; j < iterations; j++) {
-                var encodingResult = ENCODING.encode(inputString);
-                assert !encodingResult.isEmpty();
-            }
-            var endTime = System.nanoTime();
-            measurements.put((int) i, ((endTime - startTime) / iterations));
-        }
-        measurements.forEach((i, t) -> System.out.println(i + "\t" + t));
     }
 
     @Test
@@ -219,7 +141,7 @@ public class Cl100kBaseTest {
             List<String> actualSplits = new ArrayList<>();
             Cl100kParser.split(testString, utf8Bytes -> {
                 assert !utf8Bytes.isEmpty();
-                actualSplits.add(new String(utf8Bytes.toByteArray(), UTF_8));
+                actualSplits.add(new String(utf8Bytes.toArray(), UTF_8));
                 return false;
             });
             assertEquals(expectedSplits, actualSplits);
@@ -227,7 +149,7 @@ public class Cl100kBaseTest {
             // Encoding
             var expectedTokens = bytePairEncodingOriginal.encode(testString);
             var actualTokens = ENCODING.encode(testString);
-            assertEquals(expectedTokens, actualTokens.stream().toList());
+            assertEquals(expectedTokens, actualTokens.boxed());
 
             // Decoding
             var decoded = ENCODING.decode(actualTokens);
@@ -259,34 +181,34 @@ public class Cl100kBaseTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodesStableWithMaxTokensSet(final String input) {
-        var actual = ENCODING.decode(ENCODING.encode(input, 10).getTokens());
+    void cl100kBaseEncodesStableWithMaxTokensSet(String input) {
+        var actual = getEncoding().decode(getEncoding().encode(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodeOrdinaryEncodesCorrectly(
-            final String input,
-            final String output
+    void cl100kBaseEncodeOrdinaryEncodesCorrectly(
+            String input,
+            String output
     ) {
         var expected = TestUtils.parseEncodingString(output);
-        var actual = ENCODING.encodeOrdinary(input);
+        var actual = getEncoding().encodeOrdinary(input);
 
         assertEquals(expected, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodeOrdinaryEncodesCorrectly(
-            final String input,
-            final String output,
-            final String outputMaxTokens10
+    void cl100kBaseEncodeOrdinaryEncodesCorrectly(
+            String input,
+            String output,
+            String outputMaxTokens10
     ) {
         var expected = TestUtils.parseEncodingString(output);
         var expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
-        var encodingResult = ENCODING.encodeOrdinary(input, 10);
+        var encodingResult = getEncoding().encodeOrdinary(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens());
         assertEquals(expected.size() > expectedWithMaxTokens.size(), encodingResult.isTruncated());
@@ -294,25 +216,24 @@ public class Cl100kBaseTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodeOrdinaryEncodesStable(final String input) {
-        var actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
+    void cl100kBaseEncodeOrdinaryEncodesStable(String input) {
+        var actual = getEncoding().decode(getEncoding().encodeOrdinary(input));
 
         assertEquals(input, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/cl100k_base_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void cl100kBaseEncodeOrdinaryEncodesStableWithMaxTokensSet(final String input) {
-        var actual = ENCODING.decode(ENCODING.encodeOrdinary(input, 10).getTokens());
+    void cl100kBaseEncodeOrdinaryEncodesStableWithMaxTokensSet(String input) {
+        var actual = getEncoding().decode(getEncoding().encodeOrdinary(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
     }
 
     @Test
-    public void cl100kBaseEncodeOrdinaryEncodesSpecialTokensCorrectly() {
+    void cl100kBaseEncodeOrdinaryEncodesSpecialTokensCorrectly() {
         var input = "Hello<|endoftext|>, <|fim_prefix|> <|fim_middle|> world <|fim_suffix|> ! <|endofprompt|>";
-        var tokens = ENCODING.encodeOrdinary(input);
-        var actual = ENCODING.decode(tokens);
+        var actual = getEncoding().decode(getEncoding().encodeOrdinary(input));
 
         assertEquals(input, actual);
     }

@@ -1,12 +1,10 @@
 package com.knuddels.jtokkit;
 
-import com.knuddels.jtokkit.reference.Cl100kBaseTest;
-
 import java.io.IOException;
 import java.util.List;
 
 class Profiling {
-    private static final List<String> texts = Cl100kBaseTest.getTexts("");
+    private static final List<String> texts = Cl100kTest.getTexts("");
 
     public static void main2(String[] args) throws IOException {
         var encoding = (GptBytePairEncoding) EncodingFactory.cl100kBase();

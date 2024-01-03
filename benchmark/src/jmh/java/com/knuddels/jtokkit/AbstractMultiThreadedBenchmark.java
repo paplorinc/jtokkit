@@ -1,6 +1,7 @@
 package com.knuddels.jtokkit;
 
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.IntArrayList;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -18,7 +19,7 @@ public abstract class AbstractMultiThreadedBenchmark extends AbstractBenchmark {
     private final int threads;
     private ExecutorService executor;
 
-    public AbstractMultiThreadedBenchmark(final int threads) {
+    public AbstractMultiThreadedBenchmark(int threads) {
         this.threads = threads;
     }
 
@@ -33,8 +34,8 @@ public abstract class AbstractMultiThreadedBenchmark extends AbstractBenchmark {
     }
 
     @Override
-    protected List<List<Integer>> encodeAll(final Encoding encoding, final List<String> fileContents) {
-        final var futures = fileContents.stream()
+    protected List<IntArrayList> encodeAll(Encoding encoding, List<String> fileContents) {
+        var futures = fileContents.stream()
                 .map(it -> CompletableFuture.supplyAsync(() -> encoding.encode(it), executor))
                 .toList();
 

@@ -4,28 +4,24 @@ import java.util.Arrays;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-class ByteArray {
+class ByteArrayWrapper {
     public final byte[] array;
-    private final int start;
-    private final int end;
+    final int start;
+    final int end;
 
-    ByteArray(byte[] array, int start, int end) {
+    ByteArrayWrapper(byte[] array) {
+        this(array, 0, array.length);
+    }
+
+    ByteArrayWrapper(byte[] array, int start, int end) {
         this.array = array;
         this.start = start;
         this.end = end;
         if (end > array.length) {
             throw new IllegalArgumentException("end must be smaller than array.length");
         } else if (!TokenEncoder.accepts(length())) {
-            throw new IllegalArgumentException("ByteArray must be at least " + Long.BYTES + " bytes long");
+            throw new IllegalArgumentException("ByteArrayWrapper must be at least " + Long.BYTES + " bytes long");
         }
-    }
-
-    public int getStart() {
-        return start;
-    }
-
-    public int getEnd() {
-        return end;
     }
 
     public int length() {
@@ -39,7 +35,7 @@ class ByteArray {
         } else if ((other == null) || (getClass() != other.getClass())) {
             return false;
         } else {
-            var that = (ByteArray) other;
+            var that = (ByteArrayWrapper) other;
             return Arrays.equals(this.array, start, end, that.array, that.start, that.end);
         }
     }

@@ -4,7 +4,7 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingResult;
 import com.knuddels.jtokkit.api.EncodingType;
-import it.unimi.dsi.fastutil.ints.IntList;
+import com.knuddels.jtokkit.api.IntArrayList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -12,25 +12,25 @@ import org.junit.jupiter.params.provider.CsvFileSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class P50kEditTest {
+class P50kEditTest {
 
     private static final Encoding ENCODING = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.P50K_EDIT);
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodesCorrectly(
+    void p50kEditEncodesCorrectly(
             final String input,
             final String output
     ) {
-        final IntList expected = TestUtils.parseEncodingString(output);
-        final IntList actual = ENCODING.encode(input);
+        final IntArrayList expected = TestUtils.parseEncodingString(output);
+        final IntArrayList actual = ENCODING.encode(input);
 
         assertEquals(expected, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodesStable(final String input) {
+    void p50kEditEncodesStable(final String input) {
         final String actual = ENCODING.decode(ENCODING.encode(input));
 
         assertEquals(input, actual);
@@ -38,13 +38,13 @@ public class P50kEditTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodesCorrectlyWithMaxTokensSet(
+    void p50kEditEncodesCorrectlyWithMaxTokensSet(
             final String input,
             final String output,
             final String outputMaxTokens10
     ) {
-        final IntList expected = TestUtils.parseEncodingString(output);
-        final IntList expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
+        final IntArrayList expected = TestUtils.parseEncodingString(output);
+        final IntArrayList expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
         final EncodingResult encodingResult = ENCODING.encode(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens());
@@ -53,7 +53,7 @@ public class P50kEditTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodesStableWithMaxTokensSet(final String input) {
+    void p50kEditEncodesStableWithMaxTokensSet(final String input) {
         final String actual = ENCODING.decode(ENCODING.encode(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
@@ -61,25 +61,25 @@ public class P50kEditTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodeOrdinaryEncodesCorrectly(
+    void p50kEditEncodeOrdinaryEncodesCorrectly(
             final String input,
             final String output
     ) {
-        final IntList expected = TestUtils.parseEncodingString(output);
-        final IntList actual = ENCODING.encodeOrdinary(input);
+        final IntArrayList expected = TestUtils.parseEncodingString(output);
+        final IntArrayList actual = ENCODING.encodeOrdinary(input);
 
         assertEquals(expected, actual);
     }
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodeOrdinaryEncodesCorrectly(
+    void p50kEditEncodeOrdinaryEncodesCorrectly(
             final String input,
             final String output,
             final String outputMaxTokens10
     ) {
-        final IntList expected = TestUtils.parseEncodingString(output);
-        final IntList expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
+        final IntArrayList expected = TestUtils.parseEncodingString(output);
+        final IntArrayList expectedWithMaxTokens = TestUtils.parseEncodingString(outputMaxTokens10);
         final EncodingResult encodingResult = ENCODING.encodeOrdinary(input, 10);
 
         assertEquals(expectedWithMaxTokens, encodingResult.getTokens());
@@ -88,7 +88,7 @@ public class P50kEditTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodeOrdinaryEncodesStable(final String input) {
+    void p50kEditEncodeOrdinaryEncodesStable(final String input) {
         final String actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
 
         assertEquals(input, actual);
@@ -96,14 +96,14 @@ public class P50kEditTest {
 
     @ParameterizedTest
     @CsvFileSource(resources = "/p50k_edit_encodings.csv", numLinesToSkip = 1, maxCharsPerColumn = 1_000_000)
-    public void p50kEditEncodeOrdinaryEncodesStableWithMaxTokensSet(final String input) {
+    void p50kEditEncodeOrdinaryEncodesStableWithMaxTokensSet(final String input) {
         final String actual = ENCODING.decode(ENCODING.encodeOrdinary(input, 10).getTokens());
 
         assertTrue(input.startsWith(actual));
     }
 
     @Test
-    public void p50kEditEncodeOrdinaryEncodesSpecialTokensCorrectly() {
+    void p50kEditEncodeOrdinaryEncodesSpecialTokensCorrectly() {
         final String input = "Hello<|endoftext|>, <|fim_prefix|> <|fim_middle|> world <|fim_suffix|> ! <|endofprompt|>";
         final String actual = ENCODING.decode(ENCODING.encodeOrdinary(input));
 

@@ -1,8 +1,6 @@
 package com.knuddels.jtokkit;
 
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
+import com.knuddels.jtokkit.api.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
@@ -98,9 +96,9 @@ public class CompactTokenEncoder {
         return result;
     }
 
-    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, ByteArrayList utf8Bytes, IntList out, IntArrayList ranks) {
-        assert accepts(utf8Bytes.size());
-        var match = from(utf8Bytes.elements(), 0, utf8Bytes.size());
+    int addTokensAndGetCount(int maxTokenCount, boolean keepEncodings, IntArrayList out, IntArrayList ranks, byte[] bytes, int size) {
+        assert accepts(size);
+        var match = from(bytes, 0, size);
         var encoded = encode(match);
         if (encoded != MAX_RANK) {
             if (keepEncodings) {
@@ -114,7 +112,7 @@ public class CompactTokenEncoder {
         }
     }
 
-    private int calculateTokens(int maxTokenCount, boolean keepEncodings, IntList out, IntArrayList ranks, long match, int length) {
+    private int calculateTokens(int maxTokenCount, boolean keepEncodings, IntArrayList out, IntArrayList ranks, long match, int length) {
         assert length > 1 && length < Long.BYTES;
         ranks.clear();
         ranks.ensureCapacity(length + 1);
@@ -135,7 +133,7 @@ public class CompactTokenEncoder {
         var tokenCount = mergeBytesAndGetTokenCount(match, length, ranks, validRanks, minRankIndex);
         if (keepEncodings) {
             for (int start = 0, end = 1; end < ranks.size() && out.size() < maxTokenCount; end++) {
-                if (ranks.getInt(end) != DUMMY_RANK) {
+                if (ranks.get(end) != DUMMY_RANK) {
                     var token = encode(match, start, end);
                     assert token != MAX_RANK : "Token should not be MAX_RANK";
                     out.add(token);
@@ -158,14 +156,14 @@ public class CompactTokenEncoder {
             var nextNextNextIndex = getNextIndex(ranks, nextNextIndex + 1);
 
             if (previousIndex >= 0) {
-                assert ranks.getInt(previousIndex) != DUMMY_RANK;
+                assert ranks.get(previousIndex) != DUMMY_RANK;
                 var newRank = encode(piece, previousIndex, nextNextIndex);
                 int oldRank = ranks.set(previousIndex, newRank);
                 if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {
                     validRanks -= (newRank == MAX_RANK) ? 1 : -1;
                 }
             }
-            assert ranks.getInt(minRankIndex) != DUMMY_RANK;
+            assert ranks.get(minRankIndex) != DUMMY_RANK;
             var newRank = encode(piece, minRankIndex, nextNextNextIndex);
             var oldRank = ranks.set(minRankIndex, newRank);
             if ((newRank == MAX_RANK) != (oldRank == MAX_RANK)) {

@@ -1,17 +1,15 @@
 package com.knuddels.jtokkit.api;
 
 
-import it.unimi.dsi.fastutil.ints.IntList;
-
 /**
  * The result of encoding operation.
  */
 public final class EncodingResult {
-    private final IntList tokens;
+    private final IntArrayList tokens;
     private final boolean truncated;
     private int tokenCount;
 
-    public EncodingResult(IntList tokens, int tokenCount, boolean truncated) {
+    public EncodingResult(IntArrayList tokens, int tokenCount, boolean truncated) {
         this.tokens = tokens;
         this.tokenCount = tokenCount;
         this.truncated = truncated;
@@ -20,9 +18,9 @@ public final class EncodingResult {
     /**
      * @return the list of token ids
      */
-    public IntList getTokens() {
+    public IntArrayList getTokens() {
         if (tokens.size() != getTokenCount()) {
-            throw new IllegalStateException("Token count does not match token list size (tokenCount=" + tokenCount + ", tokens.size()=" + tokens.size() + ")");
+            throw new IllegalStateException("Token count does not match token list size (tokenCount=" + tokenCount + ", tokens size=" + tokens.size() + ")");
         }
         return tokens;
     }
@@ -44,8 +42,8 @@ public final class EncodingResult {
     @Override
     public String toString() {
         return "EncodingResult{"
-                + "tokens=" + tokens
-                + ", tokenCount=" + tokenCount
+                + "tokens=" + getTokens()
+                + ", tokenCount=" + getTokenCount()
                 + ", truncated=" + truncated
                 + '}';
     }

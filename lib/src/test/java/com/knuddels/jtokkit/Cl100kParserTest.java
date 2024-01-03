@@ -1,6 +1,5 @@
 package com.knuddels.jtokkit;
 
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -76,21 +75,21 @@ public class Cl100kParserTest {
         addUtf8Bytes(input, 0, input.length(), dst);
 
         var expectedBytes = input.getBytes(UTF_8);
-        var actualBytes = dst.toByteArray();
+        var actualBytes = dst.toArray();
 
         assertArrayEquals(expectedBytes, actualBytes, "UTF-8 conversion did not match expected bytes");
         assertEquals(new String(expectedBytes, UTF_8), input);
     }
 
     @Test
-    public void testToUtf8BytesOnFetchedUnicodeData() throws CharacterCodingException {
+    void testToUtf8BytesOnFetchedUnicodeData() throws CharacterCodingException {
         fetchUnicodeData().entrySet().stream().parallel().forEach(e -> {
             var expected = Character.toString(e.getKey());
             if (isValidUTF8(expected)) {
                 var dst = new ByteArrayList();
                 addUtf8Bytes(expected, 0, expected.length(), dst);
 
-                assertArrayEquals(expected.getBytes(UTF_8), dst.toByteArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(dst.toByteArray()) + "`");
+                assertArrayEquals(expected.getBytes(UTF_8), dst.toArray(), () -> "Expected `" + Arrays.toString(expected.getBytes(UTF_8)) + "` (`" + expected + "`) but was `" + Arrays.toString(dst.toArray()) + "`");
             } else {
                 System.out.println("Skipping invalid UTF-8: " + e.getValue() + " (" + e.getKey() + ")");
             }
@@ -98,7 +97,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testParserAndEncoderWithRandomStrings() {
+    void testParserAndEncoderWithRandomStrings() {
         var originalEncoder = GptBytePairEncodingOriginal.getEncoder();
         var normalEncoder = (GptBytePairEncoding) EncodingFactory.cl100kBase();
 
@@ -127,7 +126,7 @@ public class Cl100kParserTest {
             Cl100kParser.split(textString, utf8Bytes -> {
                 assertTrue(expectedMatcher.find(), () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
                 var expected = expectedMatcher.group();
-                var actual = new String(utf8Bytes.toByteArray(), UTF_8);
+                var actual = new String(utf8Bytes.toArray(), UTF_8);
                 assertEquals(expected, actual, () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
                 return false;
             });
@@ -137,19 +136,19 @@ public class Cl100kParserTest {
             {
                 var expectedTokens = originalEncoder.encode(textString, maxTokenCount).getTokens();
                 var actualTokens = normalEncoder.encode(textString, maxTokenCount).getTokens();
-                assertEquals(expectedTokens, actualTokens, () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
+                assertEquals(expectedTokens, actualTokens.boxed(), () -> getMessage(textString, originalEncoder, normalEncoder, maxTokenCount));
             }
             // Encoder array
             {
                 var expectedTokensArray = originalEncoder.encode(textString, maxTokenCount).getTokens();
                 var actualTokensArray = arrayEncoder.encode(textString, maxTokenCount).getTokens();
-                assertEquals(expectedTokensArray, actualTokensArray, () -> getMessage(textString, originalEncoder, arrayEncoder, maxTokenCount));
+                assertEquals(expectedTokensArray, actualTokensArray.boxed(), () -> getMessage(textString, originalEncoder, arrayEncoder, maxTokenCount));
             }
             // Encoder map
             {
                 var expectedTokensMap = originalEncoder.encode(textString, maxTokenCount).getTokens();
                 var actualTokensMap = mapEncoder.encode(textString, maxTokenCount).getTokens();
-                assertEquals(expectedTokensMap, actualTokensMap, () -> getMessage(textString, originalEncoder, mapEncoder, maxTokenCount));
+                assertEquals(expectedTokensMap, actualTokensMap.boxed(), () -> getMessage(textString, originalEncoder, mapEncoder, maxTokenCount));
             }
 
             // CountTokens
@@ -240,7 +239,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsApostophed() {
+    void testIsApostophed() {
         var count = 0;
         var pattern = compileRegex("^(?:'s|'t|'re|'ve|'m|'ll|'d)$", true);
 
@@ -273,7 +272,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsNumeric() {
+    void testIsNumeric() {
         var count = 0;
         assertFalse(Cl100kParser.isNumeric(-1));
         var pattern = compileRegex("^\\p{N}$", true);
@@ -291,7 +290,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsLetter() {
+    void testIsLetter() {
         var count = 0;
         assertFalse(Cl100kParser.isLetter(-1));
         var pattern = compileRegex("^\\p{L}$", true);
@@ -308,7 +307,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsUnicodeWhitespace() {
+    void testIsUnicodeWhitespace() {
         var count = 0;
         assertFalse(Cl100kParser.isWhitespace(-1));
         var pattern = compileRegex("^\\s$", true);
@@ -325,7 +324,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsLetterOrNumeric() {
+    void testIsLetterOrNumeric() {
         var count = 0;
         assertFalse(Cl100kParser.isLetterOrNumeric(-1));
         var pattern = compileRegex("^[\\p{L}\\p{N}]$", true);
@@ -342,7 +341,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsNotWhitespaceOrLetterOrNumeric() {
+    void testIsNotWhitespaceOrLetterOrNumeric() {
         var count = 0;
         assertFalse(Cl100kParser.isNotWhitespaceOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[^\\s\\p{L}\\p{N}]$", true);
@@ -359,7 +358,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsNotNewlineOrLetterOrNumeric() {
+    void testIsNotNewlineOrLetterOrNumeric() {
         var count = 0;
         assertFalse(Cl100kParser.isNotNewlineOrLetterOrNumeric(-1));
         var pattern = compileRegex("^[^\r\n\\p{L}\\p{N}]$", true);
@@ -376,7 +375,7 @@ public class Cl100kParserTest {
     }
 
     @Test
-    public void testIsNewline() {
+    void testIsNewline() {
         var count = 0;
         assertFalse(Cl100kParser.isNewline(-1));
         var pattern = compileRegex("^[\r\n]$", true);
